@@ -19,17 +19,18 @@
  *   ?action=status&machine=CC-XXXX-XXXX-XXXX&ver=...
  *       → trả trạng thái có chữ ký (CCS1|máy|trạng thái|ngày|chữ ký); máy Active nhận kèm giấy phép
  *         nên được duyệt qua Sheet là tự kích hoạt, không cần key. Cập nhật "Lần cuối dùng" + "Phiên bản".
+ *   ?action=uninstall&machine=CC-XXXX-XXXX-XXXX&ver=...
+ *       → bộ cài vừa gỡ ClaudeCAD trên máy đó: ghi giờ vào cột "Đã gỡ lúc" (chỉ để ghi chú: không đổi
+ *         Trạng thái, không khóa máy). Máy cài lại và chạy plugin thì ô đó tự xóa trống.
  *
- * BÍ MẬT: file này chứa khóa riêng để ký giấy phép. Không chia sẻ, không đưa lên GitHub.
- * Mất file này / lộ file này → báo người phát triển để đổi cặp khóa trong bản plugin mới.
+ * File này KHÔNG chứa bí mật: Gmail, SECRET và khóa riêng nằm trong file BiMat.gs cùng dự án (chủ plugin tạo
+ * một lần). Nâng cấp máy chủ = dán đè file này rồi Triển khai → Quản lý triển khai → Phiên bản mới.
  *
  * Tạo key bằng tay (máy không có mạng): sửa MAY_THU_CONG bên dưới rồi chạy hàm taoKeyThuCong
  * (nút ▶ Run) — key, mã kích hoạt offline và mã miễn-kiểm-tra được gửi vào email của cậu.
  */
 
-var EMAIL = '{{EMAIL}}';
-var SECRET = '{{SECRET}}';
-var PRIVATE_KEY = '{{PRIVATE_KEY}}';
+// EMAIL, SECRET, PRIVATE_KEY: defined in BiMat.gs (Apps Script shares globals between the files of a project)
 var TIME_ZONE = 'Asia/Ho_Chi_Minh';
 var MAY_THU_CONG = 'CC-0000-0000-0000';
 var SHEET_NAME = 'Thiết bị';
@@ -43,6 +44,17 @@ var KEEP_DAILY_QUOTA = 5; // left for taoKeyThuCong / kiemTra
 var MAX_NEW_DEVICES_PER_HOUR = 30;
 // 10 an hour could still use up the ~100 emails of a day in ~10 hours of made-up requests.
 var MAX_MAILS_PER_DAY = 40;
+// "Đã gỡ lúc" (the installer reports an uninstall): a note only, after "Ghi chú" so no column moves
+var COL_UNINSTALLED = 10;
+var UNINSTALLED_HEADER = 'Đã gỡ lúc';
+var MISSING_SECRETS_MSG = 'Máy chủ kích hoạt thiếu file BiMat.gs (Gmail, SECRET, khóa riêng) — chủ plugin xem lại hướng dẫn cài.';
+
+/** BiMat.gs (the owner's Gmail, SECRET and private key) is a separate file of the same project. */
+function secretsMissing() {
+  if (typeof EMAIL === 'undefined' || typeof SECRET === 'undefined' || typeof PRIVATE_KEY === 'undefined') return true;
+  var all = String(EMAIL) + String(SECRET) + String(PRIVATE_KEY);
+  return !EMAIL || !SECRET || !PRIVATE_KEY || all.indexOf('{{') >= 0;
+}
 
 var MACHINE_RE = /^CC-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/;
 var B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
@@ -52,10 +64,12 @@ function doGet(e) {
   var out;
   try {
     var action = String(p.action || '');
-    if (action === 'request') out = handleRequest(p);
+    if (action === 'ping') out = { ok: true, service: 'ClaudeCAD activation', ready: !secretsMissing() };
+    else if (secretsMissing()) out = { ok: false, error: MISSING_SECRETS_MSG };
+    else if (action === 'request') out = handleRequest(p);
     else if (action === 'activate') out = handleActivate(p);
     else if (action === 'status') out = handleStatus(p);
-    else if (action === 'ping') out = { ok: true, service: 'ClaudeCAD activation' };
+    else if (action === 'uninstall') out = handleUninstall(p);
     else out = { ok: false, error: 'Yêu cầu không hợp lệ.' };
   } catch (err) {
     out = { ok: false, error: 'Lỗi máy chủ kích hoạt: ' + err };
@@ -77,7 +91,7 @@ function caiDat() {
   var ss = SpreadsheetApp.getActive();
   if (!ss) throw new Error('Script chưa gắn với Google Sheet — mở Google Sheet rồi vào Tiện ích mở rộng → Apps Script và dán file này ở đó.');
   var sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
-  var headers = ['Mã máy', 'Thiết bị', 'User Windows', 'Ngày xin', 'Ngày kích hoạt', 'Trạng thái', 'Lần cuối dùng', 'Phiên bản', 'Ghi chú'];
+  var headers = ['Mã máy', 'Thiết bị', 'User Windows', 'Ngày xin', 'Ngày kích hoạt', 'Trạng thái', 'Lần cuối dùng', 'Phiên bản', 'Ghi chú', UNINSTALLED_HEADER];
   sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
   sh.setFrozenRows(1);
   var rule = SpreadsheetApp.newDataValidation().requireValueInList(STATUS_VALUES, true).setAllowInvalid(false).build();
@@ -117,7 +131,15 @@ function upsertDevice(sh, machine, device, user) {
   }
   if (device && device !== '(không rõ)') sh.getRange(row, 2).setValue(cellText(device));
   if (user && user !== '(không rõ)') sh.getRange(row, 3).setValue(cellText(user));
+  clearUninstalled(sh, row); // asking again = installed again
   return row;
+}
+
+/** The machine is back (installer / plugin talked to the service again): the "Đã gỡ lúc" note goes away. */
+function clearUninstalled(sh, row) {
+  if (!row) return;
+  var cell = sh.getRange(row, COL_UNINSTALLED);
+  if (String(cell.getValue()).trim()) cell.setValue('');
 }
 
 // ======================================================================= actions
@@ -261,6 +283,7 @@ function handleStatus(p) {
           sh.getRange(row, 7).setValue(nowText());
           var ver = clip(p.ver, 20);
           if (ver) sh.getRange(row, 8).setValue(cellText(ver));
+          clearUninstalled(sh, row); // the plugin runs here again
           cache.put(mark, '1', 1800);
         } finally {
           lock.releaseLock();
@@ -271,6 +294,38 @@ function handleStatus(p) {
   var out = { ok: true, status: makeStatus(machine, status) };
   if (status === 'active') out.license = makeLicense(machine); // approved via the sheet: no key needed
   return out;
+}
+
+/**
+ * The installer just removed ClaudeCAD from this machine: note the time in "Đã gỡ lúc". A note only — the url
+ * is in every installer, so anyone could send this for any machine code: it never changes Trạng thái, never
+ * locks a machine and never adds a row. One write per machine per 30 minutes.
+ */
+function handleUninstall(p) {
+  var machine = normMachine(p.machine);
+  if (!machine) return { ok: false, error: 'Mã máy không hợp lệ.' };
+  var sh = getSheet();
+  if (!findRow(sh, machine)) return { ok: true, noted: false }; // a machine the owner never saw
+  var cache = CacheService.getScriptCache();
+  var mark = 'uninst:' + machine;
+  if (cache.get(mark)) return { ok: true, noted: false };
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return { ok: false, error: 'Máy chủ kích hoạt đang bận.' };
+  try {
+    var row = findRow(sh, machine);
+    if (!row) return { ok: true, noted: false };
+    var head = sh.getRange(1, COL_UNINSTALLED);
+    if (!String(head.getValue()).trim()) head.setValue(UNINSTALLED_HEADER).setFontWeight('bold'); // sheets made before this column
+    var ver = clip(p.ver, 20);
+    sh.getRange(row, COL_UNINSTALLED).setValue(nowText() + (ver ? ' (' + cellText(ver).replace(/^'/, '') + ')' : ''));
+    cache.put(mark, '1', 1800);
+    // the next status of this machine (reinstalled) must clear the note even if one came just before the uninstall
+    cache.remove('seen:' + machine);
+    console.log('uninstall noted: ' + machine);
+    return { ok: true, noted: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ======================================================================= keys, licences, signed status
@@ -333,6 +388,7 @@ function cellText(s) {
 
 /** Emails the key, the offline activation code and the no-network pass for MAY_THU_CONG. */
 function taoKeyThuCong() {
+  if (secretsMissing()) throw new Error(MISSING_SECRETS_MSG);
   var machine = normMachine(MAY_THU_CONG);
   if (!machine || machine === 'CC-0000-0000-0000') throw new Error('Sửa MAY_THU_CONG ở đầu file thành mã máy cần kích hoạt (dạng CC-XXXX-XXXX-XXXX).');
   var key = makeKey(machine);
@@ -352,6 +408,7 @@ function taoKeyThuCong() {
 
 /** Run once from the editor after pasting the file: builds the sheet, checks the keys and sends a test email. */
 function kiemTra() {
+  if (secretsMissing()) throw new Error(MISSING_SECRETS_MSG + ' Tạo file BiMat.gs (dấu + cạnh "Tệp" → Tập lệnh) và dán 3 dòng EMAIL / SECRET / PRIVATE_KEY vào đó.');
   caiDat();
   var machine = 'CC-1234-5678-9ABC';
   var key = makeKey(machine);

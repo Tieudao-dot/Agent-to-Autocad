@@ -40,6 +40,7 @@ Sau khi cài: gõ `CLAUDECHATSELFTEST` để tự kiểm tra (báo cáo ✓/✗ 
 - ⚠️ **Đừng đổi tên trang "Thiết bị", đừng chèn / đổi thứ tự cột** trước cột "Ghi chú" (máy chủ đọc cột theo vị trí). Chia sẻ bảng tính thì chỉ cho quyền **Người xem**: người có quyền sửa xem được khóa bí mật trong Apps Script.
 - **Ngưng cho dùng:** đổi thành `Disabled` → máy bị khóa ở lần kiểm tra kế tiếp (plugin kiểm tra mỗi lần mở AutoCAD và ~6 giờ/lần; máy cố tình ngắt mạng cũng chỉ dùng thêm tối đa 7 ngày). Đổi lại `Active` là máy dùng tiếp ngay, không cần key mới.
 - Cột **Lần cuối dùng** và **Phiên bản** cho biết máy nào còn đang dùng plugin.
+- Cột **Đã gỡ lúc**: máy gỡ ClaudeCAD (có mạng) thì bộ cài tự ghi giờ gỡ vào đây. **Chỉ để ghi chú**, không khóa máy; máy đó cài lại thì ô tự xóa trống.
 - Key chỉ dùng được trên đúng máy có mã đó. Cài lại Windows / thay mainboard thì mã máy đổi, máy xin duyệt lại như máy mới.
 - Máy không có mạng, cài máy chủ kích hoạt + bảng thiết bị, tạo key bằng tay: [`activation/README.md`](../activation/README.md).
 
@@ -61,7 +62,7 @@ Chỉ dùng được Claude (tài khoản Pro/Max/Team hoặc API key Anthropic)
 
 ## Gỡ cài đặt
 
-Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall** (hoặc `install.ps1 -Uninstall`). Dữ liệu của cậu (lịch sử chat, macro, mẫu lệnh) nằm trong `%LocalAppData%\ClaudeCAD` và `%AppData%\ClaudeCAD`, xóa tay nếu không cần nữa.
+Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall** (hoặc `install.ps1 -Uninstall`). Gỡ bằng Settings trên máy có mạng thì bảng thiết bị của chủ plugin ghi lại giờ gỡ (cột "Đã gỡ lúc", chỉ để ghi chú); máy không có mạng vẫn gỡ bình thường. Dữ liệu của cậu (lịch sử chat, macro, mẫu lệnh) nằm trong `%LocalAppData%\ClaudeCAD` và `%AppData%\ClaudeCAD`, xóa tay nếu không cần nữa.
 
 ## Lịch sử phiên bản
 

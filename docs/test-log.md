@@ -161,6 +161,7 @@ Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, 
 | K-14 | Máy bị `Disabled`, xóa file `Contents\activation.json` trong thư mục plugin rồi mở AutoCAD → vẫn bị khóa (link máy chủ nằm trong DLL) | ⬜ chưa chạy | |
 | K-15 | Máy đã kích hoạt, ngắt mạng, chỉnh ngày Windows **lùi** 3 ngày → mở AutoCAD: thẻ 🔒 "Đồng hồ máy đang chậm hơn lần dùng trước…"; chỉnh lại giờ đúng + nối mạng + **Kiểm tra lại** → mở khóa | ⬜ chưa chạy | |
 | K-16 | Trang kích hoạt của bộ cài: lúc đang gửi yêu cầu thấy chữ "Đang gửi yêu cầu… (có thể mất tới 20 giây…)" (không đứng trắng); `ClaudeCAD-Setup.exe /KEY=<key>` (không /VERYSILENT) → ô key điền sẵn, chủ plugin **không** nhận email xin key | ⬜ chưa chạy | |
+| K-17 | Máy đã có dòng trong bảng thiết bị, gỡ ClaudeCAD bằng **Settings → Apps → Uninstall** (có mạng) → cột **Đã gỡ lúc** của máy đó có giờ gỡ + phiên bản, Trạng thái **không đổi**; gỡ khi ngắt mạng → gỡ bình thường, không chờ lâu; cài lại + mở AutoCAD → ô **Đã gỡ lúc** tự xóa trống | ⬜ chưa chạy | |
 | R-1 | Macro có bo góc (fillet) giữa 2 đường vừa vẽ → chạy lại macro ở chỗ khác: bo góc 2 đường mới, 2 đường cũ giữ nguyên | ⬜ chưa chạy | |
 | R-2 | Bật Phiên bản, yêu cầu Claude "zoom vào khung tên rồi đổi chữ" → có phiên bản mới trước khi sửa; lượt chỉ zoom không có nút Hoàn tác | ⬜ chưa chạy | |
 | R-3 | "Vẽ lại rồi xóa đi các đường cũ" trên layer có > 20 đối tượng → Claude hỏi xác nhận trước khi xóa | ⬜ chưa chạy | |
