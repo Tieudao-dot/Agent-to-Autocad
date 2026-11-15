@@ -43,7 +43,8 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
    - Máy chủ kích hoạt đã gắn sẵn, nên bước chặn phát hành của CI sẽ qua.
    - Lỗi `install.ps1` của v0.9.3 (dòng `"Node.js v$major: OK"`) đã được sửa và hết lỗi ở bản này.
 4. Sau phát hành:
-   - viết hướng dẫn cho người dùng cuối;
+   - hướng dẫn cho người dùng cuối: đã viết trước ở [`huong-dan-su-dung.md`](huong-dan-su-dung.md); rà lại theo kết quả
+     thử thật rồi đưa vào bản phát hành;
    - tách `ChatControl.cs` cho dễ bảo trì.
 
 ## 4. Các thread
@@ -129,6 +130,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 ## 7. Tài liệu khác
 
 - `bo-cai/README.md`: cài đặt và lịch sử phiên bản cho người dùng.
+- `huong-dan-su-dung.md`: hướng dẫn sử dụng cho người dùng cuối (bản nháp, chưa đối chiếu giao diện thật).
 - `checklist-thu-that.md`: checklist thử trên AutoCAD thật.
 - `test-log.md`: kết quả kiểm thử.
 - `autocad-2026-2027.md`: chi tiết hỗ trợ AutoCAD 2026 / 2027.
