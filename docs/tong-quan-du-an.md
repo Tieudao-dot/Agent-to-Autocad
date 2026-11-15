@@ -1,6 +1,6 @@
 # Tổng quan dự án ClaudeCAD
 
-*Cập nhật: 11/11/2026 14:00 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
+*Cập nhật: 15/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
 
 File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `plugin-tong-quan.md` và `ke-hoach-gop-nhanh.md`.
 
@@ -10,10 +10,13 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 - **Bản thử:** toàn bộ phần đã làm sau v0.9.3 nằm trên nhánh tích hợp `claude/release-0.9.5`. CI xanh, chưa phát hành.
   - Gồm: khóa key theo máy, giao diện kiểu AutoCAD, AutoCAD 2026 / 2027, checklist thử thật.
   - Nhánh đã gộp cả 5 nhánh, và cặp khóa kích hoạt đã được đổi mới.
-- **Bộ cài thử:** tải từ [run 43000757496](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43000757496/artifacts/13847355266).
-  - Tên `ClaudeCAD-0.9.4`, ~340 MB.
-  - Bộ cài từ các run trước mang khóa cũ, không dùng.
-- **Đang chờ cậu:** thử bộ cài trên AutoCAD 2026 theo [`checklist-thu-that.md`](checklist-thu-that.md), phần A (key) và phần H (2026 / 2027).
+  - Từ 15/11 có thêm tính năng ghi máy đã gỡ: Sheet ghi "Đã gỡ lúc". Bí mật của máy chủ cũng được tách sang `BiMat.gs`.
+- **Bộ cài thử:** tải từ [run 43665981360](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43665981360/artifacts/14142895023) (`76f1cce`).
+  - Tên `ClaudeCAD-0.9.4`, ~339 MB.
+  - Không dùng bộ cài cũ: run 43000757496 thiếu tính năng ghi máy đã gỡ; các run trước đó mang khóa cũ.
+- **Đang chờ cậu:**
+  1. Cập nhật máy chủ Google ở thread bảo mật: tạo BiMat, dán `Code.gs` mới, chạy `kiemTra`, deploy bản mới.
+  2. Thử bộ cài trên AutoCAD 2026 theo [`checklist-thu-that.md`](checklist-thu-that.md), phần A (key), phần H (2026 / 2027) và phần I (gỡ cài đặt, làm cuối).
   - Hạn: trước khi bản dùng thử hết hạn, khoảng 10/12/2026.
   - Cần hỗ trợ khi cài thì hỏi ở thread cài đặt.
 - **Tác vụ nền:** không thread nào đang chạy việc.
@@ -140,4 +143,5 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 15/11 | Thread bảo mật làm tính năng ghi "Đã gỡ lúc" và tách bí mật máy chủ (`53bb1bf`). Thread gộp nhánh đã gộp vào `claude/release-0.9.5` (`76f1cce`) và build bộ cài thử mới, run 43665981360. Chờ cậu cập nhật máy chủ Google rồi thử theo checklist A, H, I |
 | 11/11 | Gộp xong 5 nhánh vào `claude/release-0.9.5`, đổi cặp khóa kích hoạt, có bộ cài thử cuối (run 43000757496). Mở thread cài đặt plugin. Chờ cậu thử trên AutoCAD 2026 |
