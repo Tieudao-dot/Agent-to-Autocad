@@ -1,6 +1,6 @@
 # Checklist thử thật trên AutoCAD (một lượt ~20 phút)
 
-*Soạn 11/11/2026 cho bộ cài thử 0.9.5 (đã gộp khóa key, giao diện mới, AutoCAD 2026 / 2027). Chi tiết từng mục: `docs/test-log.md` (cột "Mã gốc").*
+*Soạn 11/11/2026, bổ sung 15/11 (phần I: gỡ cài đặt) cho bộ cài thử 0.9.5 (đã gộp khóa key, giao diện mới, AutoCAD 2026 / 2027). Dùng bộ cài của lượt CI **mới nhất** trên `claude/release-0.9.5`; bản build ngày 11/11 (lượt 43000757496) đã bị thay. Chi tiết từng mục: `docs/test-log.md` (cột "Mã gốc").*
 
 Mục đích: một lượt thử trên máy có AutoCAD thật, xếp theo rủi ro. Phần **A–E hỏng thì không phát hành**; phần F–H
 hỏng thì ghi lại, sửa sau vẫn được. Mỗi bước đánh dấu **Đạt** hoặc **Lỗi** (lỗi thì ghi 1 dòng ở cuối file và làm
@@ -122,6 +122,16 @@ Làm trên máy có AutoCAD 2026 và / hoặc 2027. Phần A–G chỉ cần là
 | H3 | ★ | Gõ "vẽ 1 hình chữ nhật 2000x1000 và ghi chữ THỬ ở giữa" → **Hoàn tác lượt này** | Vẽ đúng, chữ có dấu; hoàn tác sạch | ☐ | ☐ | 2026, 2027 (dòng vẽ thử) |
 | H4 | ★ | Lặp lại F2 (đổi `COLORTHEME`) và nhìn icon thanh trạng thái | Khung chat đổi theo; icon **C** hiện, có chấm xanh khi Claude làm | ☐ | ☐ | 2026, 2027 (dòng theme) |
 | H5 | ○ | (2027) Kéo một file ảnh vào ô chat; bấm icon **Chụp** | Ảnh đính kèm được, không báo lỗi; ảnh chụp bản vẽ rõ nét | ☐ | ☐ | 2027 (dòng vẽ thử) |
+
+## I. Gỡ cài đặt — làm **cuối cùng** (~2 phút)
+
+Chỉ chạy được sau khi chủ plugin đã cập nhật máy chủ Google (dán `Code.gs` mới, thêm `BiMat.gs`, deploy bản mới —
+xem `activation/README.md`). Máy chủ chưa cập nhật thì bỏ qua bước này; việc gỡ cài đặt vẫn bình thường.
+
+| # | | Làm gì | Kết quả mong đợi | Đạt | Lỗi | Mã gốc |
+| --- | --- | --- | --- | --- | --- | --- |
+| I1 | ○ | Đóng AutoCAD, máy đang có mạng: **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall** | Gỡ xong không lỗi, không đứng lâu; trong Sheet "Thiết bị", dòng của máy có giờ ở cột **Đã gỡ lúc**, ô Trạng thái **không đổi** | ☐ | ☐ | K-17 |
+| I2 | ○ | Cài lại bằng `ClaudeCAD-Setup.exe`, mở AutoCAD | Máy đang `Active` thì không hỏi key, dùng được ngay; ô **Đã gỡ lúc** tự xóa trống | ☐ | ☐ | K-17, K-3 |
 
 ## Gửi lại gì khi lỗi
 
