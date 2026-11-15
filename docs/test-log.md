@@ -4,6 +4,8 @@ Môi trường cần: Windows 10/11 x64, AutoCAD 2022 bản full, bản vẽ tr�
 
 Trạng thái: ⬜ chưa chạy · ✅ đạt · ❌ không đạt · ⚠️ đạt một phần. Ghi ngày, phiên bản commit và ghi chú ở cột cuối.
 
+Bộ cài thử: bản build ngày 11/11 (lượt CI 43000757496) đã bị thay bằng bản ngày 15/11 (thêm báo gỡ cài đặt, K-17); thử bằng bộ cài của lượt CI mới nhất trên `claude/release-0.9.5`.
+
 Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, có ô Đạt / Lỗi và mã mục của file này): [`checklist-thu-that.md`](checklist-thu-that.md).
 
 > **Chưa có kịch bản nào được chạy trên AutoCAD thật.** Phiên phát triển chạy trên cloud Linux, không có Windows/AutoCAD. Những gì đã kiểm chứng tự động trên cloud được liệt kê ở cuối file.
