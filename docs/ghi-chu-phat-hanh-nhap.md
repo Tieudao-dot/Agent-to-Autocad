@@ -116,7 +116,10 @@ Yêu cầu: Windows, AutoCAD bản đầy đủ (không phải LT), tài khoản
 2. Nâng phiên bản ở mọi nơi (có test kiểm phiên bản thống nhất); thay `<PHIÊN BẢN>`; chép phần B.
 3. Gộp `claude/wizardly-heisenberg-ugup5c` vào `claude/release-0.9.5` để `main` có tài liệu mới (nhánh đó chỉ hơn
    phần tài liệu: tổng quan gộp một file, `CLAUDE.md`, xóa `docs/plugin-tong-quan.md` và
-   `docs/ke-hoach-gop-nhanh.md`).
+   `docs/ke-hoach-gop-nhanh.md`; thêm hướng dẫn người dùng `docs/huong-dan-su-dung.md`). Sau khi gộp, cho phần A
+   và phần C trỏ tới file hướng dẫn đó.
+   Sửa dòng 20 của `bo-cai/README.md` (đang ghi AutoCAD 2026 / 2027 "đang làm, chưa phát hành") cho khớp phương án
+   2027 đã chốt.
 4. CI `release: "false"` xanh trên commit cuối.
 5. Chỉ khi chủ dự án đồng ý rõ: tạo PR / merge `main` (CI tự phát hành), rồi dán phần C lên Releases.
 6. Xóa file nháp này sau khi phát hành.
