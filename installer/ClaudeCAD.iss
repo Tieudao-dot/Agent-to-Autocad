@@ -323,7 +323,7 @@ end;
 
 { GET through WinHTTP (follows Google's redirect to script.googleusercontent.com). Short timeouts: the wizard
   does not repaint while it waits. WinHTTP ignores the Windows (Internet Options) proxy unless told: use it. }
-function HttpGetT(const Url: String; Quick: Boolean; var Body: String): Boolean;
+function HttpGet(const Url: String; var Body: String): Boolean;
 var
   Req: Variant;
   ProxyOn: Cardinal;
@@ -333,10 +333,8 @@ begin
   Body := '';
   try
     Req := CreateOleObject('WinHttp.WinHttpRequest.5.1');
-    { receive 25 s: a cold Apps Script start + its 5 s lock + sending the email can take well over 12 s.
-      Quick (the uninstall note): never hold the uninstaller more than a few seconds }
-    if Quick then Req.SetTimeouts(3000, 3000, 3000, 8000)
-    else Req.SetTimeouts(5000, 5000, 8000, 25000);
+    { receive 25 s: a cold Apps Script start + its 5 s lock + sending the email can take well over 12 s }
+    Req.SetTimeouts(5000, 5000, 8000, 25000);
     if RegQueryDWordValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 'ProxyEnable', ProxyOn) and (ProxyOn <> 0) then
       if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 'ProxyServer', Proxy) and (Trim(Proxy) <> '') then
         Req.SetProxy(2, Trim(Proxy), '<local>');
@@ -349,11 +347,6 @@ begin
   except
     Log('activation: request failed: ' + GetExceptionMessage);
   end;
-end;
-
-function HttpGet(const Url: String; var Body: String): Boolean;
-begin
-  Result := HttpGetT(Url, False, Body);
 end;
 
 { "name":"value" from the service's small JSON answers (values never contain quotes) }
@@ -612,17 +605,4 @@ begin
     else Log('activation: silent install without /KEY= — the plugin will ask for the key');
   { sign-in now happens inside AutoCAD ("Đăng nhập Claude" button) — nothing to type in a terminal }
   if CurStep = ssPostInstall then TrustBundle();
-end;
-
-{ Uninstall: tell the owner's device sheet ("Đã gỡ lúc"). A note only (it changes no status on the service); quick
-  timeouts, and no network / no service in this build simply skips it — removing the plugin never waits on it. }
-procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
-var
-  Body: String;
-begin
-  if (CurUninstallStep <> usPostUninstall) or ('{#ActivationUrl}' = '') then exit;
-  if HttpGetT('{#ActivationUrl}?action=uninstall&machine=' + MachineCode() + '&ver=' + UrlEncode('{#AppVersion}'), True, Body) then
-    Log('activation: uninstall reported (' + Copy(Body, 1, 80) + ')')
-  else
-    Log('activation: uninstall not reported (no network?)');
 end;

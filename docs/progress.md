@@ -231,5 +231,3 @@ Cần test: D-1 … D-3.
 Cần test trên AutoCAD thật: K-8 … K-16 (cùng K-1 … K-7, R-1 … R-6).
 
 **Đã đổi cặp khóa kích hoạt (11/11/2026, chủ plugin chọn đổi trước khi thử bộ cài):** cặp mới tạo bằng lệnh kín, không lọt vào nhật ký phiên; `LicenseLogic.PublicModulus` + fixture test đã cập nhật; máy chủ Google đã chạy khóa mới (thử thật OK). Bộ cài thử cuối phải build từ commit có khóa mới.
-
-**Báo gỡ cài đặt + tách bí mật Apps Script (14/11/2026, yêu cầu chuyển từ thread QnA):** dự án Apps Script tách thành `Code.gs` (xử lý, không bí mật, trong repo) + `BiMat.gs` (3 dòng bí mật, sinh từ `BiMat.gs.template`, không commit) — nâng cấp máy chủ từ nay chỉ thay `Code.gs`, không đụng khóa. Bộ cài báo `?action=uninstall` sau khi gỡ (chờ ngắn, lỗi bỏ qua); máy chủ ghi cột 10 "Đã gỡ lúc" (chỉ ghi chú, không đổi Trạng thái, chỉ máy đã có dòng, 1 lần/30 phút), máy chạy lại thì xóa trống. Test agent: 3 bài mới (thiếu BiMat, ghi chú gỡ, cài lại xóa ghi chú). Cần test: K-17.
