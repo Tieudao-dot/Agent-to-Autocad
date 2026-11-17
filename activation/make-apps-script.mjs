@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * Fills activation/apps-script/BiMat.gs.template with the owner's email, the key secret and the RSA private key,
- * producing the BiMat.gs the owner adds next to Code.gs in the Apps Script project. The output is SECRET: never
- * commit it. activation/apps-script/Code.gs holds no secret and is pasted as it is (upgrades replace only it).
+ * Fills activation/apps-script/Code.gs.template with the owner's email, the key secret and the RSA private key,
+ * producing the Code.gs the owner pastes into script.google.com. The output is SECRET: never commit it.
  *
- *   node activation/make-apps-script.mjs --private-key license-private.pem --email me@gmail.com --out BiMat.gs
+ *   node activation/make-apps-script.mjs --private-key license-private.pem --email me@gmail.com --out Code.gs
  *        [--secret <base64url>]     (default: a new random secret — keys made with an old secret stop working)
  *
  * The matching public key must be in plugin/ClaudeCAD.Plugin/Core/License.cs (LicenseLogic.PublicModulus):
@@ -50,7 +49,7 @@ if (!values.out) fail('--out <file> is required');
 const pkcs8 = key.export({ format: 'pem', type: 'pkcs8' }).toString().trim();
 const secret = values.secret ?? crypto.randomBytes(32).toString('base64url');
 const here = path.dirname(fileURLToPath(import.meta.url));
-const template = fs.readFileSync(path.join(here, 'apps-script', 'BiMat.gs.template'), 'utf8');
+const template = fs.readFileSync(path.join(here, 'apps-script', 'Code.gs.template'), 'utf8');
 const js = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '\\n');
 const out = template
   .replace('{{EMAIL}}', js(values.email))

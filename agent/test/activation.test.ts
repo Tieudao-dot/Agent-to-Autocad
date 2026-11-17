@@ -60,16 +60,14 @@ class FakeSheet {
   }
 }
 
-function loadService(opts: { noSecrets?: boolean } = {}) {
+function loadService() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   const pem = (privateKey.export({ format: 'pem', type: 'pkcs8' }) as string).trim() + '\n';
   const js = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '\\n');
-  // the Apps Script project: BiMat.gs (the owner's secrets, filled by make-apps-script) + Code.gs (no secret)
-  const secrets = fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8')
+  const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8')
     .replace('{{EMAIL}}', 'owner@example.com')
     .replace('{{SECRET}}', 'test-secret')
     .replace('{{PRIVATE_KEY}}', js(pem));
-  const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs'), 'utf8');
   const mails: Mail[] = [];
   const quota = { left: 100 };
   const cache = new Map<string, string>();
@@ -102,7 +100,7 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
       }),
     },
     console: { log: () => {} },
-    CacheService: { getScriptCache: () => ({ get: (k: string) => cache.get(k) ?? null, put: (k: string, v: string) => cache.set(k, v), remove: (k: string) => cache.delete(k) }) },
+    CacheService: { getScriptCache: () => ({ get: (k: string) => cache.get(k) ?? null, put: (k: string, v: string) => cache.set(k, v) }) },
     SpreadsheetApp: {
       getActive: () => spreadsheet,
       getActiveSpreadsheet: () => spreadsheet,
@@ -118,7 +116,6 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
     Logger: { log: () => {} },
   };
   vm.createContext(sandbox);
-  if (!opts.noSecrets) vm.runInContext(secrets, sandbox);
   vm.runInContext(code, sandbox);
   const get = (params: Record<string, string>) =>
     JSON.parse(((sandbox.doGet as (e: unknown) => { content: string })({ parameter: params })).content);
@@ -310,58 +307,6 @@ describe('activation service (Apps Script)', () => {
     assert.ok(s.get({ action: 'status', machine }).license, 'the licence comes back through ?action=status');
   });
 
-  it('without BiMat.gs the service says so instead of failing (ping still answers)', () => {
-    const s = loadService({ noSecrets: true });
-    assert.deepEqual(s.get({ action: 'ping' }), { ok: true, service: 'ClaudeCAD activation', ready: false });
-    for (const action of ['request', 'activate', 'status', 'uninstall']) {
-      const r = s.get({ action, machine, key: 'AAAA-BBBB-CCCC-DDDD' });
-      assert.equal(r.ok, false);
-      assert.match(r.error, /BiMat\.gs/);
-    }
-    assert.throws(() => (s.sandbox.kiemTra as () => void)(), /BiMat\.gs/);
-    assert.equal(loadService().get({ action: 'ping' }).ready, true);
-  });
-
-  it('an uninstall is noted in "Đã gỡ lúc" only: status, licence and rows stay as they are', () => {
-    const s = loadService();
-    // a machine the owner never saw: nothing is written
-    assert.deepEqual(s.get({ action: 'uninstall', machine, ver: '0.9.5' }), { ok: true, noted: false });
-    assert.equal(s.row(machine), undefined);
-    s.get({ action: 'request', machine, device: 'PC', user: 'u' });
-    s.row(machine)![5] = 'Active';
-    const r = s.get({ action: 'uninstall', machine, ver: '0.9.5' });
-    assert.deepEqual(r, { ok: true, noted: true });
-    const row = s.row(machine)!;
-    assert.match(String(row[9]), /\(0\.9\.5\)$/);
-    assert.equal(row[5], 'Active'); // a note only
-    assert.equal(s.sheet()!.rows[0][9], 'Đã gỡ lúc'); // header added for sheets made before this column
-    assert.ok(s.get({ action: 'status', machine }).license, 'the machine keeps its licence');
-    // once per 30 minutes per machine
-    row[9] = 'x';
-    assert.deepEqual(s.get({ action: 'uninstall', machine }), { ok: true, noted: false });
-    assert.equal(row[9], 'x');
-    assert.equal(s.get({ action: 'uninstall', machine: 'hello' }).ok, false);
-  });
-
-  it('a reinstalled machine clears "Đã gỡ lúc" (status, request or activation)', () => {
-    const s = loadService();
-    s.get({ action: 'request', machine, device: 'PC', user: 'u' });
-    const key = /KEY: (\S+)/.exec(s.mails[0].body)![1];
-    s.get({ action: 'status', machine, ver: '0.9.5' }); // the plugin ran just before the uninstall
-    s.get({ action: 'uninstall', machine });
-    const row = s.row(machine)!;
-    assert.ok(String(row[9]).length > 0);
-    s.get({ action: 'status', machine, ver: '0.9.5' }); // reinstalled: the 30-minute mark was reset by the uninstall
-    assert.equal(row[9], '');
-    row[9] = 'gỡ hôm qua';
-    s.cache.clear();
-    s.get({ action: 'request', machine, device: 'PC', user: 'u' });
-    assert.equal(row[9], '');
-    row[9] = 'gỡ hôm qua';
-    s.get({ action: 'activate', machine, key });
-    assert.equal(row[9], '');
-  });
-
   it('status for an unknown machine is signed "pending" and adds no row', () => {
     const s = loadService();
     const r = s.get({ action: 'status', machine: 'CC-AAAA-BBBB-CCCC' });
@@ -384,12 +329,9 @@ describe('activation service (Apps Script)', () => {
   it('keys depend on the secret: another owner\'s service makes other keys', () => {
     const a = loadService();
     const keyA = (a.sandbox.makeKey as (m: string) => string)(machine);
-    const secrets = fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8');
-    assert.ok(secrets.includes("var SECRET = '{{SECRET}}'"), 'the template must not carry a real secret');
-    assert.ok(secrets.includes("var PRIVATE_KEY = '{{PRIVATE_KEY}}'"), 'the template must not carry a real private key');
-    const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs'), 'utf8');
-    assert.doesNotMatch(code, /var (EMAIL|SECRET|PRIVATE_KEY)\s*=/, 'Code.gs must hold no secret (they live in BiMat.gs)');
-    assert.doesNotMatch(code, /BEGIN PRIVATE KEY|@gmail\.com/);
+    const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8');
+    assert.ok(code.includes("var SECRET = '{{SECRET}}'"), 'the template must not carry a real secret');
+    assert.ok(code.includes("var PRIVATE_KEY = '{{PRIVATE_KEY}}'"), 'the template must not carry a real private key');
     assert.match(keyA, /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/);
   });
 

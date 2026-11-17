@@ -16,7 +16,7 @@ Cập nhật bản mới, cài đè hay gỡ ra cài lại trên cùng máy đ�
 
 ## Bảng "Thiết bị" — duyệt, khóa, theo dõi (chủ plugin)
 
-Mỗi dòng là một máy: **Mã máy · Thiết bị · User Windows · Ngày xin · Ngày kích hoạt · Trạng thái · Lần cuối dùng · Phiên bản · Ghi chú · Đã gỡ lúc** (cột Ghi chú để chủ plugin ghi tùy ý, ví dụ tên người dùng thật; cột **Đã gỡ lúc** do bộ cài tự điền khi máy gỡ ClaudeCAD).
+Mỗi dòng là một máy: **Mã máy · Thiết bị · User Windows · Ngày xin · Ngày kích hoạt · Trạng thái · Lần cuối dùng · Phiên bản · Ghi chú** (cột Ghi chú để chủ plugin ghi tùy ý, ví dụ tên người dùng thật).
 
 | Muốn | Làm |
 | --- | --- |
@@ -24,7 +24,6 @@ Mỗi dòng là một máy: **Mã máy · Thiết bị · User Windows · Ngày 
 | Ngưng cho dùng | Đổi thành `Disabled`. Máy đó bị khóa ở lần kiểm tra kế tiếp: khung chat hiện *"Máy này đã bị chủ plugin tạm khóa. Liên hệ Zalo owner: 0344644415"*; trợ lý dừng; key cũ cũng không kích hoạt lại được. |
 | Cho dùng lại | Đổi lại thành `Active`. Máy bấm **Kiểm tra lại** (hoặc đợi lần kiểm tra kế tiếp) là dùng tiếp ngay, không cần key mới. |
 | Xem máy nào còn dùng | Cột **Lần cuối dùng** (cập nhật mỗi lần máy kiểm tra, tối đa 30 phút/lần) và **Phiên bản**. |
-| Biết máy nào đã gỡ plugin | Cột **Đã gỡ lúc**: giờ gỡ + phiên bản, do bộ cài báo về lúc gỡ (máy có mạng). **Chỉ để ghi chú**: không đổi Trạng thái, không khóa máy. Máy đó cài lại và mở AutoCAD thì ô tự xóa trống. Muốn ngưng hẳn máy đó thì vẫn đổi Trạng thái thành `Disabled`. |
 | Bỏ một máy khỏi danh sách | Xóa dòng — máy đó quay về "Chờ duyệt" ở lần kiểm tra kế tiếp (bị khóa cho tới khi duyệt lại). |
 
 Lưu ý:
@@ -35,15 +34,11 @@ Lưu ý:
 
 ## Cài máy chủ kích hoạt + bảng thiết bị (chủ plugin làm một lần, khoảng 10 phút)
 
-Dự án Apps Script gồm **2 file**:
-
-- **`BiMat.gs`** — 3 dòng bí mật (`EMAIL`, `SECRET`, `PRIVATE_KEY`), người phát triển tạo bằng lệnh kín và gửi riêng. **Không chia sẻ, không đưa lên GitHub**: ai có file này thì tự tạo được key. Tạo một lần, nâng cấp không đụng tới.
-- **`Code.gs`** — phần xử lý, **không chứa bí mật**: lấy nguyên file `activation/apps-script/Code.gs` của repo. Nâng cấp máy chủ chỉ thay file này.
+Cần file **`ClaudeCAD-Code.gs`** do người phát triển gửi riêng. File này đã điền sẵn email nhận thông báo và khóa bí mật. **Không chia sẻ file này, không đưa lên GitHub**: ai có file này thì tự tạo được key.
 
 1. Mở <https://sheets.new> bằng Gmail nhận thông báo → đặt tên bảng tính, ví dụ `ClaudeCAD – Thiết bị`.
 2. Trong bảng tính: **Tiện ích mở rộng** (Extensions) → **Apps Script**. Đặt tên dự án, ví dụ `ClaudeCAD kích hoạt`.
-3. Xóa hết nội dung trong `Code.gs`, dán **toàn bộ** file `Code.gs` (phần xử lý), rồi bấm 💾 **Lưu**.
-   Bấm dấu **+** cạnh chữ **Tệp** (Files) → **Tập lệnh** (Script) → đặt tên `BiMat` → dán **toàn bộ** file `BiMat.gs` → 💾 **Lưu**.
+3. Xóa hết nội dung trong `Code.gs`, dán **toàn bộ** nội dung file `ClaudeCAD-Code.gs`, rồi bấm 💾 **Lưu**.
 4. Trên thanh công cụ, chọn hàm **`kiemTra`** rồi bấm ▶ **Chạy** (Run). Google sẽ hỏi quyền:
    **Xem lại quyền** → chọn tài khoản → màn hình "Google chưa xác minh ứng dụng này" → **Nâng cao** (Advanced) → **Đi tới … (không an toàn)** → **Cho phép** (Allow).
    Màn hình này hiện vì script do chính cậu tạo, chưa qua kiểm duyệt của Google. Script chỉ xin quyền **gửi email** và **sửa bảng tính này** bằng tài khoản của cậu.
@@ -55,13 +50,7 @@ Dự án Apps Script gồm **2 file**:
 6. Thử: mở URL đó trên trình duyệt, thêm `?action=ping` vào cuối. Thấy `{"ok":true,"service":"ClaudeCAD activation"}` là xong.
 7. Gửi URL này cho người phát triển. URL được ghi vào `activation/activation.json`, và các bản phát hành sau sẽ dùng nó.
 
-Nâng cấp máy chủ về sau: **chỉ thay file `Code.gs`** (không đụng `BiMat.gs`) → 💾 Lưu → chạy **`kiemTra`** một lần (để Google hỏi thêm quyền nếu bản mới cần) → **Triển khai → Quản lý triển khai** (Manage deployments) → ✏️ → Phiên bản: **Phiên bản mới** (New version) → Triển khai. Làm như vậy thì URL giữ nguyên. Nếu bấm "Tùy chọn triển khai mới", URL sẽ đổi và bộ cài đã phát hành sẽ không gọi được máy chủ mới.
-
-**Chuyển từ 1 file sang 2 file** (máy chủ cài trước 14/11/2026, khi `Code.gs` còn chứa 3 dòng bí mật):
-1. Trong Apps Script, bấm **+** cạnh **Tệp** → **Tập lệnh** → đặt tên `BiMat`. Xóa nội dung mẫu trong file mới.
-2. Mở `Code.gs`, bấm vào đầu dòng `var EMAIL = …`, giữ **Shift** rồi bấm vào cuối dòng `var PRIVATE_KEY = …` (3 dòng liền nhau; dòng PRIVATE_KEY rất dài) → `Ctrl+X` → sang file `BiMat` → `Ctrl+V` → 💾 Lưu.
-3. Quay lại `Code.gs` → `Ctrl+A` → dán đè file `Code.gs` mới → 💾 Lưu → chạy `kiemTra` (email "Máy chủ kích hoạt hoạt động" phải về như cũ; báo thiếu `BiMat.gs` nghĩa là bước 2 chưa đúng) → Quản lý triển khai → **Phiên bản mới**.
-4. Thử `URL?action=ping`: phải thấy `"ready":true`.
+Sửa script về sau: dán code mới → 💾 Lưu → chạy **`kiemTra`** một lần (để Google hỏi thêm quyền nếu bản mới cần) → **Triển khai → Quản lý triển khai** (Manage deployments) → ✏️ → Phiên bản: **Phiên bản mới** (New version) → Triển khai. Làm như vậy thì URL giữ nguyên. Nếu bấm "Tùy chọn triển khai mới", URL sẽ đổi và bộ cài đã phát hành sẽ không gọi được máy chủ mới.
 
 ## Cấp key bằng tay (máy không có mạng)
 
@@ -85,11 +74,9 @@ Key vẫn riêng cho từng máy. Cài ngầm mà không có `/KEY=` thì plugin
 - **Giấy phép:** `CCL1|<mã máy>|<ngày>|<chữ ký RSA-2048 SHA-256 PKCS#1 v1.5, base64url>`. Khóa riêng nằm trong Apps Script; khóa công khai nằm trong `plugin/ClaudeCAD.Plugin/Core/License.cs`. Lưu ở `%LocalAppData%\ClaudeCAD\license.txt`.
 - **Trạng thái thiết bị:** `?action=status` trả `CCS1|<mã máy>|<active|disabled|pending|offline>|<ngày UTC>|<chữ ký>` (cùng khóa và cùng kiểu chữ ký với giấy phép), lưu ở `status.txt`. Plugin (`LicenseLogic.VerifyStatus`) chỉ mở khóa khi: giấy phép hợp lệ **và** trạng thái `active` ký trong vòng **7 ngày** (`StatusMaxAgeDays`) — hoặc `offline` (không bao giờ hết hạn). Trạng thái `pending`/`disabled`, quá hạn, hay ngày nằm ở tương lai (vặn lùi đồng hồ) đều khóa. Máy `Active` gọi `status` được trả kèm giấy phép, nên duyệt qua Sheet không cần key; `activate` bằng key cũng trả kèm trạng thái đã ký.
 - **Google Sheet:** script phải **gắn với bảng tính** (tạo từ Tiện ích mở rộng → Apps Script) vì dùng `SpreadsheetApp.getActive()`. `request` thêm dòng Chờ duyệt; `activate`/`taoKeyThuCong` đặt Active; `status` cập nhật Lần cuối dùng + Phiên bản (tối đa 30 phút/lần/máy, có LockService); `Disabled` chặn cả `request` (không email) lẫn `activate` (key đúng cũng từ chối). Máy lạ gọi `status` không được thêm dòng.
-- **Hai file Apps Script:** `activation/apps-script/Code.gs` (xử lý, không bí mật, có trong repo) + `BiMat.gs` (sinh từ `BiMat.gs.template`, bí mật, **không bao giờ commit**). Apps Script dùng chung biến toàn cục giữa các file của một dự án. Thiếu `BiMat.gs` thì mọi yêu cầu trả lỗi rõ ràng, `?action=ping` trả `"ready":false`.
-- **Báo gỡ cài đặt:** bộ cài (`CurUninstallStepChanged`, sau khi gỡ xong) gọi `?action=uninstall&machine=…&ver=…` với thời gian chờ ngắn (tối đa ~8 giây trả lời), lỗi mạng thì bỏ qua. Máy chủ ghi giờ vào cột 10 "Đã gỡ lúc" (tự thêm tiêu đề nếu bảng cũ chưa có), **chỉ khi máy đã có dòng**, tối đa 1 lần / 30 phút / máy, **không đổi Trạng thái** (link máy chủ nằm trong mọi bộ cài nên ai cũng gửi được tin "đã gỡ" giả — chỉ là ghi chú). `request` / `activate` / `status` của máy đó sau này xóa trống ô. Gỡ bằng `install.ps1 -Uninstall` không báo.
-- **Tạo lại `BiMat.gs`** (đổi email, hoặc mất file) — chạy trong lệnh kín, không mở / in file kết quả:
+- **Tạo lại `ClaudeCAD-Code.gs`** (đổi email, hoặc mất file):
   ```bash
-  node activation/make-apps-script.mjs --private-key license-private.pem --email <gmail> --secret <secret cũ> --out BiMat.gs
+  node activation/make-apps-script.mjs --private-key license-private.pem --email <gmail> --secret <secret cũ> --out ClaudeCAD-Code.gs
   ```
   Bỏ `--secret` thì script tạo SECRET mới, và mọi key đã gửi trước đó đều không còn dùng được để kích hoạt máy mới. Giấy phép đã kích hoạt vẫn dùng được.
 - **Đổi cặp khóa** (lộ khóa riêng): tạo khóa mới bằng `openssl genrsa -out license-private.pem 2048`, chạy `--print-public` để lấy khóa công khai, cập nhật `LicenseLogic.PublicModulus`, rồi phát hành bản mới. Lưu ý: giấy phép cũ sẽ hết hiệu lực trên bản mới, nên mọi máy phải kích hoạt lại.

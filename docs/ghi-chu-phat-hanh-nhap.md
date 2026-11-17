@@ -17,7 +17,6 @@
 - **Chủ plugin duyệt / khóa từng máy** trong bảng thiết bị. Máy bị khóa hiện thẻ 🔒 trong khung chat; được mở lại
   thì bấm **Kiểm tra lại** là dùng tiếp, không cần key mới.
 - Plugin kiểm tra trạng thái mỗi lần mở AutoCAD và khoảng 6 giờ một lần. **Mất mạng vẫn dùng được tối đa 7 ngày.**
-- Khi gỡ cài đặt trên máy có mạng, bảng thiết bị ghi lại giờ gỡ ("Đã gỡ lúc"). Chỉ để ghi chú, không khóa máy.
 
 ### 2. Giao diện kiểu AutoCAD
 
@@ -74,7 +73,7 @@ Thay dòng `0.9.5 *(bản thử, chưa phát hành; …)*` hiện có bằng dò
 dùng bản gọn này). Đồng thời xóa ghi chú "Bộ cài thử 0.9.5: …" ngay dưới tiêu đề mục.
 
 ```markdown
-| **<PHIÊN BẢN>** | **Kích hoạt theo máy + quản lý thiết bị:** bộ cài hiện mã máy, chủ plugin duyệt / khóa từng máy trong bảng thiết bị (key qua Zalo vẫn dùng được), mất mạng dùng tối đa 7 ngày, ghi giờ gỡ cài đặt. **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, thẻ "Bắt đầu" 3 bước, tiến độ từng bước. **AutoCAD 2026 / 2027:** <CHỌN: "hỗ trợ 2022–2027" | "hỗ trợ 2022–2026, 2027 thử nghiệm">. **Sửa lỗi:** `install.ps1` của 0.9.3, ~30 bản sửa sau rà soát, skill theo từng đoạn chat, tự kiểm tra mở rộng. **Nâng cấp từ 0.9.3 phải kích hoạt máy.** |
+| **<PHIÊN BẢN>** | **Kích hoạt theo máy + quản lý thiết bị:** bộ cài hiện mã máy, chủ plugin duyệt / khóa từng máy trong bảng thiết bị (key qua Zalo vẫn dùng được), mất mạng dùng tối đa 7 ngày. **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, thẻ "Bắt đầu" 3 bước, tiến độ từng bước. **AutoCAD 2026 / 2027:** <CHỌN: "hỗ trợ 2022–2027" | "hỗ trợ 2022–2026, 2027 thử nghiệm">. **Sửa lỗi:** `install.ps1` của 0.9.3, ~30 bản sửa sau rà soát, skill theo từng đoạn chat, tự kiểm tra mở rộng. **Nâng cấp từ 0.9.3 phải kích hoạt máy.** |
 ```
 
 ---
