@@ -1,6 +1,6 @@
 # Tổng quan dự án ClaudeCAD
 
-*Cập nhật: 15/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
+*Cập nhật: 17/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
 
 File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `plugin-tong-quan.md` và `ke-hoach-gop-nhanh.md`.
 
@@ -10,16 +10,16 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 - **Bản thử:** toàn bộ phần đã làm sau v0.9.3 nằm trên nhánh tích hợp `claude/release-0.9.5`. CI xanh, chưa phát hành.
   - Gồm: khóa key theo máy, giao diện kiểu AutoCAD, AutoCAD 2026 / 2027, checklist thử thật.
   - Nhánh đã gộp cả 5 nhánh, và cặp khóa kích hoạt đã được đổi mới.
-  - Từ 15/11 có thêm tính năng ghi máy đã gỡ: Sheet ghi "Đã gỡ lúc". Bí mật của máy chủ cũng được tách sang `BiMat.gs`.
-- **Bộ cài thử:** tải từ [run 43665981360](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43665981360/artifacts/14142895023) (`76f1cce`).
-  - Tên `ClaudeCAD-0.9.4`, ~339 MB.
-  - Không dùng bộ cài cũ: run 43000757496 thiếu tính năng ghi máy đã gỡ; các run trước đó mang khóa cũ.
-- **Đang chờ cậu:**
-  1. Cập nhật máy chủ Google ở thread bảo mật: tạo BiMat, dán `Code.gs` mới, chạy `kiemTra`, deploy bản mới.
-  2. Thử bộ cài trên AutoCAD 2026 theo [`checklist-thu-that.md`](checklist-thu-that.md), phần A (key), phần H (2026 / 2027) và phần I (gỡ cài đặt, làm cuối).
-  - Hạn: trước khi bản dùng thử hết hạn, khoảng 10/12/2026.
-  - Cần hỗ trợ khi cài thì hỏi ở thread cài đặt.
-- **Tác vụ nền:** không thread nào đang chạy việc.
+- **Bộ cài dùng (đã thử ổn, giao cho client):** [run 43000757496](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43000757496/artifacts/13847355266), bản 11/11.
+  - Tên `ClaudeCAD-0.9.4`, ~340 MB. Tệp tải từ trang CI hết hạn ngày 09/02/2027.
+  - 17/11: cậu đã thử bản này và thấy làm việc ổn. Bản này chạy với máy chủ Google hiện tại, không cần sửa gì.
+  - Không dùng các run trước 43000757496: các bản đó mang khóa cũ.
+- **Để sau: BiMat + ghi "Đã gỡ lúc".**
+  - Lưu ở nhánh `claude/device-management` (`53bb1bf`), cùng bộ cài thử run 43665981360.
+  - Đang gỡ khỏi nhánh phát hành, để luồng kích hoạt hiện tại giữ nguyên.
+  - Máy chủ Google chưa cập nhật và không cần cập nhật.
+- **Việc tiếp theo của cậu:** cài bản 11/11 cho client. Cần hỗ trợ khi cài thì hỏi ở thread cài đặt.
+- **Để sau:** phát hành chính thức (merge `main`) và các quyết định ở mục 2.
 
 ## 2. Việc cần cậu quyết (trước khi phát hành)
 
@@ -145,5 +145,6 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 17/11 | Cậu đã thử bộ cài 11/11 (run 43000757496): làm việc ổn, sẽ cài cho client. BiMat + ghi "Đã gỡ lúc" để sau, giữ ở `claude/device-management`, đang gỡ khỏi nhánh phát hành. Phát hành chính thức và các quyết định để sau |
 | 15/11 | Thread bảo mật làm tính năng ghi "Đã gỡ lúc" và tách bí mật máy chủ (`53bb1bf`). Thread gộp nhánh đã gộp vào `claude/release-0.9.5` (`76f1cce`) và build bộ cài thử mới, run 43665981360. Chờ cậu cập nhật máy chủ Google rồi thử theo checklist A, H, I |
 | 11/11 | Gộp xong 5 nhánh vào `claude/release-0.9.5`, đổi cặp khóa kích hoạt, có bộ cài thử cuối (run 43000757496). Mở thread cài đặt plugin. Chờ cậu thử trên AutoCAD 2026 |
