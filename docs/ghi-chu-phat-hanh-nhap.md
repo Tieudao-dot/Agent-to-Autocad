@@ -121,4 +121,7 @@ Yêu cầu: Windows, AutoCAD bản đầy đủ (không phải LT), tài khoản
    2027 đã chốt.
 4. CI `release: "false"` xanh trên commit cuối.
 5. Chỉ khi chủ dự án đồng ý rõ: tạo PR / merge `main` (CI tự phát hành), rồi dán phần C lên Releases.
-6. Xóa file nháp này sau khi phát hành.
+6. Gộp thêm nhánh `claude/luu-tru-bo-cai` (sổ `bo-cai/luu-tru-bo-cai.md`) cùng bước gộp tài liệu ở mục 3.
+7. Mỗi lần build bộ cài thử mới hoặc phát hành: gửi thread "ClaudeCAD — lưu trữ bộ cài" một tin (ngày, phiên bản,
+   nhánh + commit, run id, artifact id / link Releases, nội dung chính, bản nào bị thay) để thread đó ghi sổ.
+8. Xóa file nháp này sau khi phát hành.
