@@ -82,3 +82,5 @@ Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall** (hoặc `i
 | 0.3.0 | AutoCAD 2022–2025, bộ cài, cập nhật tự động. |
 
 Chi tiết từng tính năng: [`docs/palette-features.md`](../docs/palette-features.md). Danh sách cần thử trên AutoCAD thật: [`docs/test-log.md`](../docs/test-log.md).
+
+Sổ lưu trữ các bộ cài đã build (nguồn, link, hạn tải, trạng thái, cách cài từng bản): [`bo-cai/luu-tru-bo-cai.md`](luu-tru-bo-cai.md).
