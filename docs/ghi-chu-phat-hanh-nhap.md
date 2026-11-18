@@ -1,8 +1,7 @@
-# Ghi chú phát hành — BẢN NHÁP cho ClaudeCAD `<PHIÊN BẢN>`
+# Ghi chú phát hành ClaudeCAD 0.9.5
 
-*Soạn 15/11/2026 trên `claude/release-0.9.5`. Chưa nâng phiên bản, chưa phát hành. Khi chủ dự án chốt tên, thay
-`<PHIÊN BẢN>` ở cả file, chọn một phương án cho AutoCAD 2027 (mục 3), rồi chép từng phần vào đúng chỗ (mục
-"Dùng ở đâu" cuối file).*
+*Soạn 15/11/2026, chốt 18/11: tên phiên bản 0.9.5, AutoCAD 2027 ghi "hỗ trợ" (chủ dự án chọn; 2027 chưa được thử
+trên AutoCAD thật). Phần C dán lên GitHub Releases sau khi CI tạo bản phát hành (mục "Dùng ở đâu" cuối file).*
 
 ---
 
@@ -34,15 +33,7 @@
 
 Vẫn **một bộ cài chung**. AutoCAD 2026 dùng chung bản plugin với 2025.
 
-> **Chọn MỘT trong hai phương án cho AutoCAD 2027, xóa phương án còn lại:**
->
-> **Phương án "hỗ trợ":**
-> - Hỗ trợ **AutoCAD 2022 – 2027** (bản đầy đủ, không phải LT). AutoCAD 2027 có bản plugin riêng (.NET 10).
->
-> **Phương án "thử nghiệm":**
-> - Hỗ trợ **AutoCAD 2022 – 2026** (bản đầy đủ, không phải LT).
-> - **AutoCAD 2027: thử nghiệm.** Bộ cài có sẵn bản plugin cho 2027 nhưng chưa được thử trên AutoCAD 2027 thật;
->   gặp lỗi thì dùng ⚙ ▸ Gửi báo cáo lỗi.
+- Hỗ trợ **AutoCAD 2022 – 2027** (bản đầy đủ, không phải LT). AutoCAD 2027 có bản plugin riêng (.NET 10).
 
 ### 4. Sửa lỗi và ổn định
 
@@ -73,7 +64,7 @@ Thay dòng `0.9.5 *(bản thử, chưa phát hành; …)*` hiện có bằng dò
 dùng bản gọn này). Đồng thời xóa ghi chú "Bộ cài thử 0.9.5: …" ngay dưới tiêu đề mục.
 
 ```markdown
-| **<PHIÊN BẢN>** | **Kích hoạt theo máy + quản lý thiết bị:** bộ cài hiện mã máy, chủ plugin duyệt / khóa từng máy trong bảng thiết bị (key qua Zalo vẫn dùng được), mất mạng dùng tối đa 7 ngày. **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, thẻ "Bắt đầu" 3 bước, tiến độ từng bước. **AutoCAD 2026 / 2027:** <CHỌN: "hỗ trợ 2022–2027" | "hỗ trợ 2022–2026, 2027 thử nghiệm">. **Sửa lỗi:** `install.ps1` của 0.9.3, ~30 bản sửa sau rà soát, skill theo từng đoạn chat, tự kiểm tra mở rộng. **Nâng cấp từ 0.9.3 phải kích hoạt máy.** |
+| **0.9.5** | **Kích hoạt theo máy + quản lý thiết bị:** bộ cài hiện mã máy, chủ plugin duyệt / khóa từng máy trong bảng thiết bị (key qua Zalo vẫn dùng được), mất mạng dùng tối đa 7 ngày. **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, thẻ "Bắt đầu" 3 bước, tiến độ từng bước. **AutoCAD 2026 / 2027:** hỗ trợ 2022–2027. **Sửa lỗi:** `install.ps1` của 0.9.3, ~30 bản sửa sau rà soát, skill theo từng đoạn chat, tự kiểm tra mở rộng. **Nâng cấp từ 0.9.3 phải kích hoạt máy.** |
 ```
 
 ---
@@ -84,14 +75,14 @@ CI tự tạo phần mô tả ngắn (link hướng dẫn cài + kích thước 
 thêm lên trên** phần đó sau khi bản phát hành được tạo (sửa mô tả trên trang Releases). Không cần đổi CI.
 
 ```markdown
-## ClaudeCAD <PHIÊN BẢN>
+## ClaudeCAD 0.9.5
 
 **Quan trọng khi nâng cấp từ 0.9.3:** bản này khóa theo máy. Sau khi cập nhật, máy sẽ hỏi kích hoạt — chờ chủ plugin duyệt hoặc nhập key (liên hệ Zalo chủ plugin, số hiện trong bộ cài). Lịch sử chat, macro, skill được giữ nguyên.
 
 ### Điểm mới
 - **Kích hoạt theo máy:** bộ cài hiện mã máy; chủ plugin duyệt / khóa từng máy; mất mạng dùng tối đa 7 ngày.
 - **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, tiến độ từng bước.
-- **AutoCAD 2026 / 2027:** <CHỌN: "một bộ cài cho AutoCAD 2022–2027" | "một bộ cài cho AutoCAD 2022–2026; AutoCAD 2027 ở mức thử nghiệm">.
+- **AutoCAD 2026 / 2027:** một bộ cài cho AutoCAD 2022–2027.
 - **Sửa lỗi:** `install.ps1` của 0.9.3 không chạy được; ~30 bản sửa về xác nhận trước khi xóa, tự gửi lại, độ ổn định.
 
 ### Cài đặt
@@ -112,7 +103,7 @@ Yêu cầu: Windows, AutoCAD bản đầy đủ (không phải LT), tài khoản
 ## Việc còn lại ở bước phát hành (ghi cho thread gộp nhánh & phát hành)
 
 1. Hỏi chủ dự án tên phiên bản, rồi phương án cho AutoCAD 2027 (mỗi lần một câu).
-2. Nâng phiên bản ở mọi nơi (có test kiểm phiên bản thống nhất); thay `<PHIÊN BẢN>`; chép phần B.
+2. Nâng phiên bản ở mọi nơi (có test kiểm phiên bản thống nhất); thay `0.9.5`; chép phần B.
 3. Gộp `claude/wizardly-heisenberg-ugup5c` vào `claude/release-0.9.5` để `main` có tài liệu mới (nhánh đó chỉ hơn
    phần tài liệu: tổng quan gộp một file, `CLAUDE.md`, xóa `docs/plugin-tong-quan.md` và
    `docs/ke-hoach-gop-nhanh.md`; thêm hướng dẫn người dùng `docs/huong-dan-su-dung.md`). Sau khi gộp, cho phần A
