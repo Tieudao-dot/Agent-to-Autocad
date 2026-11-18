@@ -45,15 +45,15 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 
 | Thread | Phạm vi | Nhánh | Đã làm | Trạng thái | Chi phí* |
 | --- | --- | --- | --- | --- | --- |
-| [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp, việc chưa có thread nhận | `claude/wizardly-heisenberg-ugup5c` | Tính năng tới 0.9.3, rà soát + 30 bản sửa, kế hoạch gộp, tổng quan, hướng dẫn sử dụng, tạo repo Full | Rảnh. Ngữ cảnh ~460k, nên `/compact` | ~$423 |
+| [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp, việc chưa có thread nhận | `claude/wizardly-heisenberg-ugup5c` | Tính năng tới 0.9.3, rà soát + 30 bản sửa, kế hoạch gộp, tổng quan, hướng dẫn sử dụng, tạo repo Full | Rảnh. Chờ cậu `/compact` (~460k) | ~$423 |
 | [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, nâng phiên bản, phát hành | `claude/release-0.9.5` | Gộp 5 nhánh, các bộ cài thử, gỡ BiMat, ghi chú phát hành, **phát hành v0.9.5** (18/11) | Xong | ~$24 |
 | [Bảo mật, khóa key & thiết bị](https://claude.ai/code/session_01D56HmEsRHYufkFu48qFmGR) | Key, kích hoạt, Apps Script / Google Sheet | `claude/device-management` | Khóa key theo máy, quản lý thiết bị, đổi cặp khóa, BiMat + ghi "Đã gỡ lúc" (để sau) | **Chờ cậu:** gửi mã máy `CC-…` của máy đã đổi Disabled mà vẫn dùng được, và nói bộ cài tải từ đâu, ngày nào | ~$83 |
 | [Lưu trữ bộ cài](https://claude.ai/code/session_01D56HmGL5w4NCZNzEyatioe) | Sổ `bo-cai/luu-tru-bo-cai.md` | `claude/luu-tru-bo-cai` | Tạo sổ; đã ghi v0.9.5 trên nhánh riêng | Xong. Dòng v0.9.5 chưa vào `main` | ~$2 |
 | [QnA](https://claude.ai/code/session_01D56HmGkaq6YFfr46Xdigci) | Hỏi đáp về plugin, không sửa code | — | Trả lời câu hỏi; chuyển yêu cầu "Đã gỡ lúc" và phát hành 0.9.5 sang thread phù hợp | Rảnh | ~$13 |
-| [Cài đặt plugin](https://claude.ai/code/session_01D56HmFkjV3poaV54WEEFYJ) | Hướng dẫn cài / kích hoạt, gỡ rối | — | Gửi hướng dẫn cài bản thử trên AutoCAD 2026 | Rảnh | ~$0,5 |
-| [Giao diện & UX](https://claude.ai/code/session_01D56HmHQPBueRAkYDSecN9n) | Khung chat, theme, thu gọn, icon thanh trạng thái | `claude/ux-autocad` (đã gộp) | 5 đợt giao diện, tiến độ từng bước | Xong | ~$11 |
-| [Kiểm thử](https://claude.ai/code/session_01D56HmG5SsqRGRPe9bHKUad) | Checklist thử thật, tự kiểm tra | `claude/test-checklist` (đã gộp) | Checklist ~20 phút, tự kiểm tra mở rộng | Xong | ~$8 |
-| [AutoCAD 2026/2027](https://claude.ai/code/session_01D56HmFfmat4UZDMPVZar76) | Bản AutoCAD mới, build .NET 10 | `claude/acad-2026-2027` (đã gộp) | Hỗ trợ 2026 (R25.1) + 2027 (R26.0), sửa `install.ps1` | Xong. 2027 chưa thử trên máy thật | ~$7 |
+| [Cài đặt plugin](https://claude.ai/code/session_01D56HmFkjV3poaV54WEEFYJ) | Hướng dẫn cài / kích hoạt, gỡ rối | — | Gửi hướng dẫn cài bản thử trên AutoCAD 2026 | Đã lưu trữ (18/11) | ~$0,5 |
+| [Giao diện & UX](https://claude.ai/code/session_01D56HmHQPBueRAkYDSecN9n) | Khung chat, theme, thu gọn, icon thanh trạng thái | `claude/ux-autocad` (đã gộp) | 5 đợt giao diện, tiến độ từng bước | Đã lưu trữ (18/11) | ~$11 |
+| [Kiểm thử](https://claude.ai/code/session_01D56HmG5SsqRGRPe9bHKUad) | Checklist thử thật, tự kiểm tra | `claude/test-checklist` (đã gộp) | Checklist ~20 phút, tự kiểm tra mở rộng | Đã lưu trữ (18/11) | ~$8 |
+| [AutoCAD 2026/2027](https://claude.ai/code/session_01D56HmFfmat4UZDMPVZar76) | Bản AutoCAD mới, build .NET 10 | `claude/acad-2026-2027` (đã gộp) | Hỗ trợ 2026 (R25.1) + 2027 (R26.0), sửa `install.ps1` | Đã lưu trữ (18/11). 2027 chưa thử trên máy thật | ~$7 |
 | [Dùng thử & Autodesk](https://claude.ai/code/session_01D56HmGdeNRHtH8Vob4cXGr) | Bản dùng thử AutoCAD, case Autodesk 26568211 | — | Bản dùng thử từ 10/11, khoảng 30 ngày | Rảnh, chờ email Autodesk | ~$1 |
 
 \* Số hệ thống ghi nhận cho từng thread, quy đổi theo giá API. Tổng cộng khoảng $572; luồng chính chiếm ~74% vì ngữ cảnh dài.

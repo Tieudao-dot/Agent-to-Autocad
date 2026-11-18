@@ -70,13 +70,12 @@ tình hình, việc chờ quyết, thread, plugin, nhật ký; luồng chính c�
 | Luồng chính | `session_01D56HmELvEuaLYUjB1TYfNq` | Điều phối, tổng hợp, việc chưa thuộc thread nào |
 | Gộp nhánh & phát hành | `session_01D56HmErdvF4wWAbxpf9F5t` | Nhánh `claude/release-0.9.5`: gộp, bộ cài thử, sửa theo phản hồi test, nâng phiên bản, phát hành |
 | Bảo mật, khóa key & quản lý thiết bị | `session_01D56HmEsRHYufkFu48qFmGR` | Nhánh `claude/device-management`: key, kích hoạt, Apps Script / Google Sheet, trang key của bộ cài |
-| Giao diện & UX | `session_01D56HmHQPBueRAkYDSecN9n` | Nhánh `claude/ux-autocad`: khung chat, theme, thu gọn, icon thanh trạng thái, tiến độ từng bước |
-| Kiểm thử | `session_01D56HmG5SsqRGRPe9bHKUad` | Nhánh `claude/test-checklist`: checklist thử thật, lệnh tự kiểm tra, test-log |
-| AutoCAD 2026/2027 | `session_01D56HmFfmat4UZDMPVZar76` | Nhánh `claude/acad-2026-2027`: bản AutoCAD mới, PackageContents, `install.ps1`, build .NET 10 |
+| Giao diện & UX | `session_01D56HmHQPBueRAkYDSecN9n` | Nhánh `claude/ux-autocad`: khung chat, theme, thu gọn, icon thanh trạng thái, tiến độ từng bước **(lưu trữ 18/11; mở lại khi cần)** |
+| Kiểm thử | `session_01D56HmG5SsqRGRPe9bHKUad` | Nhánh `claude/test-checklist`: checklist thử thật, lệnh tự kiểm tra, test-log **(lưu trữ 18/11; mở lại khi cần)** |
+| AutoCAD 2026/2027 | `session_01D56HmFfmat4UZDMPVZar76` | Nhánh `claude/acad-2026-2027`: bản AutoCAD mới, PackageContents, `install.ps1`, build .NET 10 **(lưu trữ 18/11; mở lại khi cần)** |
 | QnA | `session_01D56HmGkaq6YFfr46Xdigci` | Hỏi đáp về plugin, không sửa code |
 | Dùng thử & hỗ trợ Autodesk | `session_01D56HmGdeNRHtH8Vob4cXGr` | Bản dùng thử AutoCAD, làm việc với Autodesk |
-| Cài đặt plugin (bộ cài thử AutoCAD 2026) | `session_01D56HmFkjV3poaV54WEEFYJ` | Hướng dẫn cài / kích hoạt bộ cài thử, gỡ rối khi cài, giúp chạy checklist; không sửa code. Lỗi bộ cài / plugin chuyển cho thread gộp nhánh & phát hành |
-
+| Cài đặt plugin (bộ cài thử AutoCAD 2026) | `session_01D56HmFkjV3poaV54WEEFYJ` | Hướng dẫn cài / kích hoạt bộ cài thử, gỡ rối khi cài, giúp chạy checklist; không sửa code. Lỗi bộ cài / plugin chuyển cho thread gộp nhánh & phát hành **(lưu trữ 18/11; mở lại khi cần)** |
 | Lưu trữ bộ cài | `session_01D56HmGL5w4NCZNzEyatioe` | Nhánh `claude/luu-tru-bo-cai`: sổ `bo-cai/luu-tru-bo-cai.md` (ngày, phiên bản, link tải, các bước cài của từng bộ cài). Thread gộp nhánh & phát hành nhắn thread này mỗi khi có bộ cài mới; không sửa code |
 
 Link mở thread: `https://claude.ai/code/<session id>`.
