@@ -4,12 +4,15 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Versioning;
 using System.Text;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using ClaudeCAD.Plugin.Core;
 using ClaudeCAD.Plugin.Drawing;
+using ClaudeCAD.Plugin.UI;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace ClaudeCAD.Plugin
@@ -17,8 +20,10 @@ namespace ClaudeCAD.Plugin
     /// <summary>
     /// CLAUDECHATSELFTEST: exercises, inside the real AutoCAD, the parts that cannot be tested on CI
     /// (off-screen picture, undo group, database events, snapshot, version copy, read-only tab,
-    /// layer / name lists, assistant connection) on a NEW temporary drawing — the user's drawings are
-    /// not touched. Writes a ✓/✗ report to the log folder and opens it.
+    /// layer / name lists, assistant connection, AutoCAD's palette theme, status bar icon, compact mode,
+    /// the right build for this AutoCAD) on a NEW temporary drawing — the user's drawings are not touched,
+    /// and the last step checks exactly that. Writes a ✓/✗ report to the log folder and opens it.
+    /// Every step is isolated: one that fails (or throws) never stops the ones after it.
     /// </summary>
     public static class SelfTest
     {
@@ -35,12 +40,53 @@ namespace ClaudeCAD.Plugin
             var steps = new List<Step>();
             var dm = AcApp.DocumentManager;
             var original = dm.MdiActiveDocument;
+            CleanOldRuns();
             var dir = Path.Combine(Path.GetTempPath(), "ClaudeCAD-selftest-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
             Directory.CreateDirectory(dir);
             var dwg = Path.Combine(dir, "selftest.dwg");
             Document doc = null;
             Document versionDoc = null;
             var handles = new List<string>();
+
+            // what the user's drawing looks like before anything happens (compared again at the very end)
+            DrawingState before = null;
+            try { before = DrawingState.Of(original); } catch (Exception ex) { Logger.Warn("selftest: drawing state not read: " + ex.Message); }
+
+            // a step whose verdict (✓ / ✗ + why) comes from a rule instead of an exception
+            void Check(string name, Func<SelfTestRules.Verdict> check)
+            {
+                var sw = Stopwatch.StartNew();
+                var st = new Step { Name = name };
+                try
+                {
+                    var v = check();
+                    st.Ok = v.Ok;
+                    st.Detail = v.Detail;
+                }
+                catch (Exception ex)
+                {
+                    st.Ok = false;
+                    st.Detail = ex.GetType().Name + ": " + ex.Message;
+                    Logger.Error("selftest: " + name, ex);
+                }
+                st.Ms = sw.ElapsedMilliseconds;
+                steps.Add(st);
+            }
+
+            // steps taken from the controller: a throw there must not lose the steps already done
+            void Collect(string what, Func<List<(string name, bool ok, string detail)>> source)
+            {
+                try
+                {
+                    foreach (var (name, ok, detail) in source())
+                        steps.Add(new Step { Name = name, Ok = ok, Detail = detail });
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("selftest: " + what, ex);
+                    steps.Add(new Step { Name = what, Ok = false, Detail = ex.GetType().Name + ": " + ex.Message });
+                }
+            }
 
             void Do(string name, Func<string> action)
             {
@@ -61,7 +107,7 @@ namespace ClaudeCAD.Plugin
                 steps.Add(st);
             }
 
-            Do("Phiên bản AutoCAD / plugin", () => $"AutoCAD {AcApp.Version} · ClaudeCAD {DrawingService.PluginVersion} · .NET {Environment.Version}");
+            Do("Phiên bản AutoCAD / plugin", () => DrawingService.BuildInfo);
 
             Do("Tạo bản vẽ thử (không đụng bản vẽ của cậu)", () =>
             {
@@ -70,7 +116,12 @@ namespace ClaudeCAD.Plugin
                 dm.MdiActiveDocument = doc;
                 return Path.GetFileName(doc.Name);
             });
-            if (doc == null) return Report(steps, dir);
+            if (doc == null)
+            {
+                // no test drawing: the checks that need none still run
+                UiChecks(Check, Collect);
+                return Report(steps, dir);
+            }
 
             Do("Vẽ bằng API (khóa bản vẽ + transaction)", () =>
             {
@@ -151,7 +202,7 @@ namespace ClaudeCAD.Plugin
                 var r = Capture.Render(doc, new Point3d(-500, -500, 0), new Point3d(5500, 3500, 0), 800, "window");
                 if (r.Png == null || r.Png.Length < 500) throw new InvalidOperationException("ảnh rỗng");
                 File.WriteAllBytes(Path.Combine(dir, "capture.png"), r.Png);
-                return $"{r.Width}×{r.Height}, {r.Png.Length / 1024.0:0.0} KB (xem capture.png trong {dir})";
+                return $"{r.Width}×{r.Height}, {r.Png.Length / 1024.0:0.0} KB (ảnh: dòng «Ảnh chụp thử» bên dưới, hoặc capture.png trong thư mục thử)";
             });
 
             Do("Danh sách layer / tên cho @", () =>
@@ -184,14 +235,117 @@ namespace ClaudeCAD.Plugin
 
             Do("Phím tắt Ctrl+Shift+Space", () => PluginApp.HotkeyEnabled ? "đã bật (thử bấm sau khi test xong)" : "đang tắt trong ⚙");
 
-            foreach (var (name, ok, detail) in PluginApp.Controller.Diagnostics())
-                steps.Add(new Step { Name = name, Ok = ok, Detail = detail });
+            UiChecks(Check, Collect);
 
             // clean up: close the test drawing, back to the user's drawing
             try { if (versionDoc != null && !versionDoc.IsDisposed) DocumentExtension.CloseAndDiscard(versionDoc); } catch { }
             try { if (doc != null && !doc.IsDisposed) DocumentExtension.CloseAndDiscard(doc); } catch (Exception ex) { Logger.Warn("selftest: close failed: " + ex.Message); }
             try { if (original != null && !original.IsDisposed) dm.MdiActiveDocument = original; } catch { }
+
+            if (before != null)
+            {
+                var testDoc = doc;
+                Check("Bản vẽ của cậu không bị đụng tới", () =>
+                {
+                    if (testDoc != null && !testDoc.IsDisposed)
+                        return new SelfTestRules.Verdict(false, "bản vẽ tạm chưa đóng được — đóng tab đó, chọn không lưu");
+                    if (original == null || original.IsDisposed)
+                        return new SelfTestRules.Verdict(false, "bản vẽ đang mở lúc bắt đầu đã bị đóng trong lúc kiểm tra");
+                    var after = DrawingState.Of(original);
+                    return SelfTestRules.CheckUntouched(before.Name, before.Handseed, after.Handseed, before.Count, after.Count, before.Dbmod, after.Dbmod);
+                });
+            }
             return Report(steps, dir);
+        }
+
+        /// <summary>
+        /// The checks that need no drawing: the right build for this AutoCAD, AutoCAD's palette theme, the
+        /// status bar icon, then what the controller knows (styles, compact mode, queue, skills, connection).
+        /// </summary>
+        private static void UiChecks(Action<string, Func<SelfTestRules.Verdict>> check,
+            Action<string, Func<List<(string name, bool ok, string detail)>>> collect)
+        {
+            check("Bản plugin đúng với đời AutoCAD", () =>
+            {
+                var asm = typeof(SelfTest).Assembly;
+                string framework = asm.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName;
+                string path = "";
+                try { path = asm.Location; } catch { }
+                var acad = AcApp.Version;
+                return SelfTestRules.CheckBuild(acad.Major, acad.Minor, framework, Environment.Version.Major, path);
+            });
+
+            check("Theme palette của AutoCAD (màu + font cho khung chat)", () =>
+            {
+                var info = AcadTheme.Read();
+                bool variableDark = Theme.AutoCadIsDark();
+                if (info == null)
+                    return SelfTestRules.CheckTheme(false, null, variableDark, 0, AcadTheme.ColorCount, null, 0, 0, AcadTheme.IsSubscribed);
+                double contrast = 0;
+                if (info.Brushes.TryGetValue(Theme.Fg, out var fg) && info.Brushes.TryGetValue(Theme.PanelBg, out var bg)
+                    && fg is System.Windows.Media.SolidColorBrush f && bg is System.Windows.Media.SolidColorBrush b)
+                    contrast = SelfTestRules.Contrast(f.Color.R, f.Color.G, f.Color.B, b.Color.R, b.Color.G, b.Color.B);
+                return SelfTestRules.CheckTheme(true, info.IsDark, variableDark, info.Brushes.Count, AcadTheme.ColorCount,
+                    info.Font?.Source, info.FontSize, contrast, AcadTheme.IsSubscribed);
+            });
+
+            check("Icon ClaudeCAD trên thanh trạng thái", StatusTray.SelfCheck);
+
+            collect("Kiểm tra khung chat", () => PluginApp.Controller.UiSelfChecks());
+            collect("Kiểm tra kết nối", () => PluginApp.Controller.Diagnostics());
+        }
+
+        /// <summary>What must not change in the user's drawing while the test runs on another one.</summary>
+        private sealed class DrawingState
+        {
+            public string Name;
+            public string Handseed;
+            public long Count = -1;
+            public int Dbmod = -1;
+
+            public static DrawingState Of(Document d)
+            {
+                if (d == null || d.IsDisposed) return null;
+                var db = d.Database;
+                var s = new DrawingState { Name = d.Name, Handseed = db.Handseed.ToString() };
+                try
+                {
+                    // ids only, nothing is opened for write: model space and every layout
+                    long n = 0;
+                    using (var tr = db.TransactionManager.StartOpenCloseTransaction())
+                    {
+                        var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                        foreach (ObjectId id in bt)
+                        {
+                            var btr = (BlockTableRecord)tr.GetObject(id, OpenMode.ForRead);
+                            if (!btr.IsLayout) continue;
+                            foreach (ObjectId _ in btr) n++;
+                        }
+                        tr.Commit();
+                    }
+                    s.Count = n;
+                }
+                catch (Exception ex) { Logger.Warn("selftest: objects not counted: " + ex.Message); }
+                try
+                {
+                    // DBMOD belongs to the active drawing: only readable while this one is in front
+                    if (AcApp.DocumentManager.MdiActiveDocument == d) s.Dbmod = Convert.ToInt32(AcApp.GetSystemVariable("DBMOD"), CultureInfo.InvariantCulture);
+                }
+                catch { }
+                return s;
+            }
+        }
+
+        /// <summary>Test folders of earlier runs (kept when something failed) older than a week.</summary>
+        private static void CleanOldRuns()
+        {
+            try
+            {
+                foreach (var d in Directory.GetDirectories(Path.GetTempPath(), "ClaudeCAD-selftest-*"))
+                    if (DateTime.Now - Directory.GetLastWriteTime(d) > TimeSpan.FromDays(7))
+                        try { Directory.Delete(d, true); } catch { }
+            }
+            catch { }
         }
 
         private static string Report(List<Step> steps, string dir)
@@ -202,10 +356,28 @@ namespace ClaudeCAD.Plugin
             foreach (var s in steps)
                 sb.AppendLine($"{(s.Ok ? "✓" : "✗")} {s.Name}{(s.Ms > 0 ? $" ({s.Ms} ms)" : "")}: {s.Detail}");
             int bad = steps.Count(s => !s.Ok);
+            var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
             sb.AppendLine(new string('=', 60));
             sb.AppendLine(bad == 0 ? "Tất cả đều đạt." : $"{bad} mục chưa đạt — gửi file này (và log CLAUDECHATLOG) cho người phát triển.");
-            sb.AppendLine("Thư mục thử: " + dir);
-            var file = Path.Combine(Logger.LogDirectory, "selftest-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".txt");
+            if (bad == 0)
+            {
+                // nothing to investigate: keep only the picture (next to the report), drop the test drawings
+                try
+                {
+                    var png = Path.Combine(dir, "capture.png");
+                    if (File.Exists(png))
+                    {
+                        Directory.CreateDirectory(Logger.LogDirectory);
+                        var keep = Path.Combine(Logger.LogDirectory, "selftest-" + stamp + ".png");
+                        File.Copy(png, keep, true);
+                        sb.AppendLine("Ảnh chụp thử: " + keep);
+                    }
+                    Directory.Delete(dir, true);
+                }
+                catch (Exception ex) { Logger.Warn("selftest folder not removed: " + ex.Message); sb.AppendLine("Thư mục thử: " + dir); }
+            }
+            else sb.AppendLine("Thư mục thử (giữ lại để kiểm tra): " + dir);
+            var file = Path.Combine(Logger.LogDirectory, "selftest-" + stamp + ".txt");
             try
             {
                 Directory.CreateDirectory(Logger.LogDirectory);

@@ -139,12 +139,22 @@ namespace ClaudeCAD.Plugin.Drawing
             if (doc == null || Watched.Contains(doc)) return;
             Watched.Add(doc);
             doc.ImpliedSelectionChanged += OnImpliedSelectionChanged;
+            doc.CommandEnded += OnUndoRedoEnded;
+        }
+
+        // U / UNDO / REDO bring objects back or take them away without "appended / erased" events: recount layers
+        private static readonly HashSet<string> UndoCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "U", "UNDO", "REDO", "MREDO", "OOPS" };
+
+        private static void OnUndoRedoEnded(object sender, CommandEventArgs e)
+        {
+            try { if (sender is Document d && UndoCommands.Contains(e.GlobalCommandName)) _layerCounts.Remove(d.Database); }
+            catch { /* never throw into AutoCAD */ }
         }
 
         public static void Unwatch(Document doc)
         {
             if (doc == null || !Watched.Remove(doc)) return;
-            try { doc.ImpliedSelectionChanged -= OnImpliedSelectionChanged; } catch { }
+            try { doc.ImpliedSelectionChanged -= OnImpliedSelectionChanged; doc.CommandEnded -= OnUndoRedoEnded; } catch { }
         }
 
         private static void OnImpliedSelectionChanged(object sender, EventArgs e)
@@ -273,24 +283,44 @@ namespace ClaudeCAD.Plugin.Drawing
         // ------------------------------------------------------------------ layer picker
 
         /// <summary>Every layer of the drawing with its color (RGB), state and number of objects in model/paper space.</summary>
+        // Objects per layer, per drawing: counting walks every entity (slow on big drawings), so it is kept until
+        // an entity of that drawing changes. Layer properties (on / frozen / locked / color) are read fresh each time.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Database, Dictionary<ObjectId, int>> _layerCounts =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<Database, Dictionary<ObjectId, int>>();
+        private static bool _layerCountsHooked;
+
+        private static Dictionary<ObjectId, int> LayerCounts(Database db, Transaction tr)
+        {
+            if (!_layerCountsHooked)
+            {
+                _layerCountsHooked = true;
+                DrawingHistory.Instance.ObjectChanged += (d, obj, kind, erased) => { if (d != null && obj is Entity) _layerCounts.Remove(d); };
+            }
+            if (_layerCounts.TryGetValue(db, out var cached)) return cached;
+            var counts = new Dictionary<ObjectId, int>();
+            var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+            foreach (ObjectId btrId in bt)
+            {
+                if (!(tr.GetObject(btrId, OpenMode.ForRead) is BlockTableRecord btr) || !btr.IsLayout) continue;
+                foreach (ObjectId id in btr)
+                {
+                    if (!(tr.GetObject(id, OpenMode.ForRead) is Entity e) || e is Viewport) continue;
+                    counts[e.LayerId] = counts.TryGetValue(e.LayerId, out var n) ? n + 1 : 1;
+                }
+            }
+            _layerCounts.Remove(db);
+            _layerCounts.Add(db, counts);
+            return counts;
+        }
+
         public static List<LayerRow> LayerRows(Document doc)
         {
             var rows = new List<LayerRow>();
             if (doc == null) return rows;
             var db = doc.Database;
-            var counts = new Dictionary<ObjectId, int>();
             using (var tr = db.TransactionManager.StartOpenCloseTransaction())
             {
-                var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                foreach (ObjectId btrId in bt)
-                {
-                    if (!(tr.GetObject(btrId, OpenMode.ForRead) is BlockTableRecord btr) || !btr.IsLayout) continue;
-                    foreach (ObjectId id in btr)
-                    {
-                        if (!(tr.GetObject(id, OpenMode.ForRead) is Entity e) || e is Viewport) continue;
-                        counts[e.LayerId] = counts.TryGetValue(e.LayerId, out var n) ? n + 1 : 1;
-                    }
-                }
+                var counts = LayerCounts(db, tr);
                 var lt = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
                 foreach (ObjectId id in lt)
                 {

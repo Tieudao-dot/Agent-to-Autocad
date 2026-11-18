@@ -6,11 +6,12 @@ import {
   type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 import type { SidecarToPlugin, UserMessage } from '../ipc/protocol.js';
+import { confirmationError, createdHandles, newlyAffected } from './confirmation.js';
 import { toSdkUserMessage } from './content.js';
 import type { ToolBridge } from '../tools/common.js';
 import { MCP_SERVER_NAME, createCadServer } from '../tools/index.js';
 import { InputQueue } from './inputQueue.js';
-import { SKILLS_PLUGIN_NAME, enabledSkills, prepareSkillsPlugin } from './skills.js';
+import { SKILLS_PLUGIN_NAME, enabledSkills, librarySkills, prepareSkillsPlugin } from './skills.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 export type QueryFn = typeof sdkQuery;
@@ -47,6 +48,12 @@ const ERROR_TEXT: Record<string, string> = {
   overloaded: 'Máy chủ Claude đang quá tải, thử lại sau ít phút.',
   model_not_found: 'Model không khả dụng với tài khoản này. Đặt CLAUDECAD_MODEL sang model khác (ví dụ claude-sonnet-5-5).',
   max_output_tokens: 'Câu trả lời quá dài và bị cắt.',
+  account_on_hold: 'Tài khoản Claude đang bị tạm khóa. Đăng nhập claude.ai để xem chi tiết, hoặc đổi tài khoản trong ⚙ ▸ Tài khoản AI.',
+  verification_required: 'Tài khoản Claude cần xác minh. Đăng nhập claude.ai trên trình duyệt để hoàn tất, rồi thử lại.',
+  server_error: 'Máy chủ Claude gặp lỗi tạm thời, thử lại sau ít phút.',
+  invalid_request: 'Yêu cầu gửi tới Claude không hợp lệ (có thể do ảnh hoặc tệp đính kèm quá lớn). Bớt tệp đính kèm rồi thử lại.',
+  cloud_credential_error: 'Lỗi thông tin xác thực của nhà cung cấp đám mây cấu hình cho Claude.',
+  unknown: 'Claude gặp lỗi không rõ nguyên nhân. Thử lại; nếu lặp lại, bấm ⚙ ▸ Gửi báo cáo lỗi.',
 };
 
 /**
@@ -73,6 +80,28 @@ export class AgentSession {
   private reloadPending = false;
   private turnId?: string;
   private readonly defaultModel?: string;
+  // confirmation gate (see confirmation.ts): Claude asked something in the turn being answered,
+  // and how many existing objects this turn changed / removed so far
+  private turnAsked = false;
+  private answersQuestion = false;
+  /** Existing objects this turn changed / removed, and objects it created (distinct handles). */
+  private touchedThisTurn = new Set<string>();
+  private createdThisTurn = new Set<string>();
+  /** The turn produced text (a turn without any, e.g. one that hit the usage limit, answered nothing). */
+  private turnHadText = false;
+  private lastPlan?: 'approved';
+  /** The turn's assistant.error code (already shown in Vietnamese, with its own card). */
+  private turnErrorCode?: string;
+  // next-step buttons: Claude called suggest_next_steps this turn → the SDK's predicted prompt is not shown too
+  private toolSuggested = false;
+  private suggestionsOn = true;
+  // skills per chat: the list the palette sent (undefined = an older plugin → skills.json), the list the
+  // running Claude process was started with, and the list of the previous message of this conversation
+  private chatSkills?: string[];
+  private loadedSkillsKey?: string;
+  private lastSentSkills?: string[];
+  /** Skills last sent per conversation: the "−" / "+" note survives a switch to another drawing and back. */
+  private readonly skillsBySession = new Map<string, string[]>();
 
   constructor(private readonly cfg: SessionConfig) {
     this.defaultModel = cfg.model;
@@ -80,10 +109,6 @@ export class AgentSession {
 
   get busy(): boolean {
     return this.turnActive;
-  }
-
-  get currentSessionId(): string | undefined {
-    return this.sessionId;
   }
 
   /** Text of the user message of the current/last turn (used by the confirmation gate). */
@@ -96,14 +121,42 @@ export class AgentSession {
     return this.lastConfirm === 'yes';
   }
 
-  get info(): string {
-    return this.initInfo;
+  /**
+   * Confirmation gate for a tool call of the running turn: an error text for Claude when the call must
+   * be confirmed first (the count is cumulative over the turn), otherwise undefined (and the call is counted).
+   */
+  gate(tool: string, params: Record<string, unknown>): string | undefined {
+    const g = {
+      userText: this.lastUser,
+      answersQuestion: this.answersQuestion,
+      confirmedByButton: this.lastConfirm === 'yes' || this.lastPlan === 'approved',
+      touched: this.touchedThisTurn,
+      created: this.createdThisTurn,
+    };
+    const err = confirmationError(tool, params, g);
+    if (err) {
+      this.turnAsked = true; // Claude now asks: the user's next "đồng ý" answers it
+      return err;
+    }
+    for (const h of newlyAffected(tool, params, g)) this.touchedThisTurn.add(h);
+    return undefined;
+  }
+
+  /** After a tool call: objects it created in this turn are the user's request itself, never "existing" ones. */
+  noteResult(tool: string, params: Record<string, unknown>, resp: { ok: boolean; result?: unknown }): void {
+    if (!resp.ok) return;
+    for (const h of createdHandles(tool, params, resp.result)) this.createdThisTurn.add(h);
   }
 
   /** Options handed to query(); exported for tests and documentation. */
   buildOptions(resume?: string): Options {
-    const server = createCadServer(this.cfg.bridge, this.cfg.version, (req) => this.cfg.emit(req));
-    const plugin = prepareSkillsPlugin(this.cfg.skillsDir, this.cfg.workDir);
+    const server = createCadServer(this.cfg.bridge, this.cfg.version, (req) => {
+      if (req.type === 'suggestions') this.toolSuggested = true;
+      if (req.type === 'confirm_request' || req.type === 'plan_request') this.turnAsked = true; // a card asks too
+      this.cfg.emit(req);
+    });
+    const plugin = prepareSkillsPlugin(this.cfg.skillsDir, this.cfg.workDir, this.chatSkills);
+    this.loadedSkillsKey = skillsKey(this.chatSkills);
     if (plugin) this.cfg.log(`skills loaded: ${plugin.skills.join(', ') || '(none)'}`);
 
     const options: Options = {
@@ -117,8 +170,10 @@ export class AgentSession {
       // Base tool set: only Read (to read skill files) and Skill. Everything CAD comes from our MCP server.
       tools: ['Read', 'Skill'],
       disallowedTools: DISALLOWED_BUILTINS,
-      // Auto-allow our tools and Read; deny anything else without prompting.
-      allowedTools: [`mcp__${MCP_SERVER_NAME}`, `mcp__${MCP_SERVER_NAME}__*`, 'Read', 'Skill'],
+      // Auto-allow our tools; Read ONLY inside the generated skills plugin (relative to cwd = workDir).
+      // Anything else is denied without prompting (dontAsk): text inside a received drawing cannot make
+      // Claude read credentials or other files of this PC.
+      allowedTools: [`mcp__${MCP_SERVER_NAME}`, `mcp__${MCP_SERVER_NAME}__*`, `Read(./${SKILLS_PLUGIN_NAME}/**)`, 'Skill'],
       permissionMode: 'dontAsk',
       permissionPrompts: 'none',
       // Isolation: ignore ~/.claude settings, CLAUDE.md, project MCP configs.
@@ -147,6 +202,7 @@ export class AgentSession {
     const resume = this.sessionId;
     this.resuming = !!resume;
     this.gotInit = false;
+    this.staleResults = 0; // results of an older Claude process never reach this one
     const q = queryFn({ prompt: input, options: this.buildOptions(resume) });
     this.q = q;
     this.input = input;
@@ -166,27 +222,58 @@ export class AgentSession {
       // otherwise the palette would wait forever for a turn_end.
       this.cfg.log('new message while a turn is active: abandoning the previous turn');
       this.cfg.onCancel?.();
+      // its result (if any) comes before the next turn's "init", which resets the count
       this.staleResults++;
-      // safety: if the abandoned turn never reports a result, stop waiting for it
-      setTimeout(() => { if (this.staleResults > 0) this.staleResults--; }, 15_000).unref?.();
       void this.q?.interrupt().catch(() => {});
       this.turnActive = false;
       this.cancelRequested = false;
       this.textBlockOpen = false;
     }
+    // Skills per chat: the skill list is fixed when a Claude process starts, so a changed list ("−" / "+" in
+    // the palette, or another drawing's chat) restarts it — resuming the SAME conversation, context kept.
+    let removed: string[] = [];
+    let added: string[] = [];
+    if (msg.skills) {
+      if (this.q && this.loadedSkillsKey !== skillsKey(msg.skills)) this.closeQuery();
+      this.chatSkills = msg.skills;
+      const prev = (this.sessionId ? this.skillsBySession.get(this.sessionId) : undefined) ?? this.lastSentSkills;
+      if (prev) {
+        removed = prev.filter((x) => !msg.skills!.includes(x));
+        added = msg.skills.filter((x) => !prev.includes(x));
+      }
+    }
     try {
       this.ensureStarted();
     } catch (err) {
       this.cfg.emit({ type: 'turn_end', error: `Không khởi tạo được phiên Claude: ${(err as Error).message}` });
-      return;
+      return; // the list is remembered only once Claude really started with it (the note is not lost)
+    }
+    if (msg.skills) {
+      this.lastSentSkills = msg.skills;
+      if (this.sessionId) this.skillsBySession.set(this.sessionId, msg.skills);
     }
     this.turnActive = true;
     this.cancelRequested = false;
+    // this message answers what the previous turn asked; a previous turn that produced nothing (usage limit,
+    // error) asked nothing new: what it answered (e.g. a resent "đồng ý") still stands
+    this.answersQuestion = this.turnAsked || (!this.turnHadText && this.answersQuestion);
+    this.turnAsked = false;
+    this.turnHadText = false;
+    this.touchedThisTurn = new Set();
+    this.createdThisTurn = new Set();
+    this.lastPlan = msg.plan;
+    this.turnErrorCode = undefined;
+    this.toolSuggested = false;
+    this.suggestionsOn = msg.context?.suggestions !== false;
     this.lastUser = msg.text;
     this.lastConfirm = msg.confirm;
     this.turnId = msg.turn_id;
     this.pending = msg;
-    this.input!.push(toSdkUserMessage(msg));
+    this.input!.push(toSdkUserMessage({
+      ...msg,
+      ...(removed.length ? { skills_removed: removed } : {}),
+      ...(added.length ? { skills_added: added } : {}),
+    }));
   }
 
   /** Model / effort from the palette's settings; applied live when a query is running. */
@@ -217,14 +304,23 @@ export class AgentSession {
   reloadSkills(): void {
     if (this.turnActive) this.reloadPending = true;
     else this.closeQuery(); // sessionId is kept → resumed on the next message
-    this.cfg.emit({ type: 'skills_reloaded', skills: enabledSkills(this.cfg.skillsDir) });
+    const loaded = this.chatSkills ? librarySkills(this.cfg.skillsDir).filter((x) => this.chatSkills!.includes(x)) : enabledSkills(this.cfg.skillsDir);
+    this.cfg.emit({ type: 'skills_reloaded', skills: loaded });
   }
 
   /** Per-drawing conversations: continue the given session (or a fresh one) on the next message. */
   switchTo(sessionId: string | undefined): void {
-    if (this.turnActive) this.cfg.onCancel?.();
+    if (this.turnActive) {
+      this.cfg.onCancel?.();
+      this.finishTurn({ cancelled: true });
+    }
     this.closeQuery();
     this.turnActive = false;
+    this.turnAsked = false;
+    this.answersQuestion = false; // another conversation: nothing asked there carries over
+    this.turnHadText = true;
+    // the list that conversation was last sent (its "−" / "+" note stays right); unknown → no note
+    this.lastSentSkills = sessionId ? this.skillsBySession.get(sessionId) : undefined;
     this.sessionId = sessionId;
   }
 
@@ -241,16 +337,27 @@ export class AgentSession {
     }
     // The SDK normally ends the turn with a result message; make sure the UI is released.
     setTimeout(() => {
-      if (gen === this.generation && this.turnActive && this.cancelRequested) this.finishTurn({ cancelled: true });
+      if (gen === this.generation && this.turnActive && this.cancelRequested) {
+        // the interrupted turn's result may still come: it must not end the user's next turn
+        this.staleResults++;
+        this.finishTurn({ cancelled: true });
+      }
     }, 3000).unref?.();
   }
 
   /** New chat: drop the conversation and start a fresh one on the next message. */
   reset(): void {
-    if (this.turnActive) this.cfg.onCancel?.();
+    if (this.turnActive) {
+      this.cfg.onCancel?.();
+      this.finishTurn({ cancelled: true });
+    }
     this.closeQuery();
     this.sessionId = undefined;
     this.turnActive = false;
+    this.turnAsked = false;
+    this.answersQuestion = false; // another conversation: nothing asked there carries over
+    this.turnHadText = true;
+    this.lastSentSkills = undefined;
     this.cfg.emit({ type: 'session_reset' });
   }
 
@@ -324,10 +431,13 @@ export class AgentSession {
     switch (msg.type) {
       case 'system':
         if (msg.subtype === 'init') {
+          // emitted at the start of every turn: results of abandoned turns all came before it
+          this.staleResults = 0;
+          if (this.lastSentSkills && !this.skillsBySession.has(msg.session_id)) this.skillsBySession.set(msg.session_id, this.lastSentSkills);
           this.sessionId = msg.session_id;
           this.gotInit = true;
           this.cfg.emit({ type: 'session_info', session_id: msg.session_id, model: msg.model });
-          const auth = msg.apiKeySource === 'ANTHROPIC_API_KEY' ? 'API key' : 'Claude login';
+          const auth = !msg.apiKeySource || msg.apiKeySource === 'none' || msg.apiKeySource === 'oauth' ? 'Claude login' : 'API key';
           this.initInfo = `${msg.model} · ${auth}`;
           this.cfg.log(
             `init session=${msg.session_id} model=${msg.model} tools=${msg.tools.length} skills=[${(msg.skills ?? []).join(', ')}]`,
@@ -341,6 +451,8 @@ export class AgentSession {
         const ev = msg.event;
         if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
           this.textBlockOpen = true;
+          this.turnHadText = true;
+          if (ev.delta.text.includes('?')) this.turnAsked = true;
           this.cfg.emit({ type: 'agent_text', delta: ev.delta.text });
         } else if (ev.type === 'content_block_stop' && this.textBlockOpen) {
           this.textBlockOpen = false;
@@ -351,13 +463,15 @@ export class AgentSession {
 
       case 'assistant':
         if (msg.error && msg.parent_tool_use_id === null) {
+          this.turnErrorCode = msg.error;
           this.cfg.emit({ type: 'agent_error', message: ERROR_TEXT[msg.error] ?? `Lỗi từ Claude: ${msg.error}`, code: msg.error });
         }
         return;
 
       case 'prompt_suggestion': {
         const text = (msg as { suggestion?: string }).suggestion?.trim();
-        if (text) this.cfg.emit({ type: 'suggestions', items: [text], source: 'sdk' });
+        // Claude's own suggest_next_steps buttons win; none at all when the user turned them off
+        if (text && !this.toolSuggested && this.suggestionsOn) this.cfg.emit({ type: 'suggestions', items: [text], source: 'sdk' });
         return;
       }
 
@@ -394,6 +508,13 @@ export class AgentSession {
             msg.subtype === 'error_max_budget_usd' ? 'Vượt ngân sách chi phí của lượt.' :
             'Lỗi khi thực thi lượt.';
           this.finishTurn({ error: why, usage });
+        } else if (msg.is_error && this.turnErrorCode) {
+          // the error was already reported (Vietnamese text, login / limit card): no second English card
+          this.finishTurn({ usage });
+        } else if (msg.is_error) {
+          // "success" + is_error: the turn ended on an API error, its text is in result
+          const text = typeof msg.result === 'string' && msg.result.trim() ? msg.result.trim().slice(0, 300) : 'Claude trả về lỗi API.';
+          this.finishTurn({ error: text, usage });
         } else {
           this.finishTurn({ usage });
         }
@@ -404,4 +525,9 @@ export class AgentSession {
         return;
     }
   }
+}
+
+/** Same skills in any order → same key; undefined (skills.json) has its own key. */
+function skillsKey(list: string[] | undefined): string {
+  return list ? [...list].sort().join(',') : '(enabled)';
 }

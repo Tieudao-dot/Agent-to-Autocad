@@ -74,7 +74,7 @@ namespace ClaudeCAD.Plugin
 
         private static void AddFile(ZipArchive zip, string name, string path)
         {
-            try { Add(zip, name, Diagnostics.ReadTail(path)); }
+            try { Add(zip, name, Diagnostics.StripChatContent(Diagnostics.ReadTail(path))); }
             catch (Exception ex) { Add(zip, name + ".loi.txt", "Không đọc được: " + ex.Message); }
         }
 
@@ -85,7 +85,7 @@ namespace ClaudeCAD.Plugin
             sb.AppendLine("ClaudeCAD — báo cáo lỗi " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
             sb.AppendLine("Máy: " + Environment.MachineName + " · Windows " + Environment.OSVersion.VersionString + (Environment.Is64BitOperatingSystem ? " x64" : ""));
             try { sb.AppendLine("AutoCAD: " + AcApp.Version + " · " + Convert.ToString(AcApp.GetSystemVariable("ACADVER")) + " · " + Convert.ToString(AcApp.GetSystemVariable("PRODUCT"))); } catch { }
-            sb.AppendLine("Plugin: " + DrawingService.PluginVersion + " · .NET " + Environment.Version);
+            sb.AppendLine("Plugin: " + DrawingService.PluginVersion + " · bản " + DrawingService.PluginBuild + " · runtime " + DrawingService.RuntimeName);
             sb.AppendLine("Thư mục plugin: " + PluginPaths.DllDirectory);
             sb.AppendLine("Contents: " + (PluginPaths.ContentsDirectory ?? "(không phải bản cài)"));
             sb.AppendLine("Node: " + (PluginPaths.NodeExecutable ?? "KHÔNG THẤY"));

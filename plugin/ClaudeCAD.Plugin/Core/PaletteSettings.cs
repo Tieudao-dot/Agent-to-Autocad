@@ -16,6 +16,8 @@ namespace ClaudeCAD.Plugin.Core
         public string Model = "";           // "" = sidecar default (feature 14)
         public string Effort = "";          // "" = model default
         public double FontSize = 13;        // feature 19
+        /// <summary>Font size follows AutoCAD's own palette font; false once the user picks a size.</summary>
+        public bool FontAuto = true;
         public string Theme = "auto";       // auto | dark | light
         public bool Notify = true;          // feature 15
         public bool VisualCheck = true;     // Claude looks at the drawing (capture_view) after big drawing tasks
@@ -23,6 +25,8 @@ namespace ClaudeCAD.Plugin.Core
         public bool Suggestions = true;     // next-step buttons after each reply
         public bool Hotkey = true;          // Ctrl+Shift+Space opens the palette
         public bool Versions = true;        // copy of the DWG before chat changes it (every 30 min max, 10 kept)
+        /// <summary>Skills of the most recent chat: a new chat (or a drawing without one) starts with them. null = never set.</summary>
+        public List<string> LastSkills;
         public bool SnapshotNextToDrawing;  // also write the "biên bản" next to the DWG (shared project folders)
         public List<string> History = new List<string>(); // feature 10, newest last
 
@@ -70,10 +74,11 @@ namespace ClaudeCAD.Plugin.Core
         public string ToJson() => JsonCodec.Serialize(new Dictionary<string, object>
         {
             ["standard"] = Standard, ["scale"] = Scale, ["model"] = Model, ["effort"] = Effort,
-            ["font_size"] = FontSize, ["theme"] = Theme, ["notify"] = Notify,
+            ["font_size"] = FontSize, ["font_auto"] = FontAuto, ["theme"] = Theme, ["notify"] = Notify,
             ["visual_check"] = VisualCheck, ["plan_first"] = PlanFirst, ["suggestions"] = Suggestions, ["hotkey"] = Hotkey,
             ["versions"] = Versions, ["snapshot_next_to_drawing"] = SnapshotNextToDrawing,
             ["history"] = History.Cast<object>().ToList(),
+            ["last_skills"] = LastSkills?.Cast<object>().ToList(),
         });
 
         public static PaletteSettings FromJson(string json)
@@ -90,6 +95,7 @@ namespace ClaudeCAD.Plugin.Core
             s.Theme = Str("theme", "auto");
             if (d.TryGetValue("font_size", out var fs) && fs is double f) s.FontSize = s.ClampFont(f);
             bool Bool(string k, bool def) => d.TryGetValue(k, out var v) && v is bool x ? x : def;
+            s.FontAuto = Bool("font_auto", true);
             s.Notify = Bool("notify", true);
             s.VisualCheck = Bool("visual_check", true);
             s.PlanFirst = Bool("plan_first", true);
@@ -98,6 +104,7 @@ namespace ClaudeCAD.Plugin.Core
             s.Versions = Bool("versions", true);
             s.SnapshotNextToDrawing = Bool("snapshot_next_to_drawing", false);
             if (d.TryGetValue("history", out var h) && h is List<object> hl) s.History = hl.OfType<string>().Take(MaxHistory).ToList();
+            if (d.TryGetValue("last_skills", out var ls) && ls is List<object> lsl) s.LastSkills = SkillSelection.Clean(lsl.OfType<string>());
             return s;
         }
 

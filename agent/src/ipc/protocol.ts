@@ -13,6 +13,8 @@ export const ERROR_CODES = [
   'ACAD_ERROR',
   'TIMEOUT',
   'TOO_MANY_ENTITIES',
+  'READ_ONLY', // the user turned on "Chỉ xem" for this drawing
+  'UNKNOWN_TOOL',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number] | (string & {});
 
@@ -119,6 +121,18 @@ export interface PlanRequestMessage {
   steps: string[];
 }
 
+/**
+ * Step progress of a multi-step task (report_progress tool): the step Claude is starting, 1-based. steps is sent
+ * only when the task had no plan card; otherwise the palette uses the steps of the plan the user approved.
+ * Not a drawing operation: it is not counted by the confirmation gate and does not show as a tool call.
+ */
+export interface ProgressMessage {
+  type: 'progress';
+  step: number;
+  steps?: string[];
+  note?: string;
+}
+
 /** A SKILL.md drafted by Claude from the conversation, for the user to review and add. */
 export interface SkillDraftMessage {
   type: 'skill_draft';
@@ -163,6 +177,7 @@ export type SidecarToPlugin =
   | SkillsReloadedMessage
   | SuggestionsMessage
   | PlanRequestMessage
+  | ProgressMessage
   | SkillDraftMessage;
 
 // ---------------------------------------------------------------- plugin -> sidecar
@@ -252,6 +267,14 @@ export interface UserMessage {
   plan?: 'approved';
   /** Echoed in turn_end. */
   turn_id?: string;
+  /**
+   * Skills of this chat (folder names in the skills library): exactly these are loaded. Absent (older
+   * plugin) = the skills enabled in skills.json.
+   */
+  skills?: string[];
+  /** Set by the sidecar (not the plugin): skills the user took out of / put into this chat since the last message. */
+  skills_removed?: string[];
+  skills_added?: string[];
 }
 
 export interface SetOptionsMessage {
@@ -407,6 +430,9 @@ export function parsePluginMessage(value: unknown): PluginToSidecar {
         ...(m.confirm === 'yes' || m.confirm === 'no' ? { confirm: m.confirm } : {}),
         ...(m.plan === 'approved' ? { plan: 'approved' as const } : {}),
         ...(typeof m.turn_id === 'string' && m.turn_id ? { turn_id: m.turn_id.slice(0, 64) } : {}),
+        ...(Array.isArray(m.skills)
+          ? { skills: [...new Set(m.skills.filter((x: unknown): x is string => typeof x === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(x)))] }
+          : {}),
       };
     }
     case 'set_options':
@@ -435,10 +461,15 @@ export function parsePluginMessage(value: unknown): PluginToSidecar {
  */
 export class LineDecoder {
   private readonly decoder = new StringDecoder('utf8');
-  private buffer = '';
+  /** Pieces of the current (unfinished) line: a big message is joined once, not re-scanned at every chunk. */
+  private parts: string[] = [];
+  private partsLength = 0;
   private first = true;
+  /** After an over-long line: drop everything up to its end, then read normally again. */
+  private skipping = false;
 
-  constructor(private readonly maxLineLength = 16 * 1024 * 1024) {}
+  // 64 M characters: a message with several photos (≤ 3.5 MB each, base64) still fits
+  constructor(private readonly maxLineLength = 64 * 1024 * 1024) {}
 
   /** Feeds a chunk; returns the complete lines it finished (without terminators). */
   push(chunk: Buffer | string): string[] {
@@ -447,26 +478,41 @@ export class LineDecoder {
       if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
       this.first = false;
     }
-    this.buffer += text;
     const lines: string[] = [];
-    let idx: number;
-    while ((idx = this.buffer.indexOf('\n')) >= 0) {
-      let line = this.buffer.slice(0, idx);
-      this.buffer = this.buffer.slice(idx + 1);
+    let start = 0;
+    let nl: number;
+    while ((nl = text.indexOf('\n', start)) >= 0) {
+      const piece = text.slice(start, nl);
+      start = nl + 1;
+      if (this.skipping) {
+        this.skipping = false; // the end of the over-long line
+        continue;
+      }
+      let line = this.parts.length ? this.parts.join('') + piece : piece;
+      this.parts = [];
+      this.partsLength = 0;
       if (line.endsWith('\r')) line = line.slice(0, -1);
       if (line.trim().length > 0) lines.push(line);
     }
-    if (this.buffer.length > this.maxLineLength) {
-      this.buffer = '';
-      throw new ProtocolError(`line longer than ${this.maxLineLength} characters`);
+    const rest = text.slice(start);
+    if (rest.length > 0 && !this.skipping) {
+      this.parts.push(rest);
+      this.partsLength += rest.length;
+      if (this.partsLength > this.maxLineLength) {
+        this.parts = [];
+        this.partsLength = 0;
+        this.skipping = true; // the rest of this line must not be read as a new message
+        throw new ProtocolError(`line longer than ${this.maxLineLength} characters`);
+      }
     }
     return lines;
   }
 
   /** Remaining partial line at end of stream (normally empty). */
   flush(): string[] {
-    const rest = this.buffer + this.decoder.end();
-    this.buffer = '';
+    const rest = this.parts.join('') + this.decoder.end();
+    this.parts = [];
+    this.partsLength = 0;
     return rest.trim().length > 0 ? [rest] : [];
   }
 }

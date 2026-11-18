@@ -118,7 +118,7 @@ describe('AgentSession', () => {
     const { s, events } = makeSession(fn);
     s.send('chào Claude', 'test.dwg');
     await tick();
-    assert.deepEqual(received, ['[Bản vẽ đang mở: test.dwg]\nchào Claude']);
+    assert.deepEqual(received, ['[Bản vẽ đang mở: "test.dwg"]\nchào Claude']);
     assert.deepEqual(events.filter((e) => e.type !== 'session_info').map((e) => (e.type === 'turn_end' ? { type: e.type } : e)), [
       { type: 'ready', info: 'claude-opus-5-5 · Claude login', version: 'test' },
       { type: 'agent_text', delta: 'Xin ' },
@@ -258,5 +258,285 @@ describe('system prompt (spec §9)', async () => {
       'Vietnamese', 'millimetres', 'get_drawing_info', 'list_layers', 'batch_execute', 'Never guess handles',
       'Cậu có đồng ý không?', 'save_drawing', 'purge_unused', 'U once', 'at most 2 times', 'ask one short question', 'skill',
     ]) assert.ok(SYSTEM_PROMPT.includes(needle), needle);
+  });
+});
+
+describe('v0.9.4 review fixes', () => {
+  it('a late result of a cancelled turn does not end the next turn', async () => {
+    let release: (() => void) | undefined;
+    const { fn } = fakeQuery(async (input, push) => {
+      let n = 0;
+      for await (const _m of input) {
+        n++;
+        push(init);
+        if (n === 1) {
+          // first turn: interrupted, its result only comes much later (after the next message was sent)
+          await new Promise<void>((r) => (release = r));
+          push(result());
+          push(init); // the second turn starts after the old result
+          push(textDelta('lượt 2'));
+          await tick(50);
+          push(result());
+        }
+      }
+    });
+    const { s, events } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'vẽ', turn_id: 't-1' });
+    await tick();
+    await s.cancel();
+    await tick(3200); // cancel fallback ends turn 1
+    assert.equal(events.filter((e) => e.type === 'turn_end').length, 1);
+    s.sendMessage({ type: 'user_message', text: 'vẽ lại', turn_id: 't-2' });
+    release!();
+    await tick(20);
+    // the old result was skipped: turn 2 is still running
+    assert.equal(s.busy, true);
+    await tick(100);
+    const ends = events.filter((e) => e.type === 'turn_end') as Array<{ turn_id?: string }>;
+    assert.deepEqual(ends.map((e) => e.turn_id), ['t-1', 't-2']);
+  });
+
+  it('an abandoned turn that never reports a result does not swallow the next result', async () => {
+    const { fn } = fakeQuery(async (input, push) => {
+      let n = 0;
+      for await (const _m of input) {
+        n++;
+        if (n === 1) continue; // turn 1: never answers
+        push(init);
+        push(result());
+      }
+    });
+    const { s, events } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'a', turn_id: 't-1' });
+    await tick();
+    s.sendMessage({ type: 'user_message', text: 'b', turn_id: 't-2' }); // palette force-ended turn 1
+    await tick();
+    const ends = events.filter((e) => e.type === 'turn_end') as Array<{ turn_id?: string }>;
+    assert.deepEqual(ends.map((e) => e.turn_id), ['t-2']);
+  });
+
+  it('"success" with is_error reports the API error text', async () => {
+    const { fn } = fakeQuery(async (input, push) => {
+      for await (const _m of input) {
+        push(init);
+        push({ type: 'result', subtype: 'success', is_error: true, result: 'API Error: 500 internal', session_id: 's1' } as unknown as SDKMessage);
+      }
+    });
+    const { s, events } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'x' });
+    await tick();
+    const end = events.find((e) => e.type === 'turn_end') as { error?: string };
+    assert.match(end.error ?? '', /API Error: 500/);
+  });
+
+  it('confirmation gate: cumulative per turn, a short yes answers a question of the previous turn', async () => {
+    const { fn } = fakeQuery(async (input, push) => {
+      let n = 0;
+      for await (const _m of input) {
+        n++;
+        push(init);
+        push(textDelta(n === 1 ? 'Có 40 đối tượng trên layer A-TEMP. Cậu có đồng ý không?' : 'Xong.'));
+        push(result());
+      }
+    });
+    const { s } = makeSession(fn);
+    const h = (k: number, from = 0) => ({ handles: Array.from({ length: k }, (_, i) => `H${i + from}`) });
+    s.sendMessage({ type: 'user_message', text: 'dọn layer A-TEMP' });
+    assert.equal(s.gate('erase_entities', h(20)), undefined);
+    assert.equal(s.gate('set_entity_props', h(20)), undefined); // the same 20 objects again: still 20
+    assert.match(s.gate('erase_entities', h(20, 20)) ?? '', /Confirmation required/); // 40 distinct in total
+    await tick();
+    s.sendMessage({ type: 'user_message', text: 'đồng ý' });
+    assert.equal(s.gate('erase_entities', h(40)), undefined);
+    await tick();
+    // a new request with "ok" inside, after a turn that asked nothing → asked again
+    s.sendMessage({ type: 'user_message', text: 'ok' });
+    await tick();
+    s.sendMessage({ type: 'user_message', text: 'ok xóa hết' });
+    assert.match(s.gate('erase_entities', h(30)) ?? '', /Confirmation required/);
+  });
+
+  it('no SDK next-step prediction when Claude made its own buttons or the user turned them off', async () => {
+    const suggestion = { type: 'prompt_suggestion', suggestion: 'vẽ cửa', session_id: 's1' } as unknown as SDKMessage;
+    const { fn } = fakeQuery(async (input, push) => {
+      for await (const _m of input) {
+        push(init);
+        push(result());
+        push(suggestion);
+      }
+    });
+    const { s, events } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'a', context: { suggestions: false } });
+    await tick();
+    assert.equal(events.filter((e) => e.type === 'suggestions').length, 0);
+    s.sendMessage({ type: 'user_message', text: 'b' });
+    await tick();
+    assert.equal(events.filter((e) => e.type === 'suggestions').length, 1);
+  });
+
+  it('switching drawing mid-turn ends the turn', async () => {
+    const { fn } = fakeQuery(async (input) => {
+      for await (const _m of input) {
+        /* never answers */
+      }
+    });
+    const { s, events } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'a', turn_id: 't-1' });
+    await tick();
+    s.switchTo('other');
+    const end = events.find((e) => e.type === 'turn_end') as { turn_id?: string; cancelled?: boolean };
+    assert.equal(end.turn_id, 't-1');
+    assert.equal(end.cancelled, true);
+    assert.equal(s.busy, false);
+  });
+
+  it('Read is only allowed inside the skills plugin', () => {
+    const { fn, calls } = fakeQuery(async () => {});
+    const { s } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'x' });
+    const allowed = calls.options.allowedTools as string[];
+    assert.ok(!allowed.includes('Read'));
+    assert.ok(allowed.includes('Read(./claudecad-skills/**)'));
+  });
+});
+
+describe('skills per chat', () => {
+  function library(names: string[]): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudecad-skills-'));
+    for (const n of names) {
+      fs.mkdirSync(path.join(dir, n));
+      fs.writeFileSync(path.join(dir, n, 'SKILL.md'), `---\nname: ${n}\ndescription: Skill ${n} dùng khi vẽ ${n}.\n---\n# ${n}\n`);
+    }
+    // skills.json says ve-mep is off: per-chat lists ignore it
+    fs.writeFileSync(path.join(dir, 'skills.json'), JSON.stringify({ skills: [{ name: 've-mep', enabled: false }] }));
+    return dir;
+  }
+
+  it('loads exactly the chat\'s skills, restarts Claude (same conversation) when the list changes, tells Claude about − / +', async () => {
+    const texts: string[] = [];
+    const starts: any[] = [];
+    const fn = ((params: { prompt: AsyncIterable<SDKUserMessage>; options: any }) => {
+      starts.push(params.options);
+      const gen = (async function* () {
+        for await (const m of params.prompt) {
+          texts.push(String(m.message.content));
+          yield init;
+          yield result();
+        }
+      })();
+      return Object.assign(gen, { interrupt: async () => {}, close: () => {} });
+    }) as unknown as QueryFn;
+    const dir = library(['khung-ten', 've-kien-truc', 've-mep']);
+    const { s } = makeSession(fn, dir);
+    const sent = (skills: string[]) => s.sendMessage({ type: 'user_message', text: 'vẽ', skills });
+
+    sent(['ve-kien-truc', 'khung-ten']);
+    await tick();
+    assert.equal(starts.length, 1);
+    assert.deepEqual(starts[0].skills, ['claudecad-skills:khung-ten', 'claudecad-skills:ve-kien-truc']);
+
+    sent(['khung-ten', 've-kien-truc']); // same skills, other order: no restart
+    await tick();
+    assert.equal(starts.length, 1);
+
+    sent(['khung-ten', 've-kien-truc', 've-mep']); // "+" ve-mep (off in skills.json: the chat's list wins)
+    await tick();
+    assert.equal(starts.length, 2);
+    assert.ok(starts[1].skills.includes('claudecad-skills:ve-mep'));
+    assert.equal(starts[1].resume, 's1'); // same conversation
+    assert.match(texts.at(-1)!, /vừa thêm skill vào đoạn chat này: "ve-mep"/);
+
+    sent(['ve-mep']); // "−" khung-ten and ve-kien-truc
+    await tick();
+    assert.equal(starts.length, 3);
+    assert.deepEqual(starts[2].skills, ['claudecad-skills:ve-mep']);
+    assert.match(texts.at(-1)!, /đã bỏ skill khỏi đoạn chat này: "khung-ten", "ve-kien-truc" — from now on do not apply/);
+
+    s.switchTo('other-drawing'); // another chat: no − / + note for its first message
+    sent(['khung-ten']);
+    await tick();
+    assert.doesNotMatch(texts.at(-1)!, /đã bỏ skill|vừa thêm skill/);
+  });
+
+  it('an older plugin without a list still gets the enabled skills', async () => {
+    const { fn, calls } = fakeQuery(async () => {});
+    const dir = library(['ve-kien-truc', 've-mep']);
+    const { s } = makeSession(fn, dir);
+    s.sendMessage({ type: 'user_message', text: 'x' });
+    assert.deepEqual(calls.options.skills, ['claudecad-skills:ve-kien-truc']);
+  });
+});
+
+describe('review fixes: confirmation gate in the session', () => {
+  it('objects created in this turn are not "existing"; cards and the plan button count; a resent "đồng ý" still answers', async () => {
+    const { fn } = fakeQuery(async (input, push) => {
+      let n = 0;
+      for await (const _m of input) {
+        n++;
+        push(init);
+        if (n === 1) push(textDelta('Xóa 30 đường trên layer TEMP. Cậu có đồng ý không?'));
+        // turn 2 ("đồng ý") hits the usage limit: no text at all
+        push(result());
+      }
+    });
+    const { s } = makeSession(fn);
+    const hs = (k: number, p = 'N') => Array.from({ length: k }, (_, i) => `${p}${i}`);
+    // "chèn 30 cửa, đánh số C1..C30": 30 blocks created, then their attributes set one by one
+    s.sendMessage({ type: 'user_message', text: 'chèn 30 cửa rồi đánh số' });
+    s.noteResult('batch_execute', { calls: hs(30).map(() => ({ tool: 'insert_block', params: {} })) },
+      { ok: true, result: { results: hs(30).map((h) => ({ ok: true, result: { handle: h } })) } });
+    for (const h of hs(30)) assert.equal(s.gate('set_block_attributes', { handle: h, values: {} }), undefined);
+    await tick();
+    // asked → "đồng ý" → that turn produced nothing (limit) → the resent "đồng ý" still answers the question
+    s.sendMessage({ type: 'user_message', text: 'đồng ý' });
+    await tick();
+    s.sendMessage({ type: 'user_message', text: 'đồng ý' });
+    assert.equal(s.gate('erase_entities', { handles: hs(30, 'E') }), undefined);
+    // "Làm" on a plan card
+    s.sendMessage({ type: 'user_message', text: 'Làm theo kế hoạch.', plan: 'approved' });
+    assert.equal(s.gate('erase_entities', { handles: hs(30, 'P') }), undefined);
+  });
+
+  it('only one error card when the API error was already reported', async () => {
+    const { fn } = fakeQuery(async (input, push) => {
+      for await (const _m of input) {
+        push(init);
+        push({ type: 'assistant', error: 'authentication_failed', parent_tool_use_id: null, message: { content: [] }, session_id: 's1' } as unknown as SDKMessage);
+        push({ type: 'result', subtype: 'success', is_error: true, result: 'Not logged in · Please run /login', session_id: 's1' } as unknown as SDKMessage);
+      }
+    });
+    const { s, events } = makeSession(fn);
+    s.sendMessage({ type: 'user_message', text: 'x' });
+    await tick();
+    const end = events.find((e) => e.type === 'turn_end') as { error?: string };
+    assert.equal(end.error, undefined);
+    assert.ok(events.some((e) => e.type === 'agent_error' && (e as { code?: string }).code === 'authentication_failed'));
+  });
+
+  it('the "skill removed" note survives a switch to another drawing and back', async () => {
+    const texts: string[] = [];
+    const fn = ((params: { prompt: AsyncIterable<SDKUserMessage>; options: any }) => {
+      const gen = (async function* () {
+        for await (const m of params.prompt) {
+          texts.push(String(m.message.content));
+          yield { ...init, session_id: params.options.resume ?? 'sA' } as SDKMessage;
+          yield result();
+        }
+      })();
+      return Object.assign(gen, { interrupt: async () => {}, close: () => {} });
+    }) as unknown as QueryFn;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudecad-skills-'));
+    for (const n of ['aa', 'bb']) {
+      fs.mkdirSync(path.join(dir, n));
+      fs.writeFileSync(path.join(dir, n, 'SKILL.md'), `---\nname: ${n}\ndescription: Skill ${n} dùng khi vẽ ${n}.\n---\n`);
+    }
+    const { s } = makeSession(fn, dir);
+    s.sendMessage({ type: 'user_message', text: 'x', skills: ['aa', 'bb'] });
+    await tick();
+    s.switchTo('sB'); // another drawing
+    s.switchTo('sA'); // back
+    s.sendMessage({ type: 'user_message', text: 'y', skills: ['aa'] }); // "−" bb
+    await tick();
+    assert.match(texts.at(-1)!, /đã bỏ skill khỏi đoạn chat này: "bb"/);
   });
 });

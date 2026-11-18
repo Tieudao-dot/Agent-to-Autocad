@@ -112,3 +112,54 @@ describe('parsePluginMessage', () => {
     assert.throws(() => parsePluginMessage({ id: 'r', ok: false, error: 'nope' }), ProtocolError);
   });
 });
+
+describe('v0.9.4: big messages and timeouts', () => {
+  it('after an over-long line the rest of it is skipped, the next line is read', () => {
+    const d = new LineDecoder(10);
+    assert.throws(() => d.push('x'.repeat(50)), ProtocolError);
+    assert.deepEqual(d.push('yyyy'), []); // still the same over-long line
+    assert.deepEqual(d.push('zz\n{"a":1}\n'), ['{"a":1}']);
+  });
+
+  it('a message with several photos fits the default limit', () => {
+    const d = new LineDecoder();
+    const big = '{"type":"user_message","text":"x","images":["' + 'A'.repeat(20 * 1024 * 1024) + '"]}';
+    assert.equal(d.push(big + '\n').length, 1);
+  });
+
+  it('slow calls get longer timeouts', async () => {
+    const { timeoutFor } = await import('../src/ipc/rpc.js');
+    assert.equal(timeoutFor('draw_line', {}), 30_000);
+    assert.equal(timeoutFor('batch_execute', { calls: Array.from({ length: 500 }, () => ({ tool: 'draw_line' })) }), 80_000);
+    assert.equal(timeoutFor('plot_pdf', {}), 120_000);
+    assert.equal(timeoutFor('batch_execute', { calls: [{ tool: 'save_drawing' }] }), 120_000);
+    assert.equal(timeoutFor('batch_execute', { calls: Array.from({ length: 5000 }, () => ({ tool: 'draw_line' })) }), 300_000);
+  });
+});
+
+describe('v0.9.4: skills per chat in user_message', () => {
+  it('keeps valid, distinct skill names only', () => {
+    const m = parsePluginMessage({ type: 'user_message', text: 'x', skills: ['ve-kien-truc', 've-kien-truc', '../etc', 'Ve Mep', 42, 'khung-ten-a3'] });
+    assert.deepEqual((m as { skills?: string[] }).skills, ['ve-kien-truc', 'khung-ten-a3']);
+    assert.equal('skills' in parsePluginMessage({ type: 'user_message', text: 'x' }), false);
+  });
+});
+
+describe('review fixes: big messages are read in linear time', () => {
+  it('30 M characters in 64 KB chunks', () => {
+    const d = new LineDecoder();
+    const chunk = 'x'.repeat(64 * 1024);
+    const t0 = Date.now();
+    let lines: string[] = [];
+    for (let i = 0; i < 470; i++) lines = lines.concat(d.push(chunk));
+    lines = lines.concat(d.push('\n{"type":"cancel"}\n'));
+    assert.equal(lines.length, 2);
+    assert.equal(lines[0]!.length, 470 * 64 * 1024);
+    assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0} ms`);
+  });
+
+  it('a timeout set above 5 minutes is kept', async () => {
+    const { timeoutFor } = await import('../src/ipc/rpc.js');
+    assert.equal(timeoutFor('draw_line', {}, 600_000), 600_000);
+  });
+});

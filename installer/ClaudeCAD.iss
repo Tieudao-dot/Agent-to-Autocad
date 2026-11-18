@@ -1,11 +1,33 @@
 ﻿; Inno Setup script: builds ClaudeCAD-Setup-<version>.exe from bundle\out\ClaudeCAD.bundle.
-; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.3 installer\ClaudeCAD.iss
+; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.5 installer\ClaudeCAD.iss
 ; (CI does this in .github/workflows/build.yml.)
 
 #ifndef AppVersion
-  #define AppVersion "0.9.3"
+  #define AppVersion "0.9.5"
 #endif
 #define BundleDir "..\bundle\out\ClaudeCAD.bundle"
+; one installer for AutoCAD 2022-2027: refuse to build it without all three plugin builds
+#if !FileExists(AddBackslash(SourcePath) + BundleDir + "\Contents\ClaudeCAD.Plugin.dll")
+  #error ClaudeCAD.bundle has no AutoCAD 2022-2024 build (Contents\ClaudeCAD.Plugin.dll)
+#endif
+#if !FileExists(AddBackslash(SourcePath) + BundleDir + "\Contents\2025\ClaudeCAD.Plugin.dll")
+  #error ClaudeCAD.bundle has no AutoCAD 2025-2026 build (Contents\2025\ClaudeCAD.Plugin.dll)
+#endif
+#if !FileExists(AddBackslash(SourcePath) + BundleDir + "\Contents\2027\ClaudeCAD.Plugin.dll")
+  #error ClaudeCAD.bundle has no AutoCAD 2027 build (Contents\2027\ClaudeCAD.Plugin.dll)
+#endif
+; activation service url + owner contact (make-bundle writes it from activation/activation.json)
+#if FileExists(AddBackslash(SourcePath) + "..\bundle\out\activation.iss")
+  #include "..\bundle\out\activation.iss"
+#endif
+#ifndef ActivationUrl
+  #define ActivationUrl ""
+#endif
+#ifndef ActivationContact
+  #define ActivationContact "Liên hệ Zalo owner: 0344644415"
+#endif
+; the contact text goes into Pascal string literals: double any '
+#define ContactPas StringChange(ActivationContact, "'", "''")
 
 [Setup]
 AppId={{8D3C1A52-6E4B-4F0A-9C27-3B5E7A1D9F40}
@@ -46,7 +68,7 @@ Source: "{#BundleDir}\Contents\skills\*"; DestDir: "{app}\Contents\skills"; Flag
 Filename: "{#ClaudeExe}"; Parameters: "auth login --claudeai"; Description: "Đăng nhập Claude ngay (trình duyệt mở ra, bấm đồng ý một lần — không cần mở AutoCAD)"; Flags: postinstall runasoriginaluser skipifsilent nowait; Check: NeedsLogin
 
 [Messages]
-FinishedLabel=ClaudeCAD đã được cài.%n%nĐể dùng ngay: giữ ô "Đăng nhập Claude ngay" rồi bấm Finish — trình duyệt mở trang cấp quyền, cậu bấm đồng ý bằng tài khoản Claude Pro/Max (một cửa sổ đen hiện lên trong lúc đăng nhập và tự đóng khi xong). Sau đó mở AutoCAD 2022–2025 là dùng được.%n%nNếu bỏ qua bước này, lần đầu mở AutoCAD plugin sẽ tự mở trang đăng nhập.
+FinishedLabel=ClaudeCAD đã được cài.%n%nĐể dùng ngay: giữ ô "Đăng nhập Claude ngay" rồi bấm Finish — trình duyệt mở trang cấp quyền, cậu bấm đồng ý bằng tài khoản Claude Pro/Max (một cửa sổ đen hiện lên trong lúc đăng nhập và tự đóng khi xong). Sau đó mở AutoCAD 2022–2027 là dùng được.%n%nNếu bỏ qua bước này, lần đầu mở AutoCAD plugin sẽ tự mở trang đăng nhập.
 
 [Code]
 #if FileExists(AddBackslash(SourcePath) + BundleDir + "\Contents\node\node.exe")
@@ -82,7 +104,8 @@ begin
   for i := 0 to GetArrayLength(Releases) - 1 do
   begin
     Rel := Releases[i];
-    if (Copy(Rel, 1, 3) = 'R24') or (Copy(Rel, 1, 3) = 'R25') then
+    { R24 = 2022-2024, R25 = 2025-2026, R26 = 2027 (the releases PackageContents.xml loads in) }
+    if (Copy(Rel, 1, 3) = 'R24') or (Copy(Rel, 1, 3) = 'R25') or (Copy(Rel, 1, 3) = 'R26') then
       if RegGetSubkeyNames(HKCU, Base + '\' + Rel, Products) then
         for j := 0 to GetArrayLength(Products) - 1 do
           if RegGetSubkeyNames(HKCU, Base + '\' + Rel + '\' + Products[j] + '\Profiles', Profiles) then
@@ -97,8 +120,8 @@ var
 
 function NeedsLogin(): Boolean;
 var
-  ResultCode: Integer;
-  TmpFile, Exe: String;
+  ResultCode, i: Integer;
+  TmpFile, DoneFile, Exe: String;
   Text: AnsiString;
 begin
   { evaluated several times while the finish page is shown: run "claude auth status" only once }
@@ -111,9 +134,19 @@ begin
   if not FileExists(Exe) then exit;
   Result := True;
   TmpFile := ExpandConstant('{tmp}\authstatus.json');
-  if ExecAsOriginalUser(ExpandConstant('{cmd}'), '/C ""' + Exe + '" auth status --json > "' + TmpFile + '" 2>&1"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    if LoadStringFromFile(TmpFile, Text) then
+  DoneFile := ExpandConstant('{tmp}\authstatus.done');
+  { at most ~15 s: a "claude auth status" that hangs must not freeze the finish page (then the box is shown) }
+  if ExecAsOriginalUser(ExpandConstant('{cmd}'), '/C ""' + Exe + '" auth status --json > "' + TmpFile + '" 2>&1 & echo done> "' + DoneFile + '""', '', SW_HIDE, ewNoWait, ResultCode) then
+  begin
+    for i := 1 to 30 do
+    begin
+      if FileExists(DoneFile) then break;
+      Sleep(500);
+    end;
+    if FileExists(DoneFile) and LoadStringFromFile(TmpFile, Text) then
       if Pos('"loggedIn": true', String(Text)) > 0 then Result := False;
+    if not FileExists(DoneFile) then Log('sign-in check: no answer within 15 s, the box is shown');
+  end;
   LoginNeeded := Result;
 end;
 
@@ -134,11 +167,77 @@ begin
     end;
 end;
 
+{ AutoCAD releases installed on this machine, from HKLM\SOFTWARE\Autodesk\AutoCAD\R<major>.<minor>\ACAD-xxxx:yyy
+  (AutoCAD and its verticals; AutoCAD LT has its own key and cannot run .NET plugins). Supported = the releases
+  bundle\PackageContents.xml loads in: R24.1-R24.3 (2022-2024), R25.0-R25.1 (2025-2026), R26.0 (2027). }
+function IsSupportedRelease(const Rel: String): Boolean;
+begin
+  Result := (Rel = 'R24.1') or (Rel = 'R24.2') or (Rel = 'R24.3') or (Rel = 'R25.0') or (Rel = 'R25.1') or (Rel = 'R26.0');
+end;
+
+{ R26.1 / R27.0 ... : newer than the last release this build declares }
+function IsNewerRelease(const Rel: String): Boolean;
+var
+  Dot, Major, Minor: Integer;
+begin
+  Result := False;
+  if (Length(Rel) < 4) or (Rel[1] <> 'R') then exit;
+  Dot := Pos('.', Rel);
+  if Dot = 0 then exit;
+  Major := StrToIntDef(Copy(Rel, 2, Dot - 2), -1);
+  Minor := StrToIntDef(Copy(Rel, Dot + 1, 3), -1);
+  Result := (Major > 26) or ((Major = 26) and (Minor > 0));
+end;
+
+function AcadReleaseInstalled(const Rel: String): Boolean;
+var
+  Products: TArrayOfString;
+  i: Integer;
+  Loc: String;
+begin
+  Result := False;
+  if not RegGetSubkeyNames(HKLM64, 'SOFTWARE\Autodesk\AutoCAD\' + Rel, Products) then exit;
+  for i := 0 to GetArrayLength(Products) - 1 do
+    if RegQueryStringValue(HKLM64, 'SOFTWARE\Autodesk\AutoCAD\' + Rel + '\' + Products[i], 'AcadLocation', Loc) and DirExists(Loc) then
+    begin
+      Result := True;
+      exit;
+    end;
+end;
+
+{ Setup continues either way (AutoCAD may be installed later); the user only learns why ClaudeCAD would not load. }
+function CheckAutoCAD(): Boolean;
+var
+  Releases: TArrayOfString;
+  i: Integer;
+  Supported, Newer: String;
+begin
+  Result := True;
+  Supported := '';
+  Newer := '';
+  if RegGetSubkeyNames(HKLM64, 'SOFTWARE\Autodesk\AutoCAD', Releases) then
+    for i := 0 to GetArrayLength(Releases) - 1 do
+      if AcadReleaseInstalled(Releases[i]) then
+      begin
+        if IsSupportedRelease(Releases[i]) then Supported := Supported + ' ' + Releases[i]
+        else if IsNewerRelease(Releases[i]) then Newer := Newer + ' ' + Releases[i];
+      end;
+  Log('AutoCAD releases found: supported [' + Trim(Supported) + '] newer [' + Trim(Newer) + ']');
+  if Supported <> '' then exit;
+  if Newer <> '' then
+    Result := SuppressibleMsgBox('Máy này có AutoCAD bản mới hơn 2027 (' + Trim(Newer) + '). ClaudeCAD bản này chỉ chạy trên AutoCAD 2022–2027 nên sẽ không tự nạp vào bản đó.' + #13#10#13#10 +
+              'Vẫn cài tiếp?', mbConfirmation, MB_YESNO, IDYES) = IDYES
+  else
+    Result := SuppressibleMsgBox('Không tìm thấy AutoCAD 2022–2027 bản đầy đủ trên máy này. ClaudeCAD chỉ chạy trên AutoCAD bản đầy đủ (và các bản chuyên ngành như Civil 3D), không chạy trên AutoCAD LT.' + #13#10#13#10 +
+              'Vẫn cài tiếp? (Cài AutoCAD sau cũng được, ClaudeCAD tự nạp khi mở AutoCAD.)', mbConfirmation, MB_YESNO, IDYES) = IDYES;
+end;
+
 function InitializeSetup(): Boolean;
 var
   Major, ErrCode: Integer;
 begin
-  Result := True;
+  Result := CheckAutoCAD();
+  if not Result then exit;
 #ifdef BundledNode
   exit; { Node.js ships with the plugin }
 #endif
@@ -152,8 +251,358 @@ begin
   end;
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+{ ======================================================================= v0.9.4 activation + device list
+  Every machine needs the owner's permission. The key page shows the machine code and the owner's contact, and
+  emails the owner (through the owner's Google Apps Script web app) the device name, the Windows user, the
+  machine code and the key for it; the machine also lands in the owner's Google Sheet as "Chờ duyệt". Two ways
+  forward: the owner sets the row Active (the user installs without a key; the plugin unlocks by itself at the
+  next AutoCAD start, or at once with "Kiểm tra lại"), or the owner sends the key by Zalo and the user types it here. A right key returns a signed licence
+  (license.txt) plus a signed status (status.txt) in %LocalAppData%\ClaudeCAD — the plugin checks the licence at
+  every AutoCAD start and re-asks the owner's Active/Disabled decision there and every ~6 hours.
+  Silent installs: /KEY=XXXX-XXXX-XXXX-XXXX. }
+
+var
+  KeyPage: TWizardPage;
+  KeyEdit, CodeEdit: TNewEdit;
+  KeyStatus: TNewStaticText;
+  AskButton: TNewButton;
+  Machine: String;
+  Requested: Boolean;
+
+function LicenseFile(): String;
 begin
+  Result := ExpandConstant('{localappdata}\ClaudeCAD\license.txt');
+end;
+
+{ CC-XXXX-XXXX-XXXX = first 48 bits of SHA-256("ClaudeCAD|" + MachineGuid in lower case) — same as LicenseLogic.MachineCode }
+function MachineCode(): String;
+var
+  Guid, H: String;
+begin
+  if Machine <> '' then begin Result := Machine; exit; end;
+  if not RegQueryStringValue(HKLM64, 'SOFTWARE\Microsoft\Cryptography', 'MachineGuid', Guid) then Guid := '';
+  Guid := Trim(Guid);
+  if Guid = '' then Guid := GetComputerNameString();
+  H := Uppercase(GetSHA256OfString('ClaudeCAD|' + Lowercase(Guid)));
+  Machine := 'CC-' + Copy(H, 1, 4) + '-' + Copy(H, 5, 4) + '-' + Copy(H, 9, 4);
+  Result := Machine;
+end;
+
+{ licence of this machine already saved (reinstall / update): no key page. The signature is checked by the plugin. }
+function HasLicense(): Boolean;
+var
+  Text: AnsiString;
+begin
+  Result := False;
+  { CCL1|machine|date|signature (≈ 380 characters): a truncated / empty file does not hide the key page }
+  if LoadStringFromFile(LicenseFile(), Text) then
+    Result := (Pos('CCL1|' + MachineCode() + '|', String(Text)) = 1) and (Length(Text) > 100);
+end;
+
+{ percent-encoding of the UTF-8 bytes (device / user names may be Vietnamese); Pascal Script has no nested routines }
+function Pct(b: Integer): String;
+begin
+  Result := '%' + Copy('0123456789ABCDEF', (b shr 4) + 1, 1) + Copy('0123456789ABCDEF', (b and 15) + 1, 1);
+end;
+
+function UrlEncode(const S: String): String;
+var
+  i, c: Integer;
+begin
+  Result := '';
+  for i := 1 to Length(S) do
+  begin
+    c := Ord(S[i]);
+    if ((c >= Ord('A')) and (c <= Ord('Z'))) or ((c >= Ord('a')) and (c <= Ord('z'))) or ((c >= Ord('0')) and (c <= Ord('9'))) or (c = Ord('-')) or (c = Ord('_')) or (c = Ord('.')) then
+      Result := Result + S[i]
+    else if c < $80 then Result := Result + Pct(c)
+    else if c < $800 then Result := Result + Pct($C0 or (c shr 6)) + Pct($80 or (c and $3F))
+    else Result := Result + Pct($E0 or (c shr 12)) + Pct($80 or ((c shr 6) and $3F)) + Pct($80 or (c and $3F));
+  end;
+end;
+
+{ GET through WinHTTP (follows Google's redirect to script.googleusercontent.com). Short timeouts: the wizard
+  does not repaint while it waits. WinHTTP ignores the Windows (Internet Options) proxy unless told: use it. }
+function HttpGet(const Url: String; var Body: String): Boolean;
+var
+  Req: Variant;
+  ProxyOn: Cardinal;
+  Proxy: String;
+begin
+  Result := False;
+  Body := '';
+  try
+    Req := CreateOleObject('WinHttp.WinHttpRequest.5.1');
+    { receive 25 s: a cold Apps Script start + its 5 s lock + sending the email can take well over 12 s }
+    Req.SetTimeouts(5000, 5000, 8000, 25000);
+    if RegQueryDWordValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 'ProxyEnable', ProxyOn) and (ProxyOn <> 0) then
+      if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Internet Settings', 'ProxyServer', Proxy) and (Trim(Proxy) <> '') then
+        Req.SetProxy(2, Trim(Proxy), '<local>');
+    Req.Open('GET', Url, False);
+    Req.SetRequestHeader('User-Agent', 'ClaudeCAD-Setup/{#AppVersion}');
+    Req.Send('');
+    Body := Req.ResponseText;
+    Result := Req.Status = 200;
+    if not Result then Log('activation: HTTP ' + IntToStr(Req.Status));
+  except
+    Log('activation: request failed: ' + GetExceptionMessage);
+  end;
+end;
+
+{ "name":"value" from the service's small JSON answers (values never contain quotes) }
+function JsonValue(const Json, Name: String): String;
+var
+  p: Integer;
+  Rest: String;
+begin
+  Result := '';
+  p := Pos('"' + Name + '":"', Json);
+  if p = 0 then exit;
+  Rest := Copy(Json, p + Length(Name) + 4, Length(Json));
+  p := Pos('"', Rest);
+  if p > 0 then Result := Copy(Rest, 1, p - 1);
+end;
+
+function JsonOk(const Json: String): Boolean;
+begin
+  Result := Pos('"ok":true', Json) > 0;
+end;
+
+procedure SetStatus(const Text: String);
+begin
+  if KeyStatus <> nil then
+  begin
+    KeyStatus.Caption := Text;
+    KeyStatus.Refresh; { the label has its own window: repaint it, not only the wizard }
+  end;
+  WizardForm.Refresh; { paint now: the request that follows blocks the window for a few seconds }
+end;
+
+procedure SendRequest();
+var
+  Body: String;
+begin
+  if '{#ActivationUrl}' = '' then
+  begin
+    SetStatus('Nhắn mã máy ở trên cho chủ plugin để nhận key.');
+    exit;
+  end;
+  SetStatus('Đang gửi yêu cầu kích hoạt cho chủ plugin (có thể mất tới 20 giây, cửa sổ sẽ đứng yên)...');
+  if not HttpGet('{#ActivationUrl}?action=request&machine=' + MachineCode() + '&device=' + UrlEncode(GetComputerNameString()) +
+                 '&user=' + UrlEncode(GetUserNameString()) + '&from=' + UrlEncode('setup {#AppVersion}'), Body) then
+    SetStatus('Không gửi được yêu cầu tự động (máy chưa có mạng?). Nhắn mã máy ở trên cho chủ plugin qua Zalo.')
+  else if not JsonOk(Body) then
+  begin
+    if JsonValue(Body, 'error') <> '' then SetStatus(JsonValue(Body, 'error') + ' Nhắn mã máy ở trên cho chủ plugin qua Zalo.')
+    else SetStatus('Máy chủ kích hoạt chưa sẵn sàng. Nhắn mã máy ở trên cho chủ plugin qua Zalo.');
+  end
+  else
+  begin
+    Requested := True;
+    if Pos('"sent":false', Body) > 0 then
+      SetStatus('Yêu cầu của máy này đã được gửi cho chủ plugin trước đó. Dán key vào ô trên, hoặc chờ duyệt rồi bấm Next cài tiếp.')
+    else
+      SetStatus('Đã gửi yêu cầu kích hoạt (mã máy + tên thiết bị) cho chủ plugin. Dán key vào ô trên, hoặc chờ duyệt rồi bấm Next cài tiếp.');
+  end;
+end;
+
+procedure AskClick(Sender: TObject);
+begin
+  SendRequest();
+end;
+
+procedure CopyClick(Sender: TObject);
+var
+  ResultCode: Integer;
+begin
+  if Exec(ExpandConstant('{cmd}'), '/C echo Ma may ClaudeCAD: ' + MachineCode() + ' (' + GetComputerNameString() + ')| clip', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    SetStatus('Đã sao chép mã máy — dán vào Zalo gửi cho chủ plugin.');
+end;
+
+function SaveLicense(const License: String): Boolean;
+begin
+  ForceDirectories(ExpandConstant('{localappdata}\ClaudeCAD'));
+  Result := SaveStringToFile(LicenseFile(), License, False);
+end;
+
+{ the signed device status (CCS1|...) that comes with the licence: saved so the plugin starts unlocked }
+function SaveStatusLine(const Line: String): Boolean;
+begin
+  ForceDirectories(ExpandConstant('{localappdata}\ClaudeCAD'));
+  Result := SaveStringToFile(ExpandConstant('{localappdata}\ClaudeCAD\status.txt'), Line, False);
+end;
+
+{ key → signed licence (online), or an offline activation code pasted as is. Err = why not. }
+function Activate(const Input: String; var Err: String): Boolean;
+var
+  K, Body, Lic, St: String;
+  p: Integer;
+begin
+  Result := False;
+  Err := '';
+  K := Trim(Input);
+  if Pos('CCL1|', K) = 1 then
+  begin
+    { the no-network pass (CCS1|...) may be pasted together with the licence }
+    p := Pos('CCS1|', K);
+    if p > 0 then
+    begin
+      SaveStatusLine(Trim(Copy(K, p, Length(K))));
+      K := Trim(Copy(K, 1, p - 1));
+    end;
+    if Pos('CCL1|' + MachineCode() + '|', K) <> 1 then begin Err := 'Mã kích hoạt offline này của máy khác.'; exit; end;
+    Result := SaveLicense(K);
+    if not Result then Err := 'Không lưu được giấy phép.';
+    exit;
+  end;
+  StringChangeEx(K, ' ', '', True);
+  StringChangeEx(K, '-', '', True);
+  K := Uppercase(K);
+  if Length(K) <> 16 then begin Err := 'Key gồm 16 ký tự dạng XXXX-XXXX-XXXX-XXXX.'; exit; end;
+  if '{#ActivationUrl}' = '' then begin Err := 'Bộ cài này chưa có máy chủ kích hoạt — xin chủ plugin mã kích hoạt offline (dòng dài bắt đầu bằng CCL1|).'; exit; end;
+  if not HttpGet('{#ActivationUrl}?action=activate&machine=' + MachineCode() + '&key=' + UrlEncode(K), Body) then
+  begin
+    Err := 'Không kết nối được máy chủ kích hoạt. Kiểm tra mạng rồi bấm Next lại.';
+    exit;
+  end;
+  Lic := JsonValue(Body, 'license');
+  if (not JsonOk(Body)) or (Pos('CCL1|' + MachineCode() + '|', Lic) <> 1) then
+  begin
+    Err := JsonValue(Body, 'error');
+    if Err = '' then Err := 'Key không đúng với máy này.';
+    exit;
+  end;
+  Result := SaveLicense(Lic);
+  if not Result then Err := 'Không lưu được giấy phép.';
+  { the service marks the machine Active with the key and signs that too }
+  St := JsonValue(Body, 'status');
+  if Pos('CCS1|' + MachineCode() + '|', St) = 1 then SaveStatusLine(St);
+end;
+
+procedure InitializeWizard();
+var
+  Intro, CodeLabel, KeyLabel: TNewStaticText;
+  CopyButton: TNewButton;
+begin
+  KeyPage := CreateCustomPage(wpWelcome, 'Kích hoạt ClaudeCAD', 'Chủ plugin cấp quyền dùng cho từng máy.');
+
+  Intro := TNewStaticText.Create(KeyPage);
+  Intro.Parent := KeyPage.Surface;
+  Intro.WordWrap := True;
+  Intro.Width := KeyPage.SurfaceWidth;
+  if '{#ActivationUrl}' <> '' then
+    Intro.Caption := 'ClaudeCAD chỉ dùng được khi máy này được chủ plugin cho phép. Yêu cầu được gửi tự động;' + #13#10 +
+                     '{#ContactPas} để được duyệt nhanh.' + #13#10 +
+                     'Có key thì dán vào ô dưới. Chưa có key vẫn bấm Next cài tiếp được — sau khi được duyệt,' + #13#10 +
+                     'mở AutoCAD là tự dùng được (hoặc bấm "Kiểm tra lại" trong khung chat Claude).'
+  else
+    Intro.Caption := 'ClaudeCAD chỉ cài được khi có mã kích hoạt do chủ plugin cấp, riêng cho từng máy.' + #13#10 +
+                     '{#ContactPas}, gửi mã máy bên dưới để nhận mã kích hoạt (dòng dài bắt đầu bằng CCL1|).';
+
+  CodeLabel := TNewStaticText.Create(KeyPage);
+  CodeLabel.Parent := KeyPage.Surface;
+  CodeLabel.Top := Intro.Top + Intro.Height + ScaleY(14);
+  CodeLabel.Caption := 'Mã máy (gửi mã này cho chủ plugin):';
+
+  CodeEdit := TNewEdit.Create(KeyPage);
+  CodeEdit.Parent := KeyPage.Surface;
+  CodeEdit.Top := CodeLabel.Top + CodeLabel.Height + ScaleY(4);
+  CodeEdit.Width := ScaleX(170);
+  CodeEdit.ReadOnly := True;
+  CodeEdit.Text := MachineCode();
+  CodeEdit.Font.Style := [fsBold];
+
+  CopyButton := TNewButton.Create(KeyPage);
+  CopyButton.Parent := KeyPage.Surface;
+  CopyButton.Left := CodeEdit.Left + CodeEdit.Width + ScaleX(8);
+  CopyButton.Top := CodeEdit.Top - ScaleY(1);
+  CopyButton.Width := ScaleX(90);
+  CopyButton.Height := ScaleY(23);
+  CopyButton.Caption := 'Sao chép';
+  CopyButton.OnClick := @CopyClick;
+
+  AskButton := TNewButton.Create(KeyPage);
+  AskButton.Parent := KeyPage.Surface;
+  AskButton.Left := CopyButton.Left + CopyButton.Width + ScaleX(6);
+  AskButton.Top := CopyButton.Top;
+  AskButton.Width := ScaleX(140);
+  AskButton.Height := ScaleY(23);
+  AskButton.Caption := 'Gửi lại yêu cầu';
+  AskButton.OnClick := @AskClick;
+  AskButton.Visible := '{#ActivationUrl}' <> ''; { nothing to send to in a build without the activation service }
+
+  KeyLabel := TNewStaticText.Create(KeyPage);
+  KeyLabel.Parent := KeyPage.Surface;
+  KeyLabel.Top := CodeEdit.Top + CodeEdit.Height + ScaleY(16);
+  KeyLabel.Caption := 'Key kích hoạt (XXXX-XXXX-XXXX-XXXX):';
+
+  KeyEdit := TNewEdit.Create(KeyPage);
+  KeyEdit.Parent := KeyPage.Surface;
+  KeyEdit.Top := KeyLabel.Top + KeyLabel.Height + ScaleY(4);
+  KeyEdit.Width := KeyPage.SurfaceWidth;
+  KeyEdit.Text := ExpandConstant('{param:KEY|}'); { /KEY= also fills the box in a normal (not silent) run }
+
+  KeyStatus := TNewStaticText.Create(KeyPage);
+  KeyStatus.Parent := KeyPage.Surface;
+  KeyStatus.Top := KeyEdit.Top + KeyEdit.Height + ScaleY(12);
+  KeyStatus.Width := KeyPage.SurfaceWidth;
+  KeyStatus.WordWrap := True;
+  KeyStatus.Caption := '';
+end;
+
+{ Silent installs never show the page (Inno would click Next with an empty box and abort): /KEY= is used in
+  CurStepChanged, and without it the plugin asks for the key inside AutoCAD. }
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := (KeyPage <> nil) and (PageID = KeyPage.ID) and (HasLicense() or WizardSilent());
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  { the owner gets the email as soon as the page opens (once per run; "Gửi lại yêu cầu" sends again) }
+  if (KeyPage <> nil) and (CurPageID = KeyPage.ID) then
+  begin
+    { a key already given with /KEY=: nothing to ask the owner for }
+    if (not Requested) and (Trim(KeyEdit.Text) = '') then SendRequest();
+  end;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  Err: String;
+begin
+  Result := True;
+  if (KeyPage = nil) or (CurPageID <> KeyPage.ID) then exit;
+  if (Trim(KeyEdit.Text) = '') and ('{#ActivationUrl}' <> '') then
+  begin
+    { the sheet way: install without a key; the plugin unlocks once the owner sets the machine Active }
+    Result := MsgBox('Chưa nhập key. Cài tiếp và chờ chủ plugin duyệt máy này?' + #13#10 +
+                     'Sau khi được duyệt: mở AutoCAD là tự dùng được (hoặc bấm "Kiểm tra lại" trong khung chat Claude).',
+                     mbConfirmation, MB_YESNO) = IDYES;
+    if Result then Log('activation: continuing without a key (the owner approves via the device sheet)');
+    exit;
+  end;
+  SetStatus('Đang kiểm tra key...');
+  Result := Activate(KeyEdit.Text, Err);
+  if Result then SetStatus('Đã kích hoạt máy này.')
+  else
+  begin
+    SetStatus(Err);
+    MsgBox(Err, mbError, MB_OK);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Err: String;
+begin
+  { silent installs: /KEY=... (without it the plugin asks for the key inside AutoCAD) }
+  if (CurStep = ssInstall) and WizardSilent() and not HasLicense() then
+    if ExpandConstant('{param:KEY|}') <> '' then
+    begin
+      if Activate(ExpandConstant('{param:KEY|}'), Err) then Log('activation: activated') else Log('activation: ' + Err);
+    end
+    else Log('activation: silent install without /KEY= — the plugin will ask for the key');
   { sign-in now happens inside AutoCAD ("Đăng nhập Claude" button) — nothing to type in a terminal }
   if CurStep = ssPostInstall then TrustBundle();
 end;

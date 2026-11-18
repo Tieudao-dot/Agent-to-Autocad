@@ -76,7 +76,7 @@ namespace ClaudeCAD.UI.Tests
                 new SkillInfo { Name = "ve-mep", Title = "Vẽ điện nước", Description = "Chuẩn MEP...", Builtin = true, Enabled = false },
                 new SkillInfo { Name = "ve-ket-cau", Title = "Vẽ kết cấu", Description = "Chuẩn kết cấu của công ty", Added = DateTime.Now, Source = @"D:\chuan\ket-cau.md" },
                 new SkillInfo { Name = "sai-ten", Error = "Thiếu dòng description" },
-            });
+            }, new[] { "ve-kien-truc", "ve-ket-cau" });
             c.SetConnection("Đã kết nối · Opus 5.5 · Claude login", true);
             c.SetUsage("Lượt vừa rồi: ↑12.3k ↓1.1k token · phiên ≈ $0.08 · hạn mức 5 giờ 41%");
 
@@ -234,6 +234,193 @@ namespace ClaudeCAD.UI.Tests
             Assert.True(new FileInfo(Path.Combine(OutDir, "palette-layers.png")).Length > 5_000);
         }
 
+        /// <summary>Screen D with real steps: the approved plan as ✓ / ● / ○ while Claude reports the step it starts.</summary>
+        [Fact]
+        public void ApprovedPlanShowsRealProgress()
+        {
+            string[] live = null, done = null, stopped = null;
+            string busyLive = null, busyCompact = null, busyNoPlan = null, titleDone = null;
+            bool toolsFolded = false;
+            var plan = new List<string> { "Đọc bản vẽ và layer", "Lưới trục 4 x 3", "Tường 220 / 110", "Cửa đi, cửa sổ", "Kích thước", "Tên phòng, diện tích", "Kiểm tra bằng ảnh" };
+            string[] Tags(DependencyObject root) => FindAll<TextBlock>(root).Select(t => t.Tag as string).Where(t => t != null && t.StartsWith("plan-")).ToArray();
+            string Busy(ChatControl x) => ((TextBlock)typeof(ChatControl).GetField("_busyLine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(x)).Text;
+            Sta(() =>
+            {
+                var c = new ChatControl { Width = 380, Height = 560 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(true);
+                c.LoadTranscript(new ChatTranscript(), false);
+                c.AddUserMessage(new ChatEntry { Role = "user", Text = "Làm theo kế hoạch." });
+                c.BeginAssistant();
+                c.SetBusy(true);
+                c.SetProgress(plan, 1, null);
+                c.UpdateTool(new ToolLogEntry { Tool = "get_drawing_info", State = "done", Ms = 40 });
+                c.SetProgress(plan, 2, null);
+                c.UpdateTool(new ToolLogEntry { Tool = "batch_execute", State = "done", Ms = 300 });
+                c.SetProgress(plan, 3, "46 đoạn LINE");
+                c.UpdateTool(new ToolLogEntry { Tool = "batch_execute", State = "running" });
+                Pump();
+                Shot(c, "shell-tien-do-buoc");
+                live = Tags(c);
+                busyLive = Busy(c);
+                var toolRow = FindAll<TextBlock>(c).First(t => (t.Tag as string) == "running" && t.FontSize == 11);
+                toolsFolded = ((FrameworkElement)toolRow.Parent).Visibility != Visibility.Visible;
+                c.SetCompact(true);
+                Pump();
+                busyCompact = Busy(c);
+                Shot(c, "shell-thu-gon-tien-do");
+                c.SetCompact(false);
+
+                c.UpdateTool(new ToolLogEntry { Tool = "batch_execute", State = "done", Ms = 500 });
+                c.EndProgress(true);
+                c.EndAssistant(new ChatEntry { Role = "assistant", Text = "Đã vẽ tường." }, true);
+                c.SetBusy(false);
+                Pump();
+                done = Tags(c);
+                titleDone = FindAll<Button>(c).Select(b => b.Content).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<TextBlock>()).Select(t => t.Text).LastOrDefault(t => t != null && t.StartsWith("Đã làm"));
+
+                // stopped half way: the step in progress is not ticked
+                var d = new ChatControl { Width = 380, Height = 400 };
+                d.ApplySettings(new PaletteSettings());
+                d.LoadTranscript(new ChatTranscript(), false);
+                d.BeginAssistant();
+                d.SetBusy(true);
+                d.SetProgress(plan, 2, null);
+                d.EndProgress(false);
+                d.EndAssistant(new ChatEntry { Role = "assistant", Text = "Đã dừng." }, true);
+                d.SetBusy(false);
+                Pump();
+                stopped = Tags(d);
+
+                // a turn without a plan keeps the time + operations line
+                var e = new ChatControl { Width = 380, Height = 400 };
+                e.ApplySettings(new PaletteSettings());
+                e.LoadTranscript(new ChatTranscript(), false);
+                e.BeginAssistant();
+                e.SetBusy(true);
+                e.UpdateTool(new ToolLogEntry { Tool = "draw_line", State = "done", Ms = 20 });
+                Pump();
+                busyNoPlan = Busy(e);
+            });
+            Assert.Equal(new[] { "plan-done", "plan-done", "plan-now", "plan-later", "plan-later", "plan-later", "plan-later" }, live);
+            Assert.StartsWith("● Bước 3/7: Tường 220 / 110 · ", busyLive);
+            Assert.StartsWith("● Bước 3/7: Tường 220 / 110 · ", busyCompact);
+            Assert.True(toolsFolded, "the command list stays folded under the plan steps");
+            Assert.Equal(new[] { "plan-done", "plan-done", "plan-done", "plan-later", "plan-later", "plan-later", "plan-later" }, done);
+            Assert.Equal("Đã làm 3/7 bước · dừng sau bước 3", titleDone);
+            Assert.Equal(new[] { "plan-done", "plan-stopped", "plan-later", "plan-later", "plan-later", "plan-later", "plan-later" }, stopped);
+            Assert.StartsWith("● Đang làm · ", busyNoPlan);
+        }
+
+        /// <summary>Screen D (plugin side only): the turn's tool calls as a live step list, folded again when the turn ends.</summary>
+        [Fact]
+        public void WorkingTurnShowsItsSteps()
+        {
+            string titleLive = null, titleDone = null;
+            string[] tagsLive = null, tagsDone = null;
+            int rowsLive = 0;
+            bool openLive = false, openDone = true;
+            Sta(() =>
+            {
+                var c = new ChatControl { Width = 380, Height = 520 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(true);
+                c.LoadTranscript(new ChatTranscript(), false);
+                c.AddUserMessage(new ChatEntry { Role = "user", Text = "Vẽ mặt bằng căn hộ 2 phòng ngủ 8x12m" });
+                c.BeginAssistant();
+                c.SetBusy(true);
+                c.UpdateTool(new ToolLogEntry { Tool = "get_drawing_info", State = "running" });
+                c.UpdateTool(new ToolLogEntry { Tool = "get_drawing_info", State = "done", Ms = 42, Summary = "12 layer" });
+                for (int i = 0; i < 3; i++)
+                {
+                    c.UpdateTool(new ToolLogEntry { Tool = "draw_line", State = "running" });
+                    c.UpdateTool(new ToolLogEntry { Tool = "draw_line", State = "done", Ms = 20 });
+                }
+                c.UpdateTool(new ToolLogEntry { Tool = "batch_execute", State = "running" });
+                Pump();
+                Shot(c, "shell-dang-lam-buoc");
+                var rows = FindAll<TextBlock>(c).Where(t => t.Tag is string tag && (tag == "done" || tag == "running" || tag == "error") && t.FontSize == 11).ToList();
+                rowsLive = rows.Count;
+                tagsLive = rows.Select(r => (string)r.Tag).ToArray();
+                var header = FindAll<Button>(c).Select(b => b.Content).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<TextBlock>()).Select(t => t.Text).LastOrDefault(t => t != null && (t.StartsWith("Đang làm") || t.StartsWith("Thao tác")));
+                titleLive = header;
+                openLive = ((FrameworkElement)rows[0].Parent).Visibility == Visibility.Visible;
+
+                c.UpdateTool(new ToolLogEntry { Tool = "batch_execute", State = "done", Ms = 300, Summary = "30 lệnh OK" });
+                c.EndAssistant(new ChatEntry { Role = "assistant", Text = "Đã vẽ xong." }, true);
+                c.SetBusy(false);
+                Pump();
+                tagsDone = rows.Select(r => (string)r.Tag).ToArray();
+                titleDone = FindAll<Button>(c).Select(b => b.Content).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<TextBlock>()).Select(t => t.Text).LastOrDefault(t => t != null && (t.StartsWith("Đang làm") || t.StartsWith("Thao tác")));
+                openDone = ((FrameworkElement)rows[0].Parent).Visibility == Visibility.Visible;
+            });
+            Assert.Equal(3, rowsLive); // three LINE calls are one step "×3"
+            Assert.Equal(new[] { "done", "done", "running" }, tagsLive);
+            Assert.StartsWith("Đang làm · bước 3: Thực thi nhiều lệnh", titleLive);
+            Assert.True(openLive, "the step list must be open while the turn runs");
+            Assert.Equal(new[] { "done", "done", "done" }, tagsDone);
+            Assert.StartsWith("Thao tác (5)", titleDone); // 5 calls in 3 steps
+            Assert.False(openDone, "the step list folds again when the turn ends");
+        }
+
+        /// <summary>Screen C: "Bắt đầu" card with three numbered steps; the step to do now carries the buttons.</summary>
+        [Fact]
+        public void WelcomeCardWalksThroughThreeSteps()
+        {
+            string[] marksBefore = null, marksAfter = null;
+            int login = 0, loginButtons = 0, fillButtonsBefore = 0;
+            string filled = null, missingLine = null;
+            Sta(() =>
+            {
+                var checks = new List<(string, bool?, string)>
+                {
+                    ("Node.js", true, "đi kèm plugin"),
+                    ("Trợ lý (sidecar)", false, "không thấy thư mục agent"),
+                    ("Kích hoạt", true, "mã máy CC-3B28-85F3-67B7"),
+                    ("Tài khoản Claude", false, "chưa đăng nhập Claude"),
+                    ("Skill", true, "3 skill trong plugin"),
+                };
+                var c = new ChatControl { Width = 380, Height = 520 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(true);
+                c.LoadTranscript(new ChatTranscript(), false);
+                c.LoginRequested += () => login++;
+                c.AddWelcomeCard(checks, true);
+                Pump();
+                Shot(c, "bat-dau-1-chua-dang-nhap");
+                marksBefore = FindAll<TextBlock>(c).Where(t => (t.Tag as string ?? "").StartsWith("step-")).Select(t => (string)t.Tag).ToArray();
+                var card = FindAll<Border>(c).First(b => (b.Tag as string) == "welcome");
+                var loginBtn = FindAll<Button>(card).Where(b => (b.Content as string) == "Đăng nhập Claude").ToList();
+                loginButtons = loginBtn.Count;
+                loginBtn.First().RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                fillButtonsBefore = FindAll<Button>(card).Count(b => (b.Content as string) == "Điền vào ô nhập");
+                missingLine = FindAll<TextBlock>(card).Select(t => t.Text).FirstOrDefault(t => t != null && t.StartsWith("Trợ lý (sidecar) — "));
+
+                var d = new ChatControl { Width = 380, Height = 420 };
+                d.ApplySettings(new PaletteSettings());
+                d.SetDark(false);
+                d.LoadTranscript(new ChatTranscript(), false);
+                d.AddWelcomeCard(new List<(string, bool?, string)>
+                {
+                    ("Kích hoạt", true, "mã máy CC-3B28-85F3-67B7"),
+                    ("Tài khoản Claude", true, "Claude Pro · cau@example.com"),
+                }, false);
+                Pump();
+                marksAfter = FindAll<TextBlock>(d).Where(t => (t.Tag as string ?? "").StartsWith("step-")).Select(t => (string)t.Tag).ToArray();
+                FindAll<Button>(d).First(b => (b.Content as string) == "Điền vào ô nhập").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump();
+                filled = ((TextBox)typeof(ChatControl).GetField("_input", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(d)).Text;
+                Shot(d, "bat-dau-2-da-dang-nhap");
+            });
+            Assert.Equal(new[] { "step-done", "step-now", "step-later" }, marksBefore);
+            Assert.Equal(1, loginButtons);
+            Assert.Equal(1, login);
+            Assert.Equal(0, fillButtonsBefore); // step 3 has no "try it" until signed in
+            Assert.Equal("Trợ lý (sidecar) — không thấy thư mục agent", missingLine);
+            Assert.Equal(new[] { "step-done", "step-done", "step-now" }, marksAfter);
+            Assert.Equal(ChatControl.WelcomeExample, filled);
+        }
+
         /// <summary>Sign-in flow screens: first start card, settings ▸ Tài khoản AI, sign-in in progress, signed in, API key editor.</summary>
         [Fact]
         public void RendersLoginFlow()
@@ -317,6 +504,133 @@ namespace ClaudeCAD.UI.Tests
             Assert.True(new FileInfo(Path.Combine(OutDir, "palette-setup.png")).Length > 5_000);
         }
 
+        /// <summary>Every element of type T under root (logical tree: works before the control was laid out).</summary>
+        private static List<T> FindAll<T>(DependencyObject root) where T : DependencyObject
+        {
+            var list = new List<T>();
+            void Walk(object o)
+            {
+                if (o is T t) list.Add(t);
+                if (o is DependencyObject d) foreach (var child in LogicalTreeHelper.GetChildren(d)) Walk(child);
+            }
+            Walk(root);
+            return list;
+        }
+
+        [Fact]
+        public void RendersActivationCard()
+        {
+            string submitted = null;
+            int asked = 0;
+            Sta(() =>
+            {
+                // 1: no licence on this machine — machine code, contact, key box; the request was emailed to the owner
+                var c = new ChatControl { Width = 400, Height = 520 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(false);
+                c.LoadTranscript(new ChatTranscript(), false);
+                c.ActivationKeySubmitted += k => submitted = k;
+                c.ActivationRequestRequested += () => asked++;
+                c.AddActivationCard("CC-3B28-85F3-67B7", "LAPTOP-TUAN", "Liên hệ Zalo owner: 0344644415", "Đang gửi yêu cầu kích hoạt cho chủ plugin...");
+                c.SetActivationStatus("Đã gửi yêu cầu kích hoạt cho chủ plugin. Liên hệ Zalo owner: 0344644415 để nhận key.", false);
+                Shot(c, "activation-1-request");
+
+                // 2: wrong key
+                c.SetActivationStatus("Key không đúng với máy này (mã máy CC-3B28-85F3-67B7). Kiểm tra lại key, hoặc xin key mới.", true);
+                Shot(c, "activation-2-wrong-key");
+
+                // 3: activated
+                c.SetActivationStatus("Đã kích hoạt ClaudeCAD cho máy này (vĩnh viễn). Cập nhật bản mới không cần nhập lại key.", false, true);
+                c.ShowToast("Đã kích hoạt ClaudeCAD", ChatControl.ToastKind.Success, 30);
+                Shot(c, "activation-3-done");
+
+                // the buttons raise the events
+                var buttons = FindAll<Button>(c);
+                var ask = buttons.First(b => (b.Content as string) == "Gửi yêu cầu kích hoạt");
+                c.SetActivationStatus("", false); // unlock again
+                ask.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                var box = FindAll<TextBox>(c).Last(t => !t.IsReadOnly);
+                box.Text = "7K2M-9QXR-4TBN-H8WZ";
+                buttons.First(b => (b.Content as string) == "Kích hoạt").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            });
+            Assert.Equal(1, asked);
+            Assert.Equal("7K2M-9QXR-4TBN-H8WZ", submitted);
+            Assert.True(new FileInfo(Path.Combine(OutDir, "activation-1-request.png")).Length > 5_000);
+        }
+
+        [Fact]
+        public void LongTranscriptRendersTheLastMessagesAndOneActivationCard()
+        {
+            int buttons = 0, cards = 0, moreAfterClick = 0, before = 0, after = 0;
+            bool cardKept = false;
+            Sta(() =>
+            {
+                var t = new ChatTranscript { DrawingName = "A.dwg" };
+                for (int i = 0; i < 150; i++) t.Entries.Add(new ChatEntry { Role = i % 2 == 0 ? "user" : "assistant", Text = "tin " + i });
+                var c = new ChatControl { Width = 400, Height = 500 };
+                c.LoadTranscript(t, false);
+                var messages = (StackPanel)typeof(ChatControl).GetField("_messages", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(c);
+                // a live card below the history (here the activation card) must survive "Xem thêm"
+                c.AddActivationCard("CC-3B28-85F3-67B7", "PC", "Liên hệ Zalo owner: 0344644415", "");
+                var card = messages.Children[messages.Children.Count - 1];
+                before = messages.Children.Count;
+                var more = FindAll<Button>(c).Where(b => (b.Content as string ?? "").StartsWith("Xem thêm")).ToList();
+                buttons = more.Count;
+                more[0].RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                moreAfterClick = FindAll<Button>(c).Count(b => (b.Content as string ?? "").StartsWith("Xem thêm"));
+                after = messages.Children.Count;
+                cardKept = messages.Children.Contains(card) && messages.Children[messages.Children.Count - 1] == card;
+
+                // pressing Enter again while not activated: the live card is reused, not added again
+                c.AddActivationCard("CC-3B28-85F3-67B7", "PC", "Liên hệ Zalo owner: 0344644415", "");
+                cards = FindAll<Button>(c).Count(b => (b.Content as string) == "Kích hoạt");
+            });
+            Assert.Equal(1, buttons);
+            Assert.Equal(1, moreAfterClick); // 150 → 60 shown → 120 shown, still 30 older
+            Assert.Equal(before + 60, after); // 60 older messages inserted (button replaced by the next one)
+            Assert.True(cardKept, "the card below the history was rebuilt or lost");
+            Assert.Equal(1, cards);
+        }
+
+        [Fact]
+        public void RendersSkillsPerChat()
+        {
+            var toggles = new List<(string, bool)>();
+            int inUse = 0, library = 0;
+            Sta(() =>
+            {
+                var c = new ChatControl { Width = 400, Height = 300 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(false);
+                c.SkillToggled += (n, on) => toggles.Add((n, on));
+                c.SetSkills(new List<SkillInfo>
+                {
+                    new SkillInfo { Name = "ve-kien-truc", Title = "Vẽ kiến trúc theo chuẩn", Description = "Chuẩn vẽ kiến trúc: layer A-*, tường 220/110, cửa, kích thước.", Builtin = true },
+                    new SkillInfo { Name = "ve-mep", Title = "Vẽ điện nước", Description = "Chuẩn MEP: ống, thiết bị, ký hiệu.", Builtin = true },
+                    new SkillInfo { Name = "khung-ten-a3", Title = "Khung tên công ty A3", Description = "Khung tên, logo, ô ký của công ty.", Added = new DateTime(2026, 11, 10), Source = @"D:\chuan\khung-ten.md" },
+                    new SkillInfo { Name = "ve-ket-cau", Title = "Vẽ kết cấu", Description = "Chuẩn kết cấu: dầm, cột, móng.", Added = new DateTime(2026, 11, 8) },
+                }, new[] { "khung-ten-a3", "ve-kien-truc" });
+                var popup = (System.Windows.Controls.Primitives.Popup)typeof(ChatControl)
+                    .GetField("_skillsPopup", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(c);
+                var panel = (FrameworkElement)popup.Child;
+                popup.Child = null;
+                var host = new Border { Width = 362, Height = 520, Child = panel, Background = Brushes.Transparent };
+                host.SetValue(TextElement.FontFamilyProperty, new FontFamily("Segoe UI"));
+                Theme.Apply(host.Resources, false);
+                Shot(host, "skills-1-theo-doan-chat");
+                var buttons = FindAll<Button>(panel);
+                inUse = buttons.Count(b => (b.Content as string) == "−");
+                library = buttons.Count(b => (b.Content as string) == "+");
+                buttons.First(b => (b.Content as string) == "−").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                buttons.First(b => (b.Content as string) == "+").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Assert.DoesNotContain(buttons, b => (b.Content as string) == "Xóa" || (b.Content as string) == "Mở thư mục");
+            });
+            Assert.Equal(2, inUse);
+            Assert.Equal(2, library);
+            Assert.Equal(("ve-kien-truc", false), toggles[0]); // in-use rows come in library order
+            Assert.False(toggles[1].Item2 == false);
+        }
+
         [Fact]
         public void ReloadsPersistedTranscript()
         {
@@ -349,6 +663,215 @@ namespace ClaudeCAD.UI.Tests
                 Assert.True(md.Document.Blocks.Count >= 7);
                 Shot(md, "markdown");
             });
+        }
+
+        /// <summary>
+        /// The AutoCAD-style shell: usage meter, queued message row, busy line, confirmation card with the
+        /// count as a figure, and the settings popup as collapsible two-column groups.
+        /// </summary>
+        [Fact]
+        public void RendersAutoCadStyleShell()
+        {
+            bool meterShown = false, meterHidden = false, queuedShown = false, queuedHidden = false, busyShown = false, busyHidden = false;
+            bool stylesLoaded = false, flatButton = false;
+            int sendWhileBusy = 0, queueCancel = 0, stopOnEsc = 0, confirmYes = 0, preview = 0, categories = 0, inputIcons = 0;
+            string sendLabelBusy = null, sendLabelIdle = null;
+            Sta(() =>
+            {
+                var c = new ChatControl { Width = 400, Height = 760 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(true);
+                c.SetConnection("Đã kết nối · Nha-pho.dwg", true);
+                c.LoadTranscript(new ChatTranscript { DrawingName = "Nha-pho.dwg" }, false);
+                // the flat control styles parsed, and a button really got the flat template (no Windows chrome)
+                stylesLoaded = Theme.StylesLoaded;
+                c.Measure(new Size(400, 760));
+                c.Arrange(new Rect(0, 0, 400, 760));
+                c.UpdateLayout();
+                var anyButton = FindAll<Button>(c).First();
+                anyButton.ApplyTemplate();
+                flatButton = anyButton.Template != null && anyButton.Template.FindName("bd", anyButton) is Border;
+                c.SendRequested += m => sendWhileBusy++;
+                c.QueueCancelRequested += () => queueCancel++;
+                c.StopRequested += () => stopOnEsc++;
+                c.ConfirmAnswered += (id, yes) => { if (yes) confirmYes++; };
+                c.ZoomRequested += h => preview += h.Count;
+
+                T Field<T>(string name) => (T)typeof(ChatControl).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(c);
+                var meter = Field<DockPanel>("_usageMeter");
+                var queued = Field<DockPanel>("_queuedRow");
+                var busy = Field<TextBlock>("_busyLine");
+                var send = Field<Button>("_send");
+                var input = Field<TextBox>("_input");
+
+                // usage meter: hidden until there is something to watch
+                c.SetUsageMeter("Hạn mức 5 giờ", -1, "");
+                Pump();
+                meterHidden = meter.Visibility != Visibility.Visible;
+                c.SetUsageMeter("Hạn mức 5 giờ", 0.41, "14:30");
+                Pump();
+                meterShown = meter.Visibility == Visibility.Visible;
+
+                c.AddUserMessage(new ChatEntry { Role = "user", Text = "Xóa hết các đường nét đứt cũ trên layer A-TEMP rồi vẽ lại khung tên" });
+                c.BeginAssistant();
+                c.AppendAssistant("Tớ tìm thấy các đối tượng cần xóa trên layer A-TEMP. Cần cậu đồng ý trước khi xóa.");
+                c.AddConfirmCard("c1", "Xóa 57 đối tượng trên layer A-TEMP (LINE 41 · POLYLINE 12 · TEXT 4). Các layer khác giữ nguyên.", 57, new List<string> { "1A", "1B", "1C" });
+                Pump();
+
+                // while Claude works: busy line on, the send button queues instead of being disabled
+                c.SetBusy(true);
+                Pump();
+                busyShown = busy.Visibility == Visibility.Visible && busy.Text.Contains("Đang làm");
+                sendLabelBusy = send.Content as string;
+                input.Text = "À, tường ngăn phòng ngủ dày 110 thôi";
+                send.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                c.SetQueued("À, tường ngăn phòng ngủ dày 110 thôi");
+                Pump();
+                queuedShown = queued.Visibility == Visibility.Visible;
+                Shot(c, "shell-dang-lam");
+
+                // "Bỏ" on the queued row raises the cancel; hiding it is the controller's answer
+                FindAll<Button>(queued).First().RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                c.SetQueued(null);
+                Pump();
+                queuedHidden = queued.Visibility != Visibility.Visible;
+
+                c.SetBusy(false);
+                Pump();
+                busyHidden = busy.Visibility != Visibility.Visible;
+                sendLabelIdle = send.Content as string;
+
+                // confirmation card: preview + the single accent "Đồng ý"
+                FindAll<Button>(c).First(b => (b.Content as string ?? "").StartsWith("⌖ Xem trên bản vẽ")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                FindAll<Button>(c).First(b => (b.Content as string) == "Đồng ý").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Shot(c, "shell-xac-nhan");
+
+                // the row under the input is icons too: glyph content, "Tên — …" tooltip
+                var inputTips = new[] { "Chọn đối tượng — ", "Lấy điểm — ", "Ảnh — ", "Chụp — " };
+                inputIcons = FindAll<Button>(c).Count(b => b.Content is TextBlock && inputTips.Any(t => (b.ToolTip as string ?? "").StartsWith(t)));
+
+                // error + sign-in cards: glyph + plain text, no red card
+                c.EndAssistant(new ChatEntry { Role = "assistant", Text = "Tớ tìm thấy các đối tượng cần xóa trên layer A-TEMP." }, false, false);
+                c.AddErrorCard("AutoCAD đang bận, Claude chưa vẽ được. Có thể một lệnh hoặc hộp thoại đang mở — bấm Esc trong AutoCAD rồi thử lại.", true);
+                c.AddLoginCard("Phiên đăng nhập Claude đã hết hạn. Yêu cầu vừa rồi chưa được thực hiện.");
+                Shot(c, "shell-loi");
+
+                // settings popup: collapsible groups (Chung, Cách Claude làm việc, An toàn, Tài khoản AI, Trợ giúp)
+                var popup = Field<System.Windows.Controls.Primitives.Popup>("_settingsPopup");
+                var panel = (FrameworkElement)popup.Child;
+                popup.Child = null;
+                var host = new Border { Width = 320, Height = 560, Child = panel, Background = Brushes.Transparent };
+                host.SetValue(TextElement.FontFamilyProperty, new FontFamily("Segoe UI"));
+                Theme.Apply(host.Resources, true);
+                Shot(host, "shell-cai-dat");
+                categories = FindAll<Button>(host).Count(b => (b.ToolTip as string) == "Bấm để mở / thu gọn");
+            });
+            Assert.True(stylesLoaded, "the palette's control styles did not parse");
+            Assert.True(flatButton, "buttons still use the default Windows template");
+            Assert.Equal(4, inputIcons); // Chọn đối tượng, Lấy điểm, Ảnh, Chụp
+            Assert.True(meterHidden, "usage meter must stay hidden with nothing to show");
+            Assert.True(meterShown, "usage meter did not appear");
+            Assert.True(busyShown, "busy line did not appear while a turn runs");
+            Assert.True(busyHidden, "busy line stayed after the turn");
+            Assert.Equal("Gửi thêm", sendLabelBusy);
+            Assert.Equal("Gửi", sendLabelIdle);
+            Assert.Equal(1, sendWhileBusy); // the message typed while busy reaches the controller (which queues it)
+            Assert.True(queuedShown, "queued row did not appear");
+            Assert.Equal(1, queueCancel);
+            Assert.True(queuedHidden, "queued row stayed after the cancel");
+            Assert.Equal(3, preview);
+            Assert.Equal(1, confirmYes);
+            Assert.Equal(5, categories);
+            Assert.Equal(0, stopOnEsc);
+            Assert.True(new FileInfo(Path.Combine(OutDir, "shell-xac-nhan.png")).Length > 5_000);
+            Assert.True(new FileInfo(Path.Combine(OutDir, "shell-cai-dat.png")).Length > 5_000);
+        }
+
+        /// <summary>
+        /// Compact mode (⌄): only the toolbar row, a status line and the input. The conversation is hidden,
+        /// not unloaded; a finished turn shows as one line; a card that needs a decision opens the palette.
+        /// </summary>
+        [Fact]
+        public void CompactModeKeepsTheConversationAndOpensForDecisions()
+        {
+            var events = new List<bool>();
+            bool hiddenWhenCompact = false, noteShown = false, noteCleared = false, backAfterExpand = false, openedByConfirm = false, openedByLine = false;
+            int messagesBefore = 0, messagesAfter = 0;
+            string note = null, glyphCompact = null, glyphFull = null;
+            Sta(() =>
+            {
+                var c = new ChatControl { Width = 400, Height = 640 };
+                c.ApplySettings(new PaletteSettings());
+                c.SetDark(true);
+                c.SetConnection("Đã kết nối · Nha-pho.dwg", true);
+                var t = new ChatTranscript { DrawingName = "Nha-pho.dwg" };
+                t.Entries.Add(new ChatEntry { Role = "user", Text = "Vẽ mặt bằng phòng 4x6m, tường 220, cửa đi 900" });
+                t.Entries.Add(new ChatEntry { Role = "assistant", Text = "Tớ đã vẽ xong phòng 4×6 m, tường 220 và cửa đi 900." });
+                c.LoadTranscript(t, false);
+                c.CompactChanged += on => events.Add(on);
+
+                T Field<T>(string name) => (T)typeof(ChatControl).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(c);
+                var middle = Field<Grid>("_middle");
+                var messages = Field<StackPanel>("_messages");
+                var line = Field<Button>("_compactLine");
+                var toggle = Field<Button>("_compactBtn");
+                messagesBefore = messages.Children.Count;
+
+                // ⌄ on the toolbar
+                toggle.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump();
+                hiddenWhenCompact = c.IsCompact && middle.Visibility != Visibility.Visible;
+                glyphCompact = ((TextBlock)toggle.Content).Text;
+
+                // a turn runs and ends while compact: one line of news, the palette stays compact
+                c.AddUserMessage(new ChatEntry { Role = "user", Text = "Thêm kích thước 4 phía" });
+                c.BeginAssistant();
+                c.SetBusy(true);
+                c.AppendAssistant("Đã thêm kích thước 4 phía trên layer A-DIM.\n\nChi tiết: 8 DIMENSION.");
+                c.EndAssistant(new ChatEntry { Role = "assistant", Text = "Đã thêm kích thước 4 phía trên layer A-DIM.\n\nChi tiết: 8 DIMENSION." }, true, false);
+                c.SetBusy(false);
+                Pump();
+                noteShown = c.IsCompact && line.Visibility == Visibility.Visible;
+                note = ((TextBlock)line.Content).Text;
+                Shot(c, "shell-thu-gon");
+
+                // the status line opens the palette: the conversation is all there
+                line.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                Pump();
+                openedByLine = !c.IsCompact && middle.Visibility == Visibility.Visible;
+                glyphFull = ((TextBlock)toggle.Content).Text;
+                messagesAfter = messages.Children.Count;
+                backAfterExpand = messagesAfter == messagesBefore + 2;
+                noteCleared = line.Visibility != Visibility.Visible;
+
+                // compact again, then Claude needs a decision: the palette opens by itself
+                c.SetCompact(true);
+                Pump();
+                c.BeginAssistant();
+                c.AddConfirmCard("c1", "Xóa 57 đối tượng trên layer A-TEMP.", 57, new List<string> { "1A" });
+                Pump();
+                openedByConfirm = !c.IsCompact && middle.Visibility == Visibility.Visible;
+            });
+            Assert.True(hiddenWhenCompact, "the conversation is still shown in compact mode");
+            Assert.Equal("⌃", glyphCompact);
+            Assert.Equal("⌄", glyphFull);
+            Assert.True(noteShown, "no status line after a turn ended in compact mode");
+            Assert.StartsWith("✓ Đã xong: Đã thêm kích thước 4 phía trên layer A-DIM.", note);
+            Assert.EndsWith("bấm để xem", note);
+            Assert.True(openedByLine, "clicking the status line did not expand the palette");
+            Assert.True(backAfterExpand, $"messages lost or duplicated: {messagesBefore} → {messagesAfter}");
+            Assert.True(noteCleared, "the status line stayed after expanding");
+            Assert.True(openedByConfirm, "a confirmation card did not open the compact palette");
+            Assert.Equal(new[] { true, false, true, false }, events);
+        }
+
+        [Fact]
+        public void ElapsedReadsLikeAPerson()
+        {
+            var elapsed = typeof(ChatControl).GetMethod("Elapsed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.Equal("0 giây", elapsed.Invoke(null, new object[] { TimeSpan.FromSeconds(-3) }));
+            Assert.Equal("12 giây", elapsed.Invoke(null, new object[] { TimeSpan.FromSeconds(12.9) }));
+            Assert.Equal("1 phút 12 giây", elapsed.Invoke(null, new object[] { TimeSpan.FromSeconds(72) }));
         }
 
         private static string FindTemplates()

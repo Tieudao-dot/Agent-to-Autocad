@@ -23,7 +23,7 @@ namespace ClaudeCAD.Plugin
     /// undo / edit / retry, confirmation cards, usage, notifications and theme.
     /// One instance per AutoCAD session.
     /// </summary>
-    public sealed class ChatController : ITurnHost, IDisposable
+    public sealed partial class ChatController : ITurnHost, IDisposable
     {
         private static readonly TimeSpan CancelGrace = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan NotifyAfter = TimeSpan.FromSeconds(8);
@@ -103,7 +103,6 @@ namespace ClaudeCAD.Plugin
 
         // usage (feature 14)
         private string _usageText = "";
-        private string _rateText = "";
 
         public UndoScope Undo { get; } = new UndoScope();
         private string _readyInfo = "";
@@ -113,6 +112,7 @@ namespace ClaudeCAD.Plugin
         {
             var list = new List<(string, bool, string)>
             {
+                ("Kích hoạt (key + trạng thái thiết bị)", Activation.IsAllowed, Activation.StatusText),
                 ("Khung chat đã mở trong phiên này", _started, _started ? "có" : "chưa (gõ CLAUDECHAT để khởi động trợ lý)"),
                 ("Tiến trình trợ lý (Node)", _sidecar.State == SidecarState.Running, _sidecar.State.ToString()),
                 ("Kết nối plugin ↔ trợ lý (named pipe)", _ipc.IsConnected, _ipc.IsConnected ? _ipc.PipeName : "chưa kết nối"),
@@ -141,6 +141,7 @@ namespace ClaudeCAD.Plugin
             var ui = _palette.Control;
             ui.SendRequested += m => Guard("send", () => SendComposed(m));
             ui.StopRequested += () => Guard("stop", Cancel);
+            ui.QueueCancelRequested += () => Guard("queue", ReturnQueuedToInput);
             ui.NewChatRequested += () => Guard("new chat", NewChat);
             ui.PickSelectionRequested += () => Guard("pick", () => MainThread.Post(() => Interaction.Start(Interaction.PickCommand)));
             ui.PickPointRequested += () => Guard("point", () => MainThread.Post(() => Interaction.Start(Interaction.PointCommand)));
@@ -154,8 +155,6 @@ namespace ClaudeCAD.Plugin
             ui.AddSkillRequested += () => Guard("add skill", () => MainThread.Post(AddSkill));
             ui.SkillToggled += (n, on) => Guard("toggle skill", () => ToggleSkill(n, on));
             ui.SkillEditRequested += n => Guard("edit skill", () => EditSkill(n));
-            ui.SkillDeleteRequested += n => Guard("delete skill", () => MainThread.Post(() => DeleteSkill(n)));
-            ui.OpenSkillsFolderRequested += () => Guard("skills folder", OpenSkillsFolder);
             ui.CaptureScreenRequested += () => Guard("capture", () => MainThread.Post(CaptureScreen));
             ui.ReadOnlyToggled += on => Guard("read-only", () => SetReadOnly(on));
             ui.NotesRequested += () => Guard("notes", OpenNotes);
@@ -165,7 +164,6 @@ namespace ClaudeCAD.Plugin
             ui.MacroDeleteRequested += n => Guard("delete macro", () => MainThread.Post(() => DeleteMacro(n)));
             ui.OpenMacrosFolderRequested += () => Guard("macros folder", OpenMacrosFolder);
             ui.TemplateSaveRequested += (t, x) => Guard("save template", () => SaveTemplate(t, x));
-            ui.CreateSkillFromChatRequested += () => Guard("skill from chat", CreateSkillFromChat);
             ui.SkillDraftOpenRequested += f => Guard("open draft", () => OpenFile(f));
             ui.SkillDraftAddRequested += f => Guard("add draft", () => MainThread.Post(() => ImportSkillFiles(new[] { f })));
             ui.PlanAnswered += (id, kind) => Guard("plan", () => AnswerPlan(id, kind));
@@ -184,18 +182,29 @@ namespace ClaudeCAD.Plugin
             ui.ApiKeyClearRequested += () => Guard("api key", ClearApiKey);
             ui.ReportRequested += () => Guard("report", ReportBug);
             ui.LimitAutoRetryToggled += on => Guard("auto retry", () => SetAutoRetry(on));
+            ui.ActivationRequestRequested += () => Guard("activation request", RequestActivation);
+            ui.ActivationKeySubmitted += k => Guard("activation", () => SubmitActivation(k));
+            ui.ActivationCheckRequested += () => Guard("activation check", () => CheckDeviceStatus(manual: true));
             ui.ApiKeyMask = () => ApiKeyStore.HasKey ? ApiKeyStore.Mask(ApiKeyStore.Load()) : null;
 
-            Interaction.SelectionPicked += sel => { _selection = sel; Ui.SetSelectionChip(sel, true); _palette.FocusInput(); };
-            Interaction.ImpliedSelectionChanged += sel => { if (!_busy) { _selection = sel; Ui.SetSelectionChip(sel, false); } };
-            Interaction.PointsPicked += pts => { Ui.InsertAtCaret(Interaction.FormatPoints(pts)); _palette.FocusInput(); };
+            Interaction.SelectionPicked += OnSelectionPicked;
+            Interaction.ImpliedSelectionChanged += OnImpliedSelection;
+            Interaction.PointsPicked += OnPointsPicked;
 
             var dm = AcApp.DocumentManager;
             dm.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
             dm.DocumentActivated += OnDocumentActivated;
-            dm.DocumentCreated += (s, e) => WatchDoc(e.Document);
+            dm.DocumentCreated += OnDocumentCreated;
             DrawingHistory.Instance.ObjectChanged += OnDbChanged; // one subscription to the database events for the whole plugin
             AcApp.SystemVariableChanged += OnSystemVariableChanged;
+            // AutoCAD's own theme notification; COLORTHEME above still covers the versions without it.
+            AcadTheme.Subscribe(() => Quiet("acad theme", OnAcadThemeChanged));
+        }
+
+        private void OnAcadThemeChanged()
+        {
+            if (_disposed) return;
+            Ui.Dispatcher.BeginInvoke((Action)(() => Quiet("acad theme", ApplyTheme)));
         }
 
         private ChatControl Ui => _palette.Control;
@@ -220,7 +229,13 @@ namespace ClaudeCAD.Plugin
                 _ipc.Start();
                 UpdateService.CheckInBackground(msg => { Ui.AddNote(msg); Ui.ShowToast(msg, ChatControl.ToastKind.Info, 10); }); // phase 3: daily update check
             }
-            _sidecar.EnsureStarted();
+            // no Node / Claude Code process on a machine without a licence (or one the owner locked): it would run for nothing
+            if (!Activation.IsActivated) ShowActivationCard();
+            else if (Activation.DeviceAllowed) _sidecar.EnsureStarted();
+            else ShowLockedCard();
+            // the owner's Active/Disabled decision: checked now and every ~6 hours — also on a machine still waiting
+            // for approval, so a machine the owner set Active unlocks by itself at the next AutoCAD start
+            StartDeviceWatch();
         }
 
         /// <summary>CLAUDECHATUPDATE: check now and stage the update if there is one.</summary>
@@ -249,7 +264,7 @@ namespace ClaudeCAD.Plugin
         public void RestartSidecar()
         {
             ShowPalette();
-            _sidecar.Restart();
+            RestartSidecarQuietly();
         }
 
         private void WatchDoc(Document d)
@@ -263,7 +278,10 @@ namespace ClaudeCAD.Plugin
         }
 
         /// <summary>Any drawing change outside a chat turn (Properties palette, grips...) makes "Hoàn tác lượt này" unsafe.</summary>
-        private void OnDbChanged(Autodesk.AutoCAD.DatabaseServices.Database db, Autodesk.AutoCAD.DatabaseServices.DBObject obj, string kind, bool erased)
+        private void OnDbChanged(Autodesk.AutoCAD.DatabaseServices.Database db, Autodesk.AutoCAD.DatabaseServices.DBObject obj, string kind, bool erased) =>
+            Quiet("database event", () => OnDbChangedCore(db, obj, kind, erased));
+
+        private void OnDbChangedCore(Autodesk.AutoCAD.DatabaseServices.Database db, Autodesk.AutoCAD.DatabaseServices.DBObject obj, string kind, bool erased)
         {
             if (_busy)
             {
@@ -286,7 +304,6 @@ namespace ClaudeCAD.Plugin
         private void OnSettingsChanged(PaletteSettings s)
         {
             string oldModel = _settings.Model, oldEffort = _settings.Effort, oldTheme = _settings.Theme;
-            _settings.Standard = s.Standard;
             _settings.Scale = s.Scale;
             _settings.Model = s.Model;
             _settings.Effort = s.Effort;
@@ -319,11 +336,21 @@ namespace ClaudeCAD.Plugin
 
         private void ApplyTheme()
         {
-            bool dark = _settings.Theme == "dark" || (_settings.Theme != "light" && Theme.AutoCadIsDark());
-            Ui.SetDark(dark);
+            // Colors and font come from AutoCAD's own palette theme; COLORTHEME (and our built-in set)
+            // are the fallback when that API is not reachable.
+            var acad = AcadTheme.Read();
+            bool dark = _settings.Theme == "dark"
+                || (_settings.Theme != "light" && (acad?.IsDark ?? Theme.AutoCadIsDark()));
+            // AutoCAD's colors only fit the theme they came from; its font fits either way.
+            var paint = acad == null || acad.IsDark == null || acad.IsDark == dark ? acad : acad.FontOnly();
+            Ui.SetDark(dark, paint);
+            StatusTray.OnThemeChanged();
         }
 
-        private void OnSystemVariableChanged(object sender, Autodesk.AutoCAD.ApplicationServices.SystemVariableChangedEventArgs e)
+        private void OnSystemVariableChanged(object sender, Autodesk.AutoCAD.ApplicationServices.SystemVariableChangedEventArgs e) =>
+            Quiet("system variable", () => OnSystemVariableChangedCore(sender, e));
+
+        private void OnSystemVariableChangedCore(object sender, Autodesk.AutoCAD.ApplicationServices.SystemVariableChangedEventArgs e)
         {
             if (e.Name.Equals("COLORTHEME", StringComparison.OrdinalIgnoreCase) && _settings.Theme == "auto") ApplyTheme();
         }
@@ -355,22 +382,63 @@ namespace ClaudeCAD.Plugin
             }
         }
 
+        private readonly object _skillDebounceLock = new object();
+
+        /// <summary>
+        /// File watcher events come on several threads at once: one timer, pushed back 1.5 s by every event,
+        /// so one save = one reload (two unlocked timers both fired before: two toasts, two restarts).
+        /// </summary>
+        private bool _disposed;
+
         private void ScheduleSkillReload()
         {
-            _skillDebounce?.Dispose();
-            _skillDebounce = new System.Threading.Timer(_ => Ui.Enqueue(() =>
+            lock (_skillDebounceLock)
             {
-                RefreshSkills();
-                ReloadSkillsInAgent();
-                Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
-            }), null, 1500, System.Threading.Timeout.Infinite);
+                if (_disposed) return; // a watcher event still in flight while AutoCAD closes
+                if (_skillDebounce == null)
+                    _skillDebounce = new System.Threading.Timer(_ => Ui.Enqueue(() =>
+                    {
+                        RefreshSkills();
+                        ReloadSkillsInAgent();
+                        Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
+                    }), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                try { _skillDebounce.Change(1500, System.Threading.Timeout.Infinite); }
+                catch (ObjectDisposedException) { }
+            }
         }
 
+        private List<SkillInfo> _library = new List<SkillInfo>();
+
+        /// <summary>Re-reads the library (skill folder) and shows it with the skills of the current chat.</summary>
         private List<SkillInfo> RefreshSkills()
         {
-            var list = _skillStore?.Scan() ?? new List<SkillInfo>();
-            Ui.SetSkills(list);
-            return list;
+            _library = _skillStore?.Scan() ?? new List<SkillInfo>();
+            Ui.SetSkills(_library, ChatSkills());
+            return _library;
+        }
+
+        /// <summary>
+        /// Skills of the current chat: its own list ("−" / "+"), else those of the most recent chat (first time:
+        /// the skills the user had added and enabled before; never the shipped samples). Missing skills are dropped.
+        /// </summary>
+        private List<string> ChatSkills() => SkillSelection.ForChat(_transcript?.Skills, _settings.LastSkills, _library);
+
+        /// <summary>
+        /// The chat's choice as the user made it, before dropping skills that are missing or broken right now
+        /// (a SKILL.md being edited must not fall out of the chat for good). Stored on send / − / + / import only,
+        /// so a drawing without a chat of its own keeps following the most recent chat until it is used.
+        /// </summary>
+        private List<string> ChatSkillChoice() => SkillSelection.Choice(_transcript?.Skills, _settings.LastSkills, _library);
+
+        /// <summary>The chat's skill list changed (or a message was sent): it is the "most recent chat" for new chats.</summary>
+        private void RememberChatSkills(List<string> list)
+        {
+            if (_transcript != null) _transcript.Skills = list.ToList();
+            if (_settings.LastSkills == null || !_settings.LastSkills.SequenceEqual(list))
+            {
+                _settings.LastSkills = list.ToList();
+                _settings.Save();
+            }
         }
 
         private void ReloadSkillsInAgent() => _ipc.Send(new Dictionary<string, object> { ["type"] = "reload_skills" });
@@ -426,7 +494,7 @@ namespace ClaudeCAD.Plugin
                             break;
                         default:
                             added.Add(r.Name);
-                            Ui.AddNote("✓ " + r.Message + " Skill đang bật; Claude dùng từ tin nhắn tiếp theo (vẫn nhớ cuộc chat).");
+                            Ui.AddNote("✓ " + r.Message + " Đã dùng trong đoạn chat này; Claude áp dụng từ tin nhắn tiếp theo (vẫn nhớ cuộc chat).");
                             break;
                     }
                 }
@@ -436,22 +504,27 @@ namespace ClaudeCAD.Plugin
                 if (_skillWatcher != null) _skillWatcher.EnableRaisingEvents = true;
             }
             if (added.Count == 0) return;
+            _library = _skillStore.Scan();
+            // a skill added with "+ Add skill" is used in the current chat right away
+            var list = ChatSkillChoice();
+            foreach (var n in added) list = SkillSelection.Toggle(list, n, true);
+            RememberChatSkills(list);
+            SaveTranscript();
             RefreshSkills();
             ReloadSkillsInAgent();
         }
 
-        private void ToggleSkill(string name, bool on)
+        /// <summary>"+" / "−" in the skill list: use the skill in this chat or not (the library keeps it).</summary>
+        private void ToggleSkill(string name, bool use)
         {
-            _skillStore?.SetEnabled(name, on);
+            if (_transcript == null) { Ui.SetToolStatus("Mở một bản vẽ trước."); return; }
+            var list = SkillSelection.Toggle(ChatSkillChoice(), name, use);
+            RememberChatSkills(list);
+            SaveTranscript();
             RefreshSkills();
-            ReloadSkillsInAgent();
-            Ui.SetToolStatus(on ? $"Đã bật skill {name}." : $"Đã tắt skill {name}.");
-            if (!on && _settings.Standard == name)
-            {
-                _settings.Standard = "";
-                _settings.Save();
-                Ui.ApplySettings(_settings);
-            }
+            Ui.SetToolStatus(use
+                ? $"Đoạn chat này dùng skill {name} từ tin nhắn tiếp theo."
+                : $"Đoạn chat này không dùng skill {name} nữa (vẫn còn trong thư viện, bấm + để dùng lại).");
         }
 
         private void EditSkill(string name)
@@ -461,28 +534,6 @@ namespace ClaudeCAD.Plugin
             try { Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); }
             catch { Process.Start("notepad.exe", "\"" + file + "\""); } // no .md editor associated
             Ui.SetToolStatus($"Đang mở {name}\\SKILL.md — lưu file là xong, plugin tự nạp lại.");
-        }
-
-        private void DeleteSkill(string name)
-        {
-            var answer = System.Windows.MessageBox.Show(
-                $"Xóa skill \"{name}\" khỏi plugin?\n\nThư mục {Path.Combine(_skillStore.Root, name)} sẽ bị xóa.",
-                "ClaudeCAD — xóa skill", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
-            if (_skillWatcher != null) _skillWatcher.EnableRaisingEvents = false;
-            try { _skillStore.Delete(name); }
-            finally { if (_skillWatcher != null) _skillWatcher.EnableRaisingEvents = true; }
-            if (_settings.Standard == name) { _settings.Standard = ""; _settings.Save(); Ui.ApplySettings(_settings); }
-            RefreshSkills();
-            ReloadSkillsInAgent();
-            Ui.AddNote($"Đã xóa skill \"{name}\".");
-        }
-
-        private void OpenSkillsFolder()
-        {
-            var root = _skillStore?.Root ?? SkillsRoot;
-            Directory.CreateDirectory(root);
-            Process.Start("explorer.exe", "\"" + root + "\"");
         }
 
         // ================================================================= per-drawing history (17)
@@ -506,6 +557,14 @@ namespace ClaudeCAD.Plugin
         private void LoadTranscriptFor(Document doc)
         {
             SaveTranscript();
+            // the request waiting for the usage limit belongs to the drawing we leave: never resend it into another one
+            if (doc != _transcriptDoc)
+            {
+                if (CancelAutoRetry()) Ui.ShowToast("Đã hủy tự gửi lại vì cậu chuyển sang bản vẽ khác.", ChatControl.ToastKind.Info, 6);
+                _lastPayload = null;
+                _lastUserEntry = null;
+            }
+            _activationCardShown = false; // the card (if any) went away with the old conversation
             _chatGen++;
             _pendingConfirm = null;
             _pendingPlan = null;
@@ -520,6 +579,7 @@ namespace ClaudeCAD.Plugin
             Ui.CloseDrawingPanels(); // notes / layer picker belong to the previous drawing
             UpdateNotesIndicator();
             RefreshVersions();
+            if (_skillStore != null) RefreshSkills(); // this drawing's chat has its own skills
             SendSwitchSession();
         }
 
@@ -538,9 +598,71 @@ namespace ClaudeCAD.Plugin
 
         // ================================================================= sending
 
+        /// <summary>Why the status bar icon should ask for attention when the running turn ends (null = no reason).</summary>
+        private string _trayAttention;
+
+        /// <summary>
+        /// End of a turn on the status bar: the state dot, and a bubble when the chat is not in view
+        /// (palette closed or rolled up) — with the palette open the news is already on screen.
+        /// </summary>
+        private void ReportTurnOnTray(ChatEntry assistant, string errorNote, bool limitHit)
+        {
+            string attention = _trayAttention;
+            _trayAttention = null;
+            if (!string.IsNullOrEmpty(errorNote) || limitHit) attention = limitHit ? "đã hết hạn mức sử dụng" : "lượt vừa rồi bị lỗi";
+            StatusTray.Set(attention != null ? StatusTray.State.Attention
+                : _ipc.IsConnected ? StatusTray.State.Ready : StatusTray.State.Offline, attention);
+            if (!_settings.Notify || _palette.InView) return;
+            string text = attention != null
+                ? "Claude " + attention + "."
+                : "Claude đã xong: " + (MarkdownLite.ToPlainText(assistant?.Text ?? "").Split('\n').FirstOrDefault(l => l.Trim().Length > 0)?.Trim() ?? "xem kết quả trong khung chat.");
+            if (text.Length > 140) text = text.Substring(0, 140).TrimEnd() + "…";
+            StatusTray.Bubble("ClaudeCAD", text);
+        }
+
+        /// <summary>Typed while a turn was running: sent as the next message when that turn ends cleanly.</summary>
+        private ComposedMessage _queued;
+        /// <summary>The running turn showed a confirmation / plan card: a queued message must not answer it.</summary>
+        private bool _turnAsked;
+
+        private void QueueWhileBusy(ComposedMessage m)
+        {
+            if (_macroRunning)
+            {
+                Ui.SetInputText(m.Text);
+                Ui.SetToolStatus("Đợi macro chạy xong rồi gửi.");
+                return;
+            }
+            if (_queued == null) _queued = m;
+            else
+            {
+                // more ideas while waiting: one message, in the order they were typed
+                _queued.Text = _queued.Text + "\n" + m.Text;
+                _queued.Images.AddRange(m.Images);
+            }
+            Ui.SetQueued(_queued.Text);
+        }
+
+        /// <summary>Gives the queued message back to the input box (stop, error, a question to answer first).</summary>
+        private void ReturnQueuedToInput()
+        {
+            var q = _queued;
+            _queued = null;
+            Ui.SetQueued(null);
+            if (q != null && !string.IsNullOrWhiteSpace(q.Text)) Ui.SetInputText(q.Text);
+        }
+
         private void SendComposed(ComposedMessage m)
         {
-            if (_busy) return;
+            if (_busy) { QueueWhileBusy(m); return; }
+            if (!RequireActivation()) { Ui.SetInputText(m.Text); return; }
+            if (DateTime.UtcNow < _restartingUntil)
+            {
+                // the old assistant is being stopped: a message now would start a turn that dies with it
+                Ui.SetInputText(m.Text);
+                Ui.SetToolStatus("Trợ lý đang khởi động lại — đợi vài giây rồi gửi lại.");
+                return;
+            }
             if (IsVersionDoc(AcApp.DocumentManager.MdiActiveDocument))
             {
                 Ui.SetInputText(m.Text);
@@ -591,6 +713,7 @@ namespace ClaudeCAD.Plugin
         private void Send(ComposedMessage m, bool edited, string confirm = null, string plan = null)
         {
             if (_busy) return;
+            if (!RequireActivation()) return; // retry / edit / plan answers come here without SendComposed
             CancelAutoRetry(); // a new request replaces the one waiting for the limit
             Document doc = AcApp.DocumentManager.MdiActiveDocument;
             if (RefuseOnVersionTab(doc, m.Text)) return;
@@ -598,6 +721,9 @@ namespace ClaudeCAD.Plugin
 
             var payload = new Dictionary<string, object> { ["type"] = "user_message", ["text"] = m.Text };
             if (doc != null) payload["drawing"] = SafeDocName(doc);
+            // the skills of this chat: the assistant loads exactly these (and tells Claude about "−" / "+")
+            payload["skills"] = ChatSkills().Cast<object>().ToList();
+            RememberChatSkills(ChatSkillChoice()); // this chat is now the most recent one
             var attachments = new Dictionary<string, object>();
             int selCount = 0;
             if (m.IncludeSelection && _selection != null && _selection.Count > 0)
@@ -631,7 +757,6 @@ namespace ClaudeCAD.Plugin
                 attachments["images"] = m.Images.Select(i => (object)new Dictionary<string, object> { ["media_type"] = i.MediaType, ["data"] = i.Base64 }).ToList();
             if (attachments.Count > 0) payload["attachments"] = attachments;
             var ctx = new Dictionary<string, object>();
-            if (!string.IsNullOrEmpty(_settings.Standard)) ctx["standard"] = _settings.Standard;
             if (!string.IsNullOrEmpty(_settings.Scale)) ctx["scale"] = _settings.Scale;
             if (_transcript?.ReadOnly == true) ctx["read_only"] = true;
             var notes = NotesFor(doc);
@@ -683,7 +808,10 @@ namespace ClaudeCAD.Plugin
             if (RefuseOnVersionTab(doc, null)) return;
             lock (_gate)
             {
+                // two Retry() posts in one pump cycle (auto-retry timer + "Thử lại") would start the same turn twice
+                if (_busy) return;
                 _busy = true;
+                _turnCancelled = false;
                 _turnSeq++;
                 if (payload != null) payload["turn_id"] = "t-" + _turnSeq.ToString(CultureInfo.InvariantCulture);
                 _turnDoc = doc;
@@ -717,18 +845,29 @@ namespace ClaudeCAD.Plugin
             SaveTranscript();
             Ui.AddUserMessage(userEntry);
             Ui.SetBusy(true);
+            _turnAsked = false;
+            _trayAttention = null;
+            StatusTray.Set(StatusTray.State.Busy);
             Ui.SetToolStatus(toAgent ? "Claude đang suy nghĩ..." : "Đang chạy macro...");
             Ui.BeginAssistant();
             if (!toAgent) return;
             _ipc.SendAsync(payload).ContinueWith(t =>
             {
-                if (!t.Result) EndTurn("Gửi tin nhắn thất bại: mất kết nối với trợ lý.", true);
+                if (t.IsFaulted) Logger.Error("send user_message failed", t.Exception?.GetBaseException());
+                if (t.IsFaulted || !t.Result) EndTurn("Gửi tin nhắn thất bại: mất kết nối với trợ lý.", true);
             });
         }
 
         private void Retry()
         {
             if (_busy || _lastPayload == null) return;
+            if (!RequireActivation()) return; // no assistant (re)start on a machine without the owner's permission
+            if (AcApp.DocumentManager.MdiActiveDocument != _transcriptDoc)
+            {
+                // the last request was made in another drawing (or that drawing was closed)
+                Ui.SetToolStatus("Yêu cầu trước thuộc bản vẽ khác — gõ lại yêu cầu cho bản vẽ này.");
+                return;
+            }
             var copy = new ChatEntry { Role = "user", Text = _lastUserEntry?.Text ?? "", SelectionCount = _lastUserEntry?.SelectionCount ?? 0, ImageCount = _lastUserEntry?.ImageCount ?? 0, Layers = _lastUserEntry?.Layers?.ToList() ?? new List<string>() };
             if (!_ipc.IsConnected)
             {
@@ -762,6 +901,7 @@ namespace ClaudeCAD.Plugin
             if (!_busy) return;
             if (_macroRunning) { _macroCancel = true; Ui.SetToolStatus("Đang dừng macro..."); return; }
             int seq = _turnSeq;
+            ReturnQueuedToInput(); // stopping means rethinking: do not fire the queued message on its own
             Ui.SetToolStatus("Đang dừng...");
             _ipc.Send(new Dictionary<string, object> { ["type"] = "cancel" });
             Task.Delay(CancelGrace).ContinueWith(_ =>
@@ -780,19 +920,24 @@ namespace ClaudeCAD.Plugin
             _chatGen++;
             _pendingConfirm = null;
             _pendingPlan = null;
+            ReturnQueuedToInput();
             if (_macroRunning) { _macroCancel = true; _macroRunning = false; }
             CancelAutoRetry();
+            _lastPayload = null; // "Thử lại" must not resend the old request into the new chat
+            _lastUserEntry = null;
+            _activationCardShown = false;
             try { History.Reset(_transcriptDoc, KeyFor(_transcriptDoc), DrawingPathOf(_transcriptDoc)); }
             catch (Exception ex) { Logger.Warn("snapshot reset failed: " + ex.Message); }
             if (_transcript != null)
             {
                 _transcript.Entries.Clear();
                 _transcript.SessionId = null;
+                _transcript.Skills = null; // a new chat starts with the skills of the most recent chat (LastSkills)
                 SaveTranscript();
                 Ui.LoadTranscript(_transcript, false);
             }
             _undoAvailable = false;
-            if (_sidecar.State == SidecarState.Failed) _sidecar.Restart();
+            if (_sidecar.State == SidecarState.Failed) { if (Activation.IsAllowed) _sidecar.Restart(); }
             else _ipc.Send(new Dictionary<string, object> { ["type"] = "new_session" });
         }
 
@@ -849,6 +994,10 @@ namespace ClaudeCAD.Plugin
                     lock (_gate) { _turnDoc = null; _turnInvalidReason = null; }
                     Ui.DiscardAssistant();
                     Ui.SetBusy(false);
+                    ReturnQueuedToInput(); // it was written for the other chat
+                    _turnAsked = false;
+                    _trayAttention = null;
+                    StatusTray.Set(_ipc.IsConnected ? StatusTray.State.Ready : StatusTray.State.Offline);
                     return;
                 }
                 lock (_gate)
@@ -864,11 +1013,16 @@ namespace ClaudeCAD.Plugin
                     bool canMacro = macroCalls != null;
                     if (canMacro) { _turnMacros.Remove(assistant); _turnMacros.Add(assistant, macroCalls); }
                     _transcript?.Entries.Add(assistant);
+                    Ui.EndProgress(string.IsNullOrEmpty(errorNote) && !_turnCancelled);
                     Ui.EndAssistant(assistant, wrote, canMacro);
                 }
                 else Ui.DiscardAssistant();
                 // an agent error without any reply (login, rate limit, crash) becomes a retry card
                 if (string.IsNullOrEmpty(errorNote) && empty && !string.IsNullOrEmpty(_lastError)) errorNote = _lastError;
+                // the usage limit already has its own card for this turn: no second, generic "Lượt bị lỗi" card
+                bool limitHit = _limitHitTurn == _turnSeq;
+                if (limitHit) errorNote = null;
+                else _rearmAutoRetry = false; // the resent request went through
                 if (!string.IsNullOrEmpty(errorNote))
                 {
                     _transcript?.Entries.Add(new ChatEntry { Role = "error", Text = errorNote });
@@ -876,17 +1030,34 @@ namespace ClaudeCAD.Plugin
                 }
                 SaveTranscript();
                 Ui.SetBusy(false);
-                if (_settings.Suggestions && suggestions.Count > 0 && string.IsNullOrEmpty(errorNote)) Ui.AddSuggestions(suggestions);
+                if (_settings.Suggestions && suggestions.Count > 0 && string.IsNullOrEmpty(errorNote) && !limitHit) Ui.AddSuggestions(suggestions);
                 if (usage != null) ShowUsage(usage);
-                MaybeNotify(assistant, errorNote, started);
+                if (!limitHit) MaybeNotify(assistant, errorNote, started); // a turn stopped by the limit is not "xong"
+                ReportTurnOnTray(assistant, errorNote, limitHit);
                 if (_pendingSwitch)
                 {
                     _pendingSwitch = false;
                     var active = AcApp.DocumentManager.MdiActiveDocument;
                     if (!IsVersionDoc(active) && active != _transcriptDoc) LoadTranscriptFor(active);
                 }
+                bool answering = _pendingConfirm.HasValue || _pendingPlan.HasValue;
                 if (_pendingConfirm.HasValue) { var c = _pendingConfirm.Value; _pendingConfirm = null; AnswerConfirm(c.id, c.yes); }
                 if (_pendingPlan.HasValue) { var pp = _pendingPlan.Value; _pendingPlan = null; AnswerPlan(pp.id, pp.kind); }
+                if (_queued != null && !answering)
+                {
+                    // Send it only after a clean turn that asked nothing: after an error, a usage limit or a
+                    // "đồng ý?" card the text goes back to the input box and the user decides.
+                    bool clean = string.IsNullOrEmpty(errorNote) && !limitHit && !_turnAsked;
+                    if (clean)
+                    {
+                        var q = _queued;
+                        _queued = null;
+                        Ui.SetQueued(null);
+                        MainThread.Post(() => SendComposed(q));
+                    }
+                    else ReturnQueuedToInput();
+                }
+                _turnAsked = false;
             }));
         }
 
@@ -903,7 +1074,7 @@ namespace ClaudeCAD.Plugin
             double outT = u.TryGetValue("output_tokens", out var b) && b is double y ? y : 0;
             string cost = u.TryGetValue("session_cost_usd", out var c) && c is double z ? $" · phiên ≈ ${z.ToString("0.00", CultureInfo.InvariantCulture)}" : "";
             _usageText = $"Lượt vừa rồi: ↑{Kilo(inT)} ↓{Kilo(outT)} token{cost}";
-            Ui.SetUsage(_usageText + _rateText);
+            Ui.SetUsage(_usageText);
         }
 
         private static string Kilo(double n) => n >= 1000 ? (n / 1000).ToString("0.0", CultureInfo.InvariantCulture) + "k" : n.ToString("0", CultureInfo.InvariantCulture);
@@ -938,7 +1109,9 @@ namespace ClaudeCAD.Plugin
             });
         }
 
-        private void OnCommandEnded(object sender, CommandEventArgs e)
+        private void OnCommandEnded(object sender, CommandEventArgs e) => Quiet("command ended", () => OnCommandEndedCore(sender, e));
+
+        private void OnCommandEndedCore(object sender, CommandEventArgs e)
         {
             var name = e.GlobalCommandName ?? "";
             if (name.StartsWith("CLAUDECAD_", StringComparison.OrdinalIgnoreCase)) return;
@@ -1168,6 +1341,7 @@ namespace ClaudeCAD.Plugin
 
         private void RunMacro(string name, bool atPoint)
         {
+            if (!RequireActivation()) return;
             if (_busy) { Ui.SetToolStatus("Đợi lượt hiện tại xong rồi chạy macro."); return; }
             if (_macroStore == null) _macroStore = new MacroStore(MacrosRoot);
             Macro m;
@@ -1404,21 +1578,6 @@ namespace ClaudeCAD.Plugin
             }
         }
 
-        private void CreateSkillFromChat()
-        {
-            if (_busy) { Ui.SetToolStatus("Đợi lượt hiện tại xong đã."); return; }
-            if (_transcript == null || _transcript.Entries.Count(e => e.Role == "user") == 0)
-            {
-                Ui.AddNote("Chưa có cuộc chat nào để tạo skill. Làm vài yêu cầu, chỉnh chuẩn theo ý cậu, rồi bấm lại.", true);
-                return;
-            }
-            MainThread.Post(() => Send(new ComposedMessage
-            {
-                Text = "Tạo skill từ cuộc chat này: soạn một SKILL.md ghi lại các chuẩn, quy ước và thông số tớ đã dùng hoặc đã chỉnh trong cuộc chat " +
-                       "(layer, màu, nét, chiều cao chữ, kiểu kích thước, ký hiệu, trình tự làm). Gọi propose_skill để tớ xem lại; không vẽ gì.",
-            }, false));
-        }
-
         private static string SkillDraftsRoot =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeCAD", "skill-drafts");
 
@@ -1443,12 +1602,18 @@ namespace ClaudeCAD.Plugin
             catch { Process.Start("notepad.exe", "\"" + file + "\""); }
         }
 
+        /// <summary>Steps of each plan card (by id), and the steps report_progress refers to (the approved plan).</summary>
+        private readonly Dictionary<string, List<string>> _planSteps = new Dictionary<string, List<string>>();
+        private List<string> _progressSteps;
+        private bool _turnCancelled;
+
         private void AnswerPlan(string id, string kind)
         {
             if (_busy) { _pendingPlan = (id, kind); return; } // the card arrived before the turn ended
             switch (kind)
             {
                 case "go":
+                    lock (_gate) _progressSteps = _planSteps.TryGetValue(id, out var approved) ? approved : null;
                     MainThread.Post(() => Send(new ComposedMessage { Text = "Làm theo kế hoạch." }, false, null, "approved"));
                     break;
                 case "edit":
@@ -1479,9 +1644,14 @@ namespace ClaudeCAD.Plugin
                     _loginRunning = false;
                     if (status.LoggedIn == true)
                     {
-                        Ui.AddNote("✓ Đã đăng nhập Claude. Trợ lý khởi động lại với tài khoản này — cậu gõ yêu cầu được rồi.");
+                        if (ApiKeyStore.HasKey)
+                            Ui.AddNote("✓ Đã đăng nhập Claude, nhưng plugin vẫn dùng API key đã lưu (được ưu tiên hơn tài khoản). Muốn dùng tài khoản Claude: ⚙ ▸ Dùng API key ▸ Xóa key đã lưu.", true);
+                        else if (ClaudeAuth.ApiKeyInUse)
+                            Ui.AddNote("✓ Đã đăng nhập Claude, nhưng máy đang đặt biến môi trường ANTHROPIC_API_KEY (được ưu tiên hơn tài khoản). Muốn dùng tài khoản Claude: xóa biến đó trong Windows rồi mở lại AutoCAD.", true);
+                        else
+                            Ui.AddNote("✓ Đã đăng nhập Claude. Trợ lý khởi động lại với tài khoản này — cậu gõ yêu cầu được rồi.");
                         Ui.ShowToast("Đã đăng nhập Claude.", ChatControl.ToastKind.Success);
-                        _sidecar.Restart();
+                        RestartSidecarQuietly();
                     }
                     else Ui.AddLoginCard("Chưa đăng nhập xong (" + status.Label + "). Bấm lại để thử lần nữa.");
                 }));
@@ -1506,10 +1676,14 @@ namespace ClaudeCAD.Plugin
             kind == "five_hour" ? "hạn mức 5 giờ" : kind != null && kind.StartsWith("seven_day") ? "hạn mức tuần" : "hạn mức sử dụng";
 
         /// <summary>Limit reached: one card per turn in the conversation, plus a toast.</summary>
-        private void ShowLimitCard(string code)
+        private int _limitHitTurn = -1;
+        private bool _rearmAutoRetry;
+        private int _rearmCount;
+
+        private void ShowLimitCard(string code, int turn)
         {
-            if (_limitCardTurn == _turnSeq) return;
-            _limitCardTurn = _turnSeq;
+            if (_limitCardTurn == turn) return; // one card per turn (agent_error + rate_limit event)
+            _limitCardTurn = turn;
             if (code == "billing_error")
             {
                 Ui.AddLimitCard("Tài khoản Claude hết hạn mức thanh toán", "Gói đã hết hạn hoặc thanh toán bị lỗi. Kiểm tra trên claude.ai (Settings ▸ Billing), hoặc dùng API key.", null, false, false);
@@ -1521,6 +1695,19 @@ namespace ClaudeCAD.Plugin
             var detail = $"Gói Claude đã dùng hết {label}.{when} Yêu cầu vừa rồi chưa được thực hiện" +
                          (_lastPayload != null ? " — bấm \"Tự gửi lại\" để plugin gửi lại khi có hạn mức." : ".") +
                          " Muốn dùng ngay: dùng API key Anthropic (trả theo lượng dùng).";
+            if (_rearmAutoRetry)
+            {
+                _rearmAutoRetry = false;
+                // only for a real, future reset time (else it would resend every 5 s), at most 3 times in a row, and
+                // only when the resent turn did nothing yet (no objects changed: resending would do the work twice)
+                if (_rateResetsAt.HasValue && _rateResetsAt.Value > DateTime.Now.AddMinutes(1) && _lastPayload != null
+                    && _turnHandles.Count == 0 && _rearmCount < 3)
+                {
+                    _rearmCount++;
+                    SetAutoRetry(true);
+                }
+            }
+            else _rearmCount = 0;
             Ui.AddLimitCard("Đã chạm giới hạn sử dụng Claude", detail, _rateResetsAt, _lastPayload != null && _rateResetsAt.HasValue, _autoRetryOn);
             Ui.ShowToast($"Hết {label}" + (_rateResetsAt.HasValue ? $" — dùng lại lúc {_rateResetsAt.Value:HH:mm}" : ""), ChatControl.ToastKind.Error, 8);
             _transcript?.Entries.Add(new ChatEntry { Role = "error", Text = $"Hết {label}.{when}" });
@@ -1532,7 +1719,11 @@ namespace ClaudeCAD.Plugin
             _autoRetryTimer?.Dispose();
             _autoRetryTimer = null;
             _autoRetryOn = on && _rateResetsAt.HasValue && _lastPayload != null;
-            if (!_autoRetryOn) { Ui.ShowToast("Đã hủy tự gửi lại.", ChatControl.ToastKind.Info); return; }
+            if (!_autoRetryOn)
+            {
+                Ui.ShowToast(on ? "Chưa biết giờ làm mới hạn mức (hoặc không còn yêu cầu để gửi lại) — gửi lại tay khi có hạn mức." : "Đã hủy tự gửi lại.", ChatControl.ToastKind.Info, 6);
+                return;
+            }
             var due = _rateResetsAt.Value.AddSeconds(60) - DateTime.Now;
             if (due < TimeSpan.FromSeconds(5)) due = TimeSpan.FromSeconds(5);
             _autoRetryTimer = new System.Threading.Timer(_ => Ui.Enqueue(() =>
@@ -1541,29 +1732,48 @@ namespace ClaudeCAD.Plugin
                 _autoRetryOn = false;
                 if (_busy || _lastPayload == null) { Ui.ShowToast("Hạn mức đã làm mới — gửi lại yêu cầu khi cậu sẵn sàng.", ChatControl.ToastKind.Info, 8); return; }
                 Ui.ShowToast("Hạn mức đã được làm mới — đang gửi lại yêu cầu vừa rồi.", ChatControl.ToastKind.Success, 6);
+                _rearmAutoRetry = true; // hits the (next) limit again → wait for that one too
                 Retry();
             }), null, due, System.Threading.Timeout.InfiniteTimeSpan);
             Ui.ShowToast($"Sẽ tự gửi lại lúc {_rateResetsAt.Value.AddSeconds(60):HH:mm} (cứ để AutoCAD mở).", ChatControl.ToastKind.Success, 5);
         }
 
-        private void CancelAutoRetry()
+        /// <summary>Turns "Tự gửi lại" off; true when it was on.</summary>
+        private bool CancelAutoRetry()
         {
-            if (!_autoRetryOn) return;
-            _autoRetryOn = false;
             _autoRetryTimer?.Dispose();
             _autoRetryTimer = null;
+            if (!_autoRetryOn) return false;
+            _autoRetryOn = false;
+            return true;
         }
 
         // ================================================================= v0.9.2: account, bug report
 
+        // "claude auth status" starts a process (up to 20 s): opening ⚙ again within 30 s reuses the answer.
+        // Sign-in, sign-out and API key changes clear it.
+        private string _accountText;
+        private DateTime _accountAt = DateTime.MinValue;
+        private int _accountGen;
+        private void ForgetAccountStatus() { _accountAt = DateTime.MinValue; _accountGen++; }
+
         private void RefreshAccountStatus()
         {
+            if (_accountText != null && DateTime.UtcNow - _accountAt < TimeSpan.FromSeconds(30))
+            {
+                Ui.SetAccountStatus(_accountText);
+                return;
+            }
             Ui.SetAccountStatus("Đang kiểm tra...");
+            int gen = _accountGen;
             ClaudeAuth.StatusAsync().ContinueWith(t =>
             {
                 var a = t.IsFaulted ? new AuthStatus { Error = t.Exception?.GetBaseException().Message } : t.Result;
                 var extra = a.Method == "api_key_saved" ? " (" + ApiKeyStore.Mask(ApiKeyStore.Load()) + ")" : "";
-                Ui.SetAccountStatus("Đang dùng: " + a.Label + extra + (string.IsNullOrEmpty(_readyInfo) ? "" : " · " + _readyInfo));
+                var text = "Đang dùng: " + a.Label + extra + (string.IsNullOrEmpty(_readyInfo) ? "" : " · " + _readyInfo);
+                if (gen != _accountGen) return; // signed in / out or key changed meanwhile: this answer is stale
+                if (a.Error == null) { _accountText = text; _accountAt = DateTime.UtcNow; }
+                Ui.SetAccountStatus(text);
             });
         }
 
@@ -1589,8 +1799,12 @@ namespace ClaudeCAD.Plugin
             {
                 if (t.Result)
                 {
-                    Ui.AddNote("Đã đăng xuất tài khoản Claude trên máy này. Bấm ⚙ ▸ Đăng nhập Claude để đăng nhập lại.");
-                    _sidecar.Restart();
+                    Ui.AddNote(ApiKeyStore.HasKey
+                        ? "Đã đăng xuất tài khoản Claude trên máy này. Trợ lý vẫn chạy bằng API key đã lưu (⚙ ▸ Dùng API key ▸ Xóa key đã lưu để ngừng)."
+                        : ClaudeAuth.ApiKeyInUse
+                            ? "Đã đăng xuất tài khoản Claude trên máy này. Trợ lý vẫn chạy bằng biến môi trường ANTHROPIC_API_KEY (xóa biến đó trong Windows để ngừng)."
+                            : "Đã đăng xuất tài khoản Claude trên máy này. Bấm ⚙ ▸ Đăng nhập Claude để đăng nhập lại.");
+                    RestartSidecarQuietly();
                 }
                 else Ui.AddErrorCard("Không đăng xuất được (không thấy Claude Code đi kèm plugin hoặc lệnh bị lỗi). Xóa tay file %USERPROFILE%\\.claude\\.credentials.json nếu cần.", false);
             }));
@@ -1602,7 +1816,7 @@ namespace ClaudeCAD.Plugin
             catch (Exception ex) { Ui.AddErrorCard("Không lưu được API key: " + ex.Message, false); return; }
             Ui.AddNote($"✓ Đã lưu API key {ApiKeyStore.Mask(key)} (mã hóa cho tài khoản Windows này). Trợ lý khởi động lại và dùng key này thay cho tài khoản Claude.");
             Ui.ShowToast("Đã lưu API key — trợ lý đang khởi động lại.", ChatControl.ToastKind.Success);
-            _sidecar.Restart();
+            RestartSidecarQuietly();
         }
 
         private void ClearApiKey()
@@ -1611,7 +1825,7 @@ namespace ClaudeCAD.Plugin
             ApiKeyStore.Clear();
             Ui.AddNote("Đã xóa API key đã lưu. Trợ lý khởi động lại và dùng tài khoản Claude đã đăng nhập" +
                        (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")) ? "." : " — lưu ý: biến môi trường ANTHROPIC_API_KEY vẫn đang được đặt và vẫn được ưu tiên."));
-            _sidecar.Restart();
+            RestartSidecarQuietly();
         }
 
         /// <summary>"Gửi báo cáo lỗi": zip on the Desktop, then Explorer shows it.</summary>
@@ -1655,6 +1869,8 @@ namespace ClaudeCAD.Plugin
         public void ShowWelcome(bool autoLogin)
         {
             ShowPalette();
+            if (!Activation.IsActivated) { ShowActivationCard(); return; } // sign-in comes after the key
+            if (!Activation.DeviceAllowed) { ShowLockedCard(); return; } // the owner locked / has not approved this machine
             ClaudeAuth.StatusAsync().ContinueWith(t =>
             {
                 var auth = t.IsFaulted ? new AuthStatus { Error = t.Exception?.GetBaseException().Message } : t.Result;
@@ -1663,12 +1879,160 @@ namespace ClaudeCAD.Plugin
                 {
                     ("Node.js", node != null, node == null ? "không thấy — cài lại bằng Setup.exe" : (node.IndexOf("ClaudeCAD.bundle", StringComparison.OrdinalIgnoreCase) >= 0 ? "đi kèm plugin" : node)),
                     ("Trợ lý (sidecar)", PluginPaths.AgentEntry != null, PluginPaths.AgentEntry == null ? "không thấy thư mục agent" : "sẵn sàng"),
+                    ("Kích hoạt", true, "mã máy " + Activation.MachineCode),
                     ("Tài khoản Claude", auth.LoggedIn, auth.Label),
                     ("Skill", _skillStore != null, _skillStore == null ? "" : $"{_skillStore.Scan().Count} skill trong plugin"),
                 };
                 Ui.AddWelcomeCard(checks, auth.LoggedIn != true);
                 if (autoLogin && auth.LoggedIn == false) Ui.Enqueue(Login); // not when the state is unknown
             });
+        }
+
+        // ================================================================= v0.9.4: activation
+
+        private bool _activationCardShown;
+        private bool _activating;
+        private bool _autoRequested; // the automatic request is sent once per AutoCAD session at most
+
+        /// <summary>False (and the matching 🔒 card is shown) while this machine may not use the plugin:
+        /// no valid licence, or the owner's device list says Disabled / Chờ duyệt / unreachable too long.</summary>
+        private bool RequireActivation()
+        {
+            if (Activation.IsAllowed) return true;
+            if (!Activation.IsActivated)
+            {
+                ShowActivationCard(force: true); // the palette reuses the live card (brings it into view)
+                Ui.SetToolStatus("Cần kích hoạt ClaudeCAD trên máy này trước. " + Activation.Contact + ".");
+            }
+            else
+            {
+                ShowLockedCard();
+                Ui.SetToolStatus(Activation.BlockedMessage);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The activation card. The first time per day on a machine without a licence the request (machine code +
+        /// device name) is emailed to the owner by itself — like the installer does — so a copied or .zip install
+        /// still reaches the owner.
+        /// </summary>
+        private void ShowActivationCard(bool force = false)
+        {
+            if (_activationCardShown && !force) return;
+            _activationCardShown = true;
+            bool auto = !_autoRequested && Activation.ShouldAutoRequest && Activation.ServiceUrl != null;
+            if (auto) _autoRequested = true;
+            Ui.AddActivationCard(Activation.MachineCode, Activation.DeviceName, Activation.Contact,
+                auto ? "Đang gửi yêu cầu kích hoạt cho chủ plugin..." : "Bấm \"Gửi yêu cầu kích hoạt\" để chủ plugin nhận mã máy qua email, hoặc nhắn mã máy qua Zalo.",
+                canCheck: Activation.ServiceUrl != null);
+            if (auto) RequestActivation();
+        }
+
+        private void RequestActivation()
+        {
+            Activation.RequestAsync().ContinueWith(t =>
+            {
+                var (ok, msg) = t.IsFaulted ? (false, "Không gửi được yêu cầu: " + t.Exception?.GetBaseException().Message) : t.Result;
+                Ui.SetActivationStatus(msg, !ok);
+                if (ok) Ui.ShowToast("Đã gửi yêu cầu kích hoạt", ChatControl.ToastKind.Info, 5);
+            });
+        }
+
+        private void SubmitActivation(string input)
+        {
+            if (_activating) return;
+            _activating = true;
+            Activation.ActivateAsync(input).ContinueWith(t =>
+            {
+                _activating = false;
+                var (ok, msg) = t.IsFaulted ? (false, "Kích hoạt lỗi: " + t.Exception?.GetBaseException().Message) : t.Result;
+                Ui.SetActivationStatus(msg, !ok, ok);
+                if (!ok) return;
+                Ui.ShowToast("Đã kích hoạt ClaudeCAD", ChatControl.ToastKind.Success, 6);
+                Ui.Enqueue(() =>
+                {
+                    StartDeviceWatch();
+                    if (Activation.IsAllowed)
+                    {
+                        _sidecar.EnsureStarted(); // not started while the machine had no licence
+                        ShowWelcome(autoLogin: true); // next step: Claude sign-in (opens by itself when needed)
+                    }
+                    else
+                    {
+                        ShowLockedCard();
+                        CheckDeviceStatus(manual: false); // an old status.txt may hide a fresh approval
+                    }
+                });
+            });
+        }
+
+        // ================================================================= v0.9.4: device list (Google Sheet of the owner)
+
+        private System.Threading.Timer _deviceTimer;
+        private int _deviceChecking;
+
+        /// <summary>🔒 card for a licensed machine the owner locked / has not approved; one live card.</summary>
+        private void ShowLockedCard() => Ui.AddLockedCard(Activation.BlockedMessage);
+
+        /// <summary>
+        /// Checks the owner's decision now and then every ~6 hours (plus at every AutoCAD start), for activated
+        /// machines (lock / unlock) and for machines waiting for approval (Active in the sheet → licence, no key).
+        /// </summary>
+        private void StartDeviceWatch()
+        {
+            if (Activation.ServiceUrl == null || _deviceTimer != null) return;
+            _deviceTimer = new System.Threading.Timer(_ => CheckDeviceStatus(manual: false), null,
+                TimeSpan.FromSeconds(2), TimeSpan.FromHours(6));
+        }
+
+        /// <summary>
+        /// Asks the activation service for this machine's signed status and locks / unlocks the palette when the
+        /// owner's decision changed. manual = the user pressed "Kiểm tra lại" (always report the outcome).
+        /// </summary>
+        private void CheckDeviceStatus(bool manual)
+        {
+            if (Activation.ServiceUrl == null) return;
+            if (System.Threading.Interlocked.Exchange(ref _deviceChecking, 1) == 1) return;
+            bool before = Activation.IsAllowed;
+            Activation.CheckStatusAsync().ContinueWith(t =>
+            {
+                System.Threading.Interlocked.Exchange(ref _deviceChecking, 0);
+                var (ok, msg) = t.IsFaulted
+                    ? (false, "Không kiểm tra được trạng thái: " + t.Exception?.GetBaseException().Message)
+                    : t.Result;
+                bool after = Activation.IsAllowed;
+                if (after == before)
+                {
+                    if (manual) ShowGateStatus(msg, !ok);
+                    return;
+                }
+                Ui.Enqueue(() =>
+                {
+                    if (after)
+                    {
+                        Ui.RemoveLockedCard();
+                        Ui.SetActivationStatus("Chủ plugin đã duyệt máy này — đã kích hoạt.", false, done: true);
+                        Ui.ShowToast("ClaudeCAD đã được mở khóa", ChatControl.ToastKind.Success, 6);
+                        _sidecar.EnsureStarted();
+                        ShowWelcome(autoLogin: true);
+                    }
+                    else
+                    {
+                        _sidecar.Stop(); // no assistant for a machine the owner locked
+                        ShowLockedCard();
+                        Ui.SetToolStatus(Activation.BlockedMessage);
+                        Ui.ShowToast("ClaudeCAD đã bị chủ plugin tạm khóa", ChatControl.ToastKind.Warning, 8);
+                    }
+                });
+            });
+        }
+
+        /// <summary>The answer of a manual check, on whichever 🔒 card is live.</summary>
+        private void ShowGateStatus(string msg, bool error)
+        {
+            if (!Activation.IsActivated) Ui.SetActivationStatus(msg, error);
+            else Ui.SetLockedStatus(msg, error);
         }
 
         // ================================================================= v0.7: version history
@@ -1815,7 +2179,7 @@ namespace ClaudeCAD.Plugin
             catch (Exception ex)
             {
                 Logger.Error("version copy failed", ex);
-                Ui.SetToolStatus("Không lưu được phiên bản trước khi sửa: " + ex.Message);
+                Ui.ShowToast("Không lưu được phiên bản trước khi sửa: " + ex.Message, ChatControl.ToastKind.Warning, 8); // the status line is cleared when the turn ends
             }
         }
 
@@ -1823,9 +2187,12 @@ namespace ClaudeCAD.Plugin
 
         private void OnConnected()
         {
+            _restartExpected = false;
+            _restartingUntil = DateTime.MinValue;
             if (_wasDisconnected) Ui.ShowToast("Đã kết nối lại với trợ lý.", ChatControl.ToastKind.Success);
             _wasDisconnected = false;
             Ui.SetConnection("Đã kết nối, đang khởi tạo phiên...", true);
+            if (!_busy) StatusTray.Set(StatusTray.State.Ready);
             // a (re)started sidecar knows nothing: restore this drawing's conversation and the chosen model
             SendSwitchSession();
             SendOptions();
@@ -1870,6 +2237,7 @@ namespace ClaudeCAD.Plugin
                         string err = msg.TryGetValue("error", out var e) ? e as string : null;
                         var usage = msg.TryGetValue("usage", out var u) ? u as Dictionary<string, object> : null;
                         bool cancelled = msg.TryGetValue("cancelled", out var c) && c is bool cb && cb;
+                        _turnCancelled = cancelled;
                         if (cancelled && string.IsNullOrEmpty(err)) Ui.AddNote("Đã dừng lượt.");
                         EndTurn(string.IsNullOrEmpty(err) ? null : "Lượt bị lỗi: " + err, true, usage);
                         break;
@@ -1880,13 +2248,20 @@ namespace ClaudeCAD.Plugin
                         var code = msg.TryGetValue("code", out var cv0) ? cv0 as string : null;
                         if (code == "rate_limit" || code == "billing_error")
                         {
-                            Ui.Enqueue(() => ShowLimitCard(code));
+                            _limitHitTurn = _turnSeq;
+                            int turn = _turnSeq;
+                            // the SDK's rate_limit event (with the reset time) often comes right after this error:
+                            // wait a moment so the one card shows the time and offers "Tự gửi lại"
+                            int gen = _chatGen;
+                            if (code == "rate_limit") Task.Delay(700).ContinueWith(_ => Ui.Enqueue(() => { if (gen == _chatGen) ShowLimitCard(code, turn); }));
+                            else Ui.Enqueue(() => { if (gen == _chatGen) ShowLimitCard(code, turn); });
                             if (_busy) _lastError = null; // the limit card replaces the generic error card
                             break;
                         }
                         if (code == "authentication_failed" || code == "oauth_org_not_allowed")
                         {
                             Ui.AddLoginCard(m); // one button instead of terminal instructions
+                            _trayAttention = "chưa đăng nhập Claude";
                             if (_busy) _lastError = null;
                             break;
                         }
@@ -1904,7 +2279,9 @@ namespace ClaudeCAD.Plugin
                         string text = msg.TryGetValue("text", out var tv) ? tv as string : "";
                         int? count = msg.TryGetValue("count", out var cv) && cv is double cd ? (int)cd : (int?)null;
                         var hs = msg.TryGetValue("handles", out var hv) && hv is List<object> hl ? hl.OfType<string>().ToList() : null;
+                        _turnAsked = true;
                         Ui.AddConfirmCard(id, text, count, hs);
+                        _trayAttention = "cần cậu xác nhận";
                         Ui.Enqueue(() => _transcript?.Entries.Add(new ChatEntry { Role = "note", Text = "Xác nhận: " + text }));
                         break;
                     }
@@ -1929,14 +2306,20 @@ namespace ClaudeCAD.Plugin
                         string reset = msg.TryGetValue("resets_at", out var rv) && rv is double rd
                             ? DateTimeOffset.FromUnixTimeSeconds((long)rd).LocalDateTime.ToString("HH:mm dd/MM", CultureInfo.InvariantCulture) : "";
                         string label = LimitLabel(kind);
-                        _rateText = status == "allowed" && util < 0.5 ? "" :
-                            $" · {label}{(util >= 0 ? $" {util * 100:0}%" : "")}{(status == "rejected" ? " — đã hết" : "")}{(reset.Length > 0 ? $", làm mới {reset}" : "")}";
-                        Ui.SetUsage(_usageText + _rateText);
+                        // the allowance has its own row now (the meter): the token line stays short
+                        // The bar only appears once there is something worth watching (half the allowance used).
+                        Ui.SetUsageMeter(label, status == "allowed" && util < 0.5 ? -1 : util, reset);
                         _rateStatus = status ?? "";
                         _rateUtil = util;
                         _rateKind = kind ?? "";
                         _rateResetsAt = msg.TryGetValue("resets_at", out var rv2) && rv2 is double rd2 ? DateTimeOffset.FromUnixTimeSeconds((long)rd2).LocalDateTime : (DateTime?)null;
-                        if (status == "rejected") Ui.Enqueue(() => ShowLimitCard(null));
+                        if (status == "rejected")
+                        {
+                            if (_busy) _limitHitTurn = _turnSeq;
+                            int turn = _turnSeq;
+                            int gen = _chatGen;
+                            Ui.Enqueue(() => { if (gen == _chatGen) ShowLimitCard(null, turn); });
+                        }
                         else if (status == "allowed_warning" || util >= 0.8)
                         {
                             // once per limit window: "sắp hết hạn mức"
@@ -1994,8 +2377,27 @@ namespace ClaudeCAD.Plugin
                         string id = msg.TryGetValue("id", out var iv) ? iv as string : "";
                         string summary = msg.TryGetValue("summary", out var sv) ? sv as string : "";
                         var steps = msg.TryGetValue("steps", out var stv) && stv is List<object> sl ? sl.OfType<string>().ToList() : new List<string>();
+                        _turnAsked = true;
+                        lock (_gate) _planSteps[id] = steps;
                         Ui.AddPlanCard(id, summary, steps);
+                        _trayAttention = "có kế hoạch chờ cậu duyệt";
                         Ui.Enqueue(() => _transcript?.Entries.Add(new ChatEntry { Role = "note", Text = "Kế hoạch: " + summary + (steps.Count > 0 ? "\n" + string.Join("\n", steps.Select((x, i) => $"{i + 1}. {x}")) : "") }));
+                        break;
+                    }
+                case "progress":
+                    {
+                        // report_progress: the step Claude starts now; the steps are those of the approved plan unless sent
+                        int step = msg.TryGetValue("step", out var stv) ? Convert.ToInt32(stv, CultureInfo.InvariantCulture) : 0;
+                        var sent = msg.TryGetValue("steps", out var slv) && slv is List<object> sl2 ? sl2.OfType<string>().ToList() : null;
+                        string note = msg.TryGetValue("note", out var nv2) ? nv2 as string : null;
+                        List<string> steps;
+                        lock (_gate)
+                        {
+                            if (!_busy) break;
+                            if (sent != null && sent.Count > 0) _progressSteps = sent;
+                            steps = _progressSteps;
+                        }
+                        if (steps != null && step > 0) Ui.SetProgress(steps, step, note);
                         break;
                     }
                 case "skill_draft":
@@ -2059,12 +2461,35 @@ namespace ClaudeCAD.Plugin
             }
         }
 
+        private volatile bool _restartExpected;
+
+        /// <summary>Restart asked by the user (sign-in, API key, CLAUDECHATRESTART): no "Mất kết nối" warning for it.</summary>
+        private DateTime _restartingUntil = DateTime.MinValue;
+
+        private void RestartSidecarQuietly()
+        {
+            ForgetAccountStatus(); // every restart follows a sign-in / sign-out / API key change
+            // no assistant on a machine without a licence, or one the owner has not allowed (it starts on activation / unlock)
+            if (!Activation.IsAllowed) return;
+            _restartExpected = true;
+            _restartingUntil = DateTime.UtcNow.AddSeconds(20); // until the new assistant connects (OnConnected)
+            // stopping the old processes waits up to a few seconds: not on AutoCAD's / the palette's thread
+            Task.Run(() =>
+            {
+                try { _sidecar.Restart(); }
+                catch (Exception ex) { Logger.Error("sidecar restart failed", ex); }
+            });
+        }
+
         private void OnDisconnected(string reason)
         {
-            if (!_wasDisconnected) Ui.ShowToast("Mất kết nối với trợ lý — đang thử kết nối lại...", ChatControl.ToastKind.Warning, 6);
+            bool expected = _restartExpected;
+            _restartExpected = false;
+            if (!_wasDisconnected && !expected) Ui.ShowToast("Mất kết nối với trợ lý — đang thử kết nối lại...", ChatControl.ToastKind.Warning, 6);
             _wasDisconnected = true;
             if (_busy && !_macroRunning) EndTurn("Mất kết nối với trợ lý giữa lượt; lượt này đã dừng. Lịch sử chat vẫn giữ nguyên.", true);
             Ui.SetConnection("Mất kết nối với trợ lý...", false);
+            StatusTray.Set(StatusTray.State.Offline, "mất kết nối với trợ lý");
         }
 
         private void OnSidecarState(SidecarState state, string message)
@@ -2076,7 +2501,9 @@ namespace ClaudeCAD.Plugin
 
         // ================================================================= document events
 
-        private void OnDocumentToBeDestroyed(object sender, DocumentCollectionEventArgs e)
+        private void OnDocumentToBeDestroyed(object sender, DocumentCollectionEventArgs e) => Quiet("drawing closing", () => OnDocumentToBeDestroyedCore(sender, e));
+
+        private void OnDocumentToBeDestroyedCore(object sender, DocumentCollectionEventArgs e)
         {
             bool cancel = false;
             lock (_gate)
@@ -2099,7 +2526,9 @@ namespace ClaudeCAD.Plugin
             }
         }
 
-        private void OnDocumentActivated(object sender, DocumentCollectionEventArgs e)
+        private void OnDocumentActivated(object sender, DocumentCollectionEventArgs e) => Quiet("drawing activated", () => OnDocumentActivatedCore(sender, e));
+
+        private void OnDocumentActivatedCore(object sender, DocumentCollectionEventArgs e)
         {
             // an old version opened from the palette: no chat of its own
             if (_openingVersion.HasValue && e.Document != null && !_versionDocs.ContainsKey(e.Document) && e.Document != _transcriptDoc)
@@ -2134,6 +2563,20 @@ namespace ClaudeCAD.Plugin
 
         // ================================================================= helpers
 
+        // AutoCAD events (drawing switched / closed, command ended, object changed, variable changed, selection):
+        // an exception escaping into AutoCAD's native caller shows "Fatal error" and closes AutoCAD. Logged only
+        // (no note: some of them fire hundreds of times per command).
+        private void Quiet(string what, Action a)
+        {
+            try { a(); }
+            catch (Exception ex) { Logger.Error("AutoCAD event handler failed: " + what, ex); }
+        }
+
+        private void OnDocumentCreated(object sender, DocumentCollectionEventArgs e) => Quiet("drawing created", () => WatchDoc(e.Document));
+        private void OnSelectionPicked(PickedSelection sel) => Quiet("selection", () => { _selection = sel; Ui.SetSelectionChip(sel, true); _palette.FocusInput(); });
+        private void OnImpliedSelection(PickedSelection sel) => Quiet("implied selection", () => { if (!_busy) { _selection = sel; Ui.SetSelectionChip(sel, false); } });
+        private void OnPointsPicked(List<Autodesk.AutoCAD.Geometry.Point3d> pts) => Quiet("points", () => { Ui.InsertAtCaret(Interaction.FormatPoints(pts)); _palette.FocusInput(); });
+
         private void Guard(string what, Action a)
         {
             try
@@ -2161,13 +2604,28 @@ namespace ClaudeCAD.Plugin
                 var dm = AcApp.DocumentManager;
                 dm.DocumentToBeDestroyed -= OnDocumentToBeDestroyed;
                 dm.DocumentActivated -= OnDocumentActivated;
+                dm.DocumentCreated -= OnDocumentCreated;
                 AcApp.SystemVariableChanged -= OnSystemVariableChanged;
-                foreach (var d in _watchedDocs.ToList()) { try { d.CommandEnded -= OnCommandEnded; } catch { } Interaction.Unwatch(d); }
+                AcadTheme.Unsubscribe();
+                Interaction.SelectionPicked -= OnSelectionPicked;
+                Interaction.ImpliedSelectionChanged -= OnImpliedSelection;
+                Interaction.PointsPicked -= OnPointsPicked;
+                foreach (var d in _watchedDocs.ToList())
+                {
+                    try { d.CommandEnded -= OnCommandEnded; d.CommandCancelled -= OnCommandEnded; d.CommandFailed -= OnCommandEnded; } catch { }
+                    Interaction.Unwatch(d);
+                }
                 DrawingHistory.Instance.ObjectChanged -= OnDbChanged;
                 Notifier.Dispose();
                 _skillWatcher?.Dispose();
-                _skillDebounce?.Dispose();
+                lock (_skillDebounceLock)
+                {
+                    _disposed = true;
+                    _skillDebounce?.Dispose();
+                    _skillDebounce = null;
+                }
                 _autoRetryTimer?.Dispose();
+                _deviceTimer?.Dispose();
             }
             catch { }
             _sidecar.Dispose();

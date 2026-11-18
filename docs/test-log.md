@@ -4,6 +4,12 @@ Môi trường cần: Windows 10/11 x64, AutoCAD 2022 bản full, bản vẽ tr�
 
 Trạng thái: ⬜ chưa chạy · ✅ đạt · ❌ không đạt · ⚠️ đạt một phần. Ghi ngày, phiên bản commit và ghi chú ở cột cuối.
 
+Bộ cài thử chính thức: bản build ngày 11/11 (lượt CI 43000757496). Bản ngày 15/11 (lượt CI 43665981360) là bản thử có báo gỡ cài đặt + BiMat, **đã tạm hoãn** (gỡ khỏi `claude/release-0.9.5`, giữ trên `claude/device-management`); không dùng.
+
+17/11: chủ dự án thử bộ cài run 43000757496: làm việc ổn; giao cho client.
+
+Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, có ô Đạt / Lỗi và mã mục của file này): [`checklist-thu-that.md`](checklist-thu-that.md).
+
 > **Chưa có kịch bản nào được chạy trên AutoCAD thật.** Phiên phát triển chạy trên cloud Linux, không có Windows/AutoCAD. Những gì đã kiểm chứng tự động trên cloud được liệt kê ở cuối file.
 
 ## Tiêu chí nghiệm thu (spec §12)
@@ -69,6 +75,14 @@ Trạng thái: ⬜ chưa chạy · ✅ đạt · ❌ không đạt · ⚠️ đ�
 | 3 | `install.ps1`: máy chưa có Node → báo + đề nghị winget; có Node → cài bundle; chạy lại sau khi sửa skill → skill giữ nguyên; `-Uninstall` | ⬜ chưa chạy | |
 | 3 | `ClaudeCAD-Setup-<v>.exe` cài/gỡ, cảnh báo thiếu Node / chưa đăng nhập | ⬜ chưa chạy | |
 | 3 | AutoCAD 2023 và 2024 nạp bản net48; AutoCAD 2025 nạp `Contents\2025` (net8); smoke 1a trên mỗi bản | ⬜ chưa chạy | |
+| 2026 | Bộ cài nhận AutoCAD 2026 (R25.1): thư mục plugin có trong TRUSTEDPATHS của R25.1; mở AutoCAD không hỏi "load this plugin?" | ⬜ chưa chạy | |
+| 2026 | Plugin nạp `Contents\2025` (net8) không cảnh báo, cả trước và sau bản cập nhật 2026.1.2 (.NET 10) nếu có | ⬜ chưa chạy | |
+| 2026 | Khung chat tự mở, theme sáng/tối theo AutoCAD, icon thanh trạng thái hiện + đổi chấm màu; vẽ thử 1 hình chữ nhật + chữ; "Hoàn tác lượt này" | ⬜ chưa chạy | |
+| 2027 | Bộ cài nhận AutoCAD 2027 (R26.0): TRUSTEDPATHS của R26.0 có thư mục plugin; mở AutoCAD không hỏi "load this plugin?" | ⬜ chưa chạy | |
+| 2027 | Plugin nạp `Contents\2027` (net10) không cảnh báo; `CLAUDECHATLOG` không có lỗi nạp | ⬜ chưa chạy | |
+| 2027 | Khung chat mở (`CLAUDECHAT`), đổi Color theme sáng/tối → khung chat đổi theo; icon thanh trạng thái + bong bóng | ⬜ chưa chạy | |
+| 2026/2027 | Máy không có AutoCAD (hoặc chỉ có LT): Setup.exe hiện cảnh báo, bấm Yes vẫn cài được; `install.ps1` in cảnh báo vàng. ⚙ ▸ *Gửi báo cáo lỗi* ghi đúng bản build + runtime | ⬜ chưa chạy | |
+| 2027 | Vẽ thử (hình chữ nhật, chữ, layer mới), xem ảnh chụp bản vẽ (capture_view), "Hoàn tác lượt này" = một U; kéo ảnh vào ô chat không lỗi | ⬜ chưa chạy | |
 | 3 | Cập nhật: đặt `CLAUDECAD_UPDATE_URL` tới latest.json có version cao hơn → palette báo; `CLAUDECHATUPDATE` tải, kiểm SHA-256; đóng AutoCAD → bundle được thay, skill đã sửa còn nguyên | ⬜ chưa chạy | |
 | 3 | latest.json sai SHA-256 → hủy, không đụng bundle | ⬜ chưa chạy | |
 | UI-1 | Nút **Chọn đối tượng**: quét chọn → chip "Kèm N"; chọn sẵn (pickfirst) → chip tự hiện; ✕ bỏ kèm; "đổi mấy cái này sang layer X" đúng đối tượng | ⬜ chưa chạy | |
@@ -114,6 +128,57 @@ Trạng thái: ⬜ chưa chạy · ✅ đạt · ❌ không đạt · ⚠️ đ�
 | V7-6 | **Phiên bản ▸ Xem** → tab chỉ xem đúng trạng thái trước lượt đó, thanh "Đang xem phiên bản…", ô chat khóa; **Đóng — về bản hiện tại** đóng tab, về đúng bản vẽ, lịch sử chat không đổi | ⬜ chưa chạy | |
 | I-6 | Trang cuối bộ cài có ô **Đăng nhập Claude ngay** (máy chưa đăng nhập) → Finish → trình duyệt mở, đồng ý → mở AutoCAD dùng được ngay; máy đã đăng nhập: ô không hiện; `/VERYSILENT`: không mở trình duyệt | ⬜ chưa chạy | |
 | I-7 | Bỏ qua đăng nhập lúc cài → lần đầu mở AutoCAD, trình duyệt tự mở trang đăng nhập (không cần bấm nút) | ⬜ chưa chạy | |
+| K-1 | Máy chưa kích hoạt chạy `ClaudeCAD-Setup.exe` → trang **Kích hoạt** hiện mã máy `CC-…` + "Liên hệ Zalo owner: 0344644415"; Gmail chủ plugin nhận email có tên máy, user Windows, mã máy, KEY | ⬜ chưa chạy | |
+| K-2 | Nhập key sai / key của máy khác → báo lỗi, không cho Next; nhập đúng key → cài tiếp, có `%LocalAppData%\ClaudeCAD\license.txt` | ⬜ chưa chạy | |
+| K-3 | Chạy lại Setup.exe (cài đè) trên máy đã kích hoạt → không hỏi key | ⬜ chưa chạy | |
+| K-4 | Xóa `license.txt` rồi mở AutoCAD → khung chat hiện thẻ 🔒 Kích hoạt, gửi tin nhắn bị chặn; dán key → "Đã kích hoạt", hiện thẻ Bắt đầu | ⬜ chưa chạy | |
+| K-5 | Sao chép `license.txt` sang máy khác → plugin báo "giấy phép của máy khác" | ⬜ chưa chạy | |
+| K-6 | Máy không có mạng: bộ cài báo không gửi được; mã offline (`taoKeyThuCong`, 2 dòng `CCL1|` + `CCS1|…|offline|`) dán vào ô key của khung chat → dùng được, không bị khóa sau 7 ngày | ⬜ chưa chạy | |
+| K-7 | `ClaudeCAD-Setup.exe /VERYSILENT /KEY=<key>` → cài ngầm và kích hoạt | ⬜ chưa chạy | |
+| UX-1 | Mở khung chat trên AutoCAD theme **tối**: nền, chữ, ô nhập, viền palette khớp palette Properties đặt cạnh (chụp 2 palette cạnh nhau để so) | ⬜ chưa chạy | |
+| UX-2 | `COLORTHEME` = 1 (Options ▸ Display ▸ Color theme = Light) → khung chat đổi sang sáng **ngay**, không cần đóng mở lại; đổi về tối cũng vậy | ⬜ chưa chạy | |
+| UX-3 | Chữ trong khung chat cùng font và cỡ với palette Properties (⚙ ▸ Cỡ chữ để *Theo AutoCAD*) | ⬜ chưa chạy | |
+| UX-4 | Ctrl+lăn chuột đổi cỡ chữ → giữ cỡ của mình, đổi theme AutoCAD không kéo cỡ chữ về theo AutoCAD nữa | ⬜ chưa chạy | |
+| UX-5 | ⚙ ▸ Giao diện ép **Tối** khi AutoCAD đang sáng → khung chat tối, chữ vẫn đọc được (lấy font của AutoCAD, không lấy màu) | ⬜ chưa chạy | |
+| UX-6 | Thanh công cụ: rê chuột từng icon (⊞ ■ ⤓ ⚙ ≡ ＋ ✦ ▷ ✎ ⟲) → tooltip "Tên — giải thích ngắn"; lưu 1 macro → icon ▷ đổi màu nhấn, tooltip có "đã lưu 1" | ⬜ chưa chạy | |
+| UX-7 | Đang chạy lượt dài: gõ thêm ý + Enter → hàng "⏳ Chờ gửi…" hiện; lượt xong → tin tự gửi. Lặp lại rồi bấm **Bỏ** / **■** → chữ về lại ô nhập, không tự gửi | ⬜ chưa chạy | |
+| UX-8 | Đang chạy lượt: dòng "● Đang làm · … giây · N thao tác" đếm đúng; con trỏ ở ô nhập nhấn **Esc** → lượt dừng; con trỏ ở bản vẽ nhấn Esc → không dừng lượt | ⬜ chưa chạy | |
+| UX-9 | Yêu cầu xóa > 20 đối tượng → thẻ xác nhận có số to, **⌖ Xem trên bản vẽ** chọn đúng các đối tượng (Esc bỏ chọn), **Đồng ý** → xóa; U một lần → về như cũ | ⬜ chưa chạy | |
+| UX-10 | ⚙: 5 nhóm thu gọn, bấm tiêu đề mở/đóng; chưa đăng nhập thì nhóm *Tài khoản AI* tự mở; đổi Giao diện / Model vẫn có tác dụng như trước | ⬜ chưa chạy | |
+| UX-11 | Palette **nổi**: bấm ⌄ → palette co còn hàng công cụ + ô nhập (cao ~170 px); gõ yêu cầu + Enter → Claude chạy, dòng "● Đang làm…" rồi "✓ Đã xong: … · bấm để xem"; bấm dòng đó hoặc ⌃ → palette về chiều cao cũ, đoạn chat còn nguyên | ⬜ chưa chạy | |
+| UX-12 | Palette **neo** trái/phải: bấm ⌄ → nội dung co lại, ô nhập nằm sát thanh công cụ, cột neo giữ nguyên; ⌃ mở lại bình thường | ⬜ chưa chạy | |
+| UX-13 | Đang thu gọn, yêu cầu xóa nhiều đối tượng → palette **tự mở** và hiện thẻ xác nhận; yêu cầu thường (vẽ thêm 1 đường) → palette vẫn thu gọn | ⬜ chưa chạy | |
+| UX-14 | Mở AutoCAD (chưa mở khung chat): thanh trạng thái có icon **C** xám mờ, rê chuột thấy "ClaudeCAD — chưa kết nối… Bấm để mở khung chat"; bấm → khung chat mở, icon hết mờ | ⬜ chưa chạy | |
+| UX-15 | Gửi một yêu cầu: icon có **chấm xanh** suốt lúc Claude làm, xong thì mất chấm; yêu cầu xóa nhiều đối tượng → **chấm vàng** tới khi cậu trả lời | ⬜ chưa chạy | |
+| UX-16 | Bật auto-hide (hoặc đóng khung chat) rồi gửi yêu cầu qua lệnh `CC` → lượt xong có **bong bóng** "Claude đã xong: …" ở icon; bấm *Mở khung chat* → khung chat mở. Tắt ⚙ ▸ *Báo khi lượt xong* → không còn bong bóng | ⬜ chưa chạy | |
+| UX-17 | Đổi Color theme AutoCAD tối ↔ sáng: nét icon trên thanh trạng thái vẫn rõ; thanh tiêu đề palette khi tự ẩn có icon C | ⬜ chưa chạy | |
+| UX-18 | Hàng dưới ô nhập là 4 icon ⬚ ✛ ▨ ⛶, glyph hiện rõ (không ra ô vuông trống) ở theme tối và sáng; tooltip đúng tên; bấm từng icon chạy đúng Chọn đối tượng / Lấy điểm / Ảnh / Chụp | ⬜ chưa chạy | |
+| UX-19 | Máy mới cài, chưa đăng nhập: thẻ **Bắt đầu** hiện ✓ bước 1, bước 2 có nút Đăng nhập Claude / Dùng API key, bước 3 mờ. Đăng nhập xong, ⚙ ▸ Hướng dẫn bắt đầu: bước 1–2 ✓, bước 3 có *Điền vào ô nhập* → câu mẫu vào ô nhập, Enter vẽ đúng | ⬜ chưa chạy | |
+| UX-20 | Gửi yêu cầu nhiều bước (vd. mặt bằng căn hộ): nhóm **Đang làm · bước N: …** mở sẵn, dòng ✓ / ● cập nhật theo thời gian thực, lệnh lặp gộp "×N"; lượt xong nhóm tự thu gọn thành "Thao tác (N)". Bấm ■ giữa chừng → bước dở thành "○ … — chưa xong" | ⬜ chưa chạy | |
+| UX-21 | Yêu cầu lớn (vd. "vẽ mặt bằng căn hộ 2 phòng ngủ 8x12m") → thẻ kế hoạch → **Làm**: nhóm "Bước N/M: …" đi đúng thứ tự kế hoạch, ✓ / ● / ○ khớp việc Claude đang vẽ; thu gọn palette: dòng trạng thái "● Bước N/M: …". Bấm ■ giữa chừng → bước dở "dừng giữa chừng". Bật 🔒 Chỉ xem rồi hỏi phân tích nhiều bước: tiến độ vẫn hiện, không có thao tác ghi. Lượt nhỏ không có kế hoạch: vẫn dòng "● Đang làm · thời gian · N thao tác" | ⬜ chưa chạy | |
+| K-8 | Cài **không nhập key**: bấm Next → hộp thoại "Chưa nhập key… chờ chủ plugin duyệt?" → Yes → cài xong; Google Sheet "Thiết bị" có dòng **Chờ duyệt** (tên máy, user, ngày xin); mở AutoCAD → thẻ 🔒 có nút **Kiểm tra lại**; đổi ô Trạng thái thành `Active` → bấm **Kiểm tra lại** → "Chủ plugin đã duyệt máy này", dùng được không cần key; Sheet có Ngày kích hoạt. Lần 2 (máy khác): đổi `Active` khi AutoCAD đang đóng → mở AutoCAD → **tự mở khóa** sau vài giây, không cần bấm gì | ⬜ chưa chạy | |
+| K-9 | Máy đang dùng bị đổi thành `Disabled` → mở lại AutoCAD (hoặc đợi chu kỳ ~6 giờ): khung chat khóa, thẻ 🔒 "Máy này đã bị chủ plugin tạm khóa…", trợ lý dừng, gửi tin/macro bị chặn; đổi lại `Active` + **Kiểm tra lại** → dùng tiếp ngay, không cần key mới | ⬜ chưa chạy | |
+| K-10 | Máy `Disabled` nhập đúng key cũ → bị từ chối ("tạm khóa"); bấm **Gửi yêu cầu kích hoạt** → cũng báo tạm khóa, chủ plugin **không** nhận thêm email | ⬜ chưa chạy | |
+| K-11 | Máy đã kích hoạt, ngắt mạng → vẫn dùng bình thường; chỉnh ngày hệ thống +8 ngày (giả lập quá 7 ngày không kiểm tra được) → mở AutoCAD: thẻ 🔒 "quá 7 ngày…"; nối mạng + **Kiểm tra lại** → mở khóa | ⬜ chưa chạy | |
+| K-13 | Máy đã `Active` xóa `license.txt` rồi mở AutoCAD → tự lấy lại giấy phép sau vài giây, chủ plugin **không** nhận thêm email xin kích hoạt | ⬜ chưa chạy | |
+| K-12 | Sau khi mở AutoCAD, cột **Lần cuối dùng** + **Phiên bản** của máy đó trong Sheet được cập nhật (tối đa 30 phút/lần); sửa tay `status.txt` (đổi `disabled` thành `active`) → plugin coi là không hợp lệ và khóa tới khi kiểm tra lại | ⬜ chưa chạy | |
+| K-14 | Máy bị `Disabled`, xóa file `Contents\activation.json` trong thư mục plugin rồi mở AutoCAD → vẫn bị khóa (link máy chủ nằm trong DLL) | ⬜ chưa chạy | |
+| K-15 | Máy đã kích hoạt, ngắt mạng, chỉnh ngày Windows **lùi** 3 ngày → mở AutoCAD: thẻ 🔒 "Đồng hồ máy đang chậm hơn lần dùng trước…"; chỉnh lại giờ đúng + nối mạng + **Kiểm tra lại** → mở khóa | ⬜ chưa chạy | |
+| K-16 | Trang kích hoạt của bộ cài: lúc đang gửi yêu cầu thấy chữ "Đang gửi yêu cầu… (có thể mất tới 20 giây…)" (không đứng trắng); `ClaudeCAD-Setup.exe /KEY=<key>` (không /VERYSILENT) → ô key điền sẵn, chủ plugin **không** nhận email xin key | ⬜ chưa chạy | |
+| R-1 | Macro có bo góc (fillet) giữa 2 đường vừa vẽ → chạy lại macro ở chỗ khác: bo góc 2 đường mới, 2 đường cũ giữ nguyên | ⬜ chưa chạy | |
+| R-2 | Bật Phiên bản, yêu cầu Claude "zoom vào khung tên rồi đổi chữ" → có phiên bản mới trước khi sửa; lượt chỉ zoom không có nút Hoàn tác | ⬜ chưa chạy | |
+| R-3 | "Vẽ lại rồi xóa đi các đường cũ" trên layer có > 20 đối tượng → Claude hỏi xác nhận trước khi xóa | ⬜ chưa chạy | |
+| R-4 | Hết giới hạn, bật "Tự gửi lại", chuyển sang bản vẽ khác → toast "Đã hủy tự gửi lại", không gửi gì vào bản vẽ mới | ⬜ chưa chạy | |
+| R-5 | Nút Chụp / Claude tự kiểm tra bằng ảnh 20 lần liên tiếp → AutoCAD không chậm dần | ⬜ chưa chạy | |
+| R-6 | Gửi báo cáo lỗi → mở các file log trong .zip: không có nội dung tin nhắn / chữ trong bản vẽ | ⬜ chưa chạy | |
+| S-1 | + Add skill → chọn 3 file .md cùng lúc → cả 3 vào thư viện và có dấu ✓ trong đoạn chat hiện tại | ⬜ chưa chạy | |
+| S-2 | Bấm − một skill → Skill (N) giảm, skill nằm ở phần Thư viện; yêu cầu tiếp theo Claude không theo chuẩn của skill đó | ⬜ chưa chạy | |
+| S-3 | Chat mới / mở bản vẽ khác chưa có chat → dùng đúng các skill của đoạn chat gần nhất | ⬜ chưa chạy | |
+| S-4 | Hai bản vẽ, mỗi bản một bộ skill khác nhau → chuyển qua lại, danh sách đúng của từng bản vẽ | ⬜ chưa chạy | |
+| S-5 | Sửa SKILL.md rồi lưu → chỉ 1 toast "Skill đã thay đổi" | ⬜ chưa chạy | |
+| D-1 | Đổi tài khoản / lưu API key → trợ lý khởi động lại; Task Manager không còn sót tiến trình claude.exe cũ; khung chat không đứng, không hiện "Mất kết nối" | ⬜ chưa chạy | |
+| D-2 | `CLAUDECHATSELFTEST` đạt hết → thư mục `%TEMP%\ClaudeCAD-selftest-*` bị xóa, ảnh `selftest-*.png` nằm cạnh báo cáo; có mục ✗ → thư mục được giữ | ⬜ chưa chạy | |
+| D-3 | Mở ⚙ hai lần trong 30 giây → lần hai hiện tài khoản ngay | ⬜ chưa chạy | |
 | I-1 | Tải `ClaudeCAD-Setup.exe` từ link releases/latest, chạy trên máy **chưa có Node.js và Claude Code** → cài xong không hỏi gì thêm (ngoài SmartScreen) | ⬜ chưa chạy | |
 | I-2 | Mở AutoCAD lần đầu sau khi cài → không có cảnh báo SECURELOAD; khung chat tự mở với thẻ **Bắt đầu** (Node đi kèm ✓, trợ lý ✓, tài khoản ✗) | ⬜ chưa chạy | |
 | I-3 | Bấm **Đăng nhập Claude** → cửa sổ đen + trình duyệt đăng nhập Pro/Max → "✓ Đã đăng nhập Claude", gửi tin nhắn được ngay | ⬜ chưa chạy | |
@@ -130,11 +195,16 @@ Trạng thái: ⬜ chưa chạy · ✅ đạt · ❌ không đạt · ⚠️ đ�
 | L-3 | Chọn layer + "đổi màu sang đỏ" / "khóa lại" → đổi thuộc tính layer, không hỏi xác nhận; "tăng chiều cao chữ lên 300" trên layer có > 20 chữ → thẻ Đồng ý / Hủy, Đồng ý thì sửa đúng | ⬜ chưa chạy | |
 | L-4 | Chọn một đối tượng → **→ Cả layer** → chip chuyển thành layer của nó; gửi xong chip tự bỏ | ⬜ chưa chạy | |
 | V6-10 | Bảng **Thay đổi** đúng số thêm/sửa/xóa theo layer, bấm dòng zoom tới; còn khi mở lại lịch sử và trong file Xuất | ⬜ chưa chạy | |
+| ST-2 | `CLAUDECHATSELFTEST` trên từng đời AutoCAD đang có: dòng **Bản plugin đúng với đời AutoCAD** ✓ và ghi đúng bản (2022–2024 net48 · 2025–2026 net8 · 2027 net10) + thư mục DLL trong gói cài | ⬜ chưa chạy | |
+| ST-3 | Báo cáo tự kiểm tra: **Theme palette của AutoCAD** ✓ (có số màu, font, tương phản chữ); đổi `COLORTHEME` rồi chạy lại → dòng này đổi "theme tối / sáng" theo; **Style giao diện** ✓; **Icon ClaudeCAD trên thanh trạng thái** ✓ | ⬜ chưa chạy | |
+| ST-4 | Đang có đoạn chat dài, palette **nổi**: chạy tự kiểm tra → dòng **Thu gọn rồi mở lại khung chat** ✓; sau khi xong palette đúng kích thước cũ, đoạn chat còn nguyên, không có tin "tự kiểm tra" nào lọt vào chat. Lặp lại khi palette đang **thu gọn** (⌄) → xong vẫn thu gọn | ⬜ chưa chạy | |
+| ST-5 | Chạy tự kiểm tra trên bản vẽ **đã lưu, chưa sửa gì**: dòng cuối **Bản vẽ của cậu không bị đụng tới** ✓; đóng bản vẽ → AutoCAD **không** hỏi lưu. Dòng **Hàng chờ gửi** và **Skill theo đoạn chat** ✓ | ⬜ chưa chạy | |
 
 ## Đã kiểm chứng tự động trên cloud (Linux)
 
 | Ngày | Hạng mục | Kết quả |
 | --- | --- | --- |
+| 2026-11-11 | Tự kiểm tra mở rộng (nhánh `claude/test-checklist`): luật ✓ / ✗ tách ra `Core/SelfTestRules.cs` — `dotnet test` lõi 160/160 (thêm nhóm `SelfTestRulesTests`: bản build theo đời AutoCAD R24.1–R26.0, DLL sai bản / sai thư mục, tương phản chữ, theme không đọc được, thu gọn mất tin, hàng chờ kẹt, skill hỏng, bản vẽ bị đổi handle / số đối tượng / DBMOD); build `-f net48` và `-f net8.0-windows` riêng, 0 warning; UI test mới `SelfTestProbeTests` (3 test) chỉ chạy trên Windows CI | ✅ |
 | 2026-11-05 | `npm run build` sidecar | ✅ |
 | 2026-11-05 | `npm test` — 32 test: protocol (encode/decode, UTF-8 cắt giữa chunk, CRLF, BOM, dòng quá dài), ToolRpc (tương quan id, timeout, response muộn, mất kết nối, failAll), tích hợp qua socket thật (echo tool, lỗi plugin, timeout, đứt pipe, dòng hỏng, tiến trình sidecar thật nối pipe rồi tự thoát), AgentSession với query giả (stream text, nhiều lượt, cancel, new session, process chết, lỗi đăng nhập, skill plugin) | ✅ 32/32 |
 | 2026-11-05 | `dotnet build` plugin net48 với reference AutoCAD.NET 24.1.51000 | ✅ 0 warning |
@@ -142,6 +212,12 @@ Trạng thái: ⬜ chưa chạy · ✅ đạt · ❌ không đạt · ⚠️ đ�
 | 2026-11-05 | Phase 1b: `npm test` 38/38 (thêm: danh mục tool TS khớp handler C#, mọi schema chuyển được sang JSON Schema, schema nhận ví dụ spec, giới hạn 500 call/batch) | ✅ |
 | 2026-11-06 | v0.9.0 tối ưu + review: `dotnet test` 102/102 (gom macro theo lô, chỉ ánh xạ tham số handle, bỏ bước dùng đối tượng chưa tạo lại, mẫu lệnh không che mẫu có sẵn, file mẫu hỏng); `npm test` 95/95 (`turn_id`, mô tả skill trong ngoặc kép); build net48 + net8 ✅ | ✅ |
 | 2026-11-06 | v0.8.0 chọn layer: `dotnet test` 98/98 (đếm theo layer, lọc theo layer bỏ tick, tìm layer, lịch sử giữ layer đã chọn); `npm test` 93/93 (`attachments.layers`, `selection.layers`, câu dặn Claude phân biệt thuộc tính layer / đối tượng); build net48 + net8 ✅ | ✅ |
+| 2026-11-10 | v0.9.4 sửa sau rà soát (30 mục): `dotnet test` lõi 115/115 (macro handle1/handle2, log không lẫn chat, che thêm token); `npm test` 114/114 (cổng xác nhận câu ngắn + cộng dồn cả lượt, kết quả lượt cũ sau Dừng, `success`+`is_error`, gợi ý trùng, chuyển bản vẽ giữa lượt, Read chỉ trong thư mục skill, dữ liệu bản vẽ trong ngoặc kép, tin quá dài bỏ qua tới dòng sau, thời gian chờ theo lệnh, Apps Script giới hạn 10 email/giờ); build net48 + net8 ✅ | ✅ |
+| 2026-11-10 | v0.9.4 quản lý thiết bị: `dotnet test` lõi 118/118 (VerifyStatus: chữ ký, máy khác, quá 7 ngày, ngày tương lai, mã offline; khóa thật ký được trạng thái); `npm test` 119/119 (Apps Script với giả lập Google Sheet: dòng Chờ duyệt, Active cấp giấy phép không cần key, Disabled chặn key + email, Lần cuối dùng / Phiên bản, `kiemTra`); build net48 + net8 ✅; CI Windows ✅ | ✅ |
+| 2026-11-10 | Máy chủ kích hoạt **thật** của chủ plugin (gọi từ cloud): `ping` ✅; `request` mã máy thử `CC-7E57-0000-0001` → `sent: true`; key bịa → từ chối; `status` → `pending`, chữ ký khớp khóa công khai trong plugin ✅; chủ plugin nhận email + thấy dòng Chờ duyệt ✅; đổi ô thành `Active` → `status` trả `active` **kèm giấy phép** (không cần key), cả hai chữ ký hợp lệ ✅ | ✅ |
+| 2026-11-10 | Máy chủ thật, **bản 3** (chặn công thức, trần 40 email/ngày, kiểm trùng trong khóa): `ping` ✅; máy thử `CC-7E57-0000-0002` tên `=THU-CONG-THUC` → `sent: true` (bộ đếm ngày PropertiesService chạy, không lỗi quyền), chủ plugin thấy ô Thiết bị hiện đúng chữ `=THU-CONG-THUC` (không chạy như công thức) ✅; `status` → `pending`, chữ ký hợp lệ ✅; máy thử cũ vẫn `active` + giấy phép ✅. Đã xóa 3 dòng máy thử | ✅ |
+| 2026-11-11 | **Đổi cặp khóa kích hoạt** (trước khi phát hành, chủ plugin chọn): cặp RSA + SECRET mới tạo bằng lệnh kín, không có trong nhật ký phiên (đã kiểm: 0 lần), bản sao trên cloud đã xóa an toàn. Máy chủ thật sau khi dán Code.gs mới + Phiên bản mới: `ping` ✅; `request` máy thử `CC-7E57-0000-0004` → email ✅; key bịa bị từ chối ✅; `status` → chữ ký khớp `LicenseLogic.PublicModulus` mới ✅ (khóa cũ không còn khớp); key thử của `kiemTra` kích hoạt được máy thử, giấy phép ký bằng khóa mới ✅. CI Windows ✅ | ✅ |
+| 2026-11-09 | v0.9.4 khóa key: `dotnet test` lõi 112/112 (mã máy khớp công thức bộ cài, chuẩn hóa key, chữ ký giấy phép: đúng máy / máy khác / sửa ngày / sửa chữ ký, khóa công khai nhúng khớp khóa của máy chủ); `npm test` 100/100 (Apps Script chạy trong VM: email cho chủ plugin có tên máy + key, chống gửi trùng 30 phút, key đúng → giấy phép ký đúng, key sai / máy khác bị từ chối, mã offline); build plugin net48 + net8 ✅ | ✅ |
 | 2026-11-06 | v0.7.0 sửa tay + phiên bản: `dotnet test` 96/96 (biên bản nén/đọc lại, mã kiểm tra bỏ nhiễu số thực và "-0", so đầy đủ / bản vẽ lớn theo layer, báo cáo sửa tay giới hạn 300 mã, phiên bản 30 phút + giữ 10 bản); `npm test` 91/91 (`manual_changes` lọc mã sai, câu dặn Claude đọc lại); build net48 + net8 (Wblock/SaveAs, mở DWG chỉ xem, CloseAndDiscard) ✅ | ✅ |
 | 2026-11-06 | v0.6.0 tiện ích khung chat: `dotnet test` lõi 88/88 (macro ghi/ánh xạ handle/lưu, bảng thay đổi, `@`, ghi chú dự án, mẫu lệnh, cài đặt mới, lịch sử giữ Chỉ xem + ghi chú + thay đổi); `npm test` 89/89 (ảnh `capture_view` thành khối image MCP, thẻ kế hoạch, gợi ý, bản nháp skill, ngữ cảnh mới, `promptSuggestions`); build plugin net48 + net8 (API GraphicsSystem off-screen, PreTranslateMessage) ✅ | ✅ |
 | 2026-11-06 | v0.5.0 skill trên khung chat: `dotnet test` lõi 68/68 (SkillStore: nhập .md, tên từ file, file thiếu description, trùng tên, chọn lại file đã có, thư mục SKILL.md kèm file tham khảo, bật/tắt, xóa, `skills.json`); `npm test` 75/75 (chỉ nạp skill đang bật, reload_skills giữ ngữ cảnh) | ✅ |

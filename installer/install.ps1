@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  Cài / gỡ ClaudeCAD cho AutoCAD 2022-2025 (bundle autoloader), có kiểm tra Node.js và đăng nhập Claude.
+  Cài / gỡ ClaudeCAD cho AutoCAD 2022-2027 (bundle autoloader), có kiểm tra Node.js và đăng nhập Claude.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File installer\install.ps1
@@ -40,6 +40,29 @@ $acad = Get-Process -Name acad -ErrorAction SilentlyContinue
 if ($acad) {
   Say 'AutoCAD đang chạy. Hãy đóng AutoCAD rồi chạy lại script (file plugin đang bị khóa).' Yellow
   exit 2
+}
+
+# ------------------------------------------------------------------ which AutoCAD is installed (warning only)
+# Same releases as bundle\PackageContents.xml: R24.1-R24.3 (2022-2024), R25.0-R25.1 (2025-2026), R26.0 (2027).
+# AutoCAD LT has its own key (AutoCAD LT) and cannot run .NET plugins.
+if (-not $Uninstall) {
+  $supported = 'R24.1', 'R24.2', 'R24.3', 'R25.0', 'R25.1', 'R26.0'
+  $found = @(Get-ChildItem 'HKLM:\SOFTWARE\Autodesk\AutoCAD' -ErrorAction SilentlyContinue | Where-Object {
+    $rel = $_
+    @(Get-ChildItem $rel.PSPath -ErrorAction SilentlyContinue | Where-Object {
+      $loc = (Get-ItemProperty -Path $_.PSPath -Name AcadLocation -ErrorAction SilentlyContinue).AcadLocation
+      $loc -and (Test-Path $loc)
+    }).Count -gt 0
+  } | ForEach-Object { $_.PSChildName })
+  $ok = @($found | Where-Object { $supported -contains $_ })
+  $newer = @($found | Where-Object { $_ -match '^R(\d+)\.(\d+)$' -and ([int]$Matches[1] -gt 26 -or ([int]$Matches[1] -eq 26 -and [int]$Matches[2] -gt 0)) })
+  if ($ok.Count -eq 0) {
+    if ($newer.Count -gt 0) {
+      Say "Máy này có AutoCAD bản mới hơn 2027 ($($newer -join ', ')): ClaudeCAD bản này chỉ chạy trên AutoCAD 2022-2027 nên sẽ không tự nạp vào bản đó." Yellow
+    } else {
+      Say 'Không tìm thấy AutoCAD 2022-2027 bản đầy đủ (AutoCAD LT không chạy được plugin). Vẫn cài tiếp; cài AutoCAD sau thì ClaudeCAD tự nạp khi mở AutoCAD.' Yellow
+    }
+  }
 }
 
 # ------------------------------------------------------------------ uninstall
@@ -98,7 +121,7 @@ if (-not $SkipNodeCheck) {
       exit 3
     }
   }
-  Say "Node.js v$major: OK" Green
+  Say "Node.js v${major}: OK" Green
 }
 
 # ------------------------------------------------------------------ copy the bundle
@@ -117,7 +140,8 @@ if ($LASTEXITCODE -ge 8) { Say "Copy skill thất bại (robocopy $LASTEXITCODE)
 $entry = Join-Path $target 'Contents\...'
 $base = 'HKCU:\Software\Autodesk\AutoCAD'
 if (Test-Path $base) {
-  Get-ChildItem $base -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -match '^R2[45]' } | ForEach-Object {
+  # R24 = 2022-2024, R25 = 2025-2026, R26 = 2027
+  Get-ChildItem $base -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -match '^R2[456]' } | ForEach-Object {
     Get-ChildItem $_.PSPath -ErrorAction SilentlyContinue | ForEach-Object {
       $profiles = Join-Path $_.PSPath 'Profiles'
       if (Test-Path $profiles) {
@@ -139,6 +163,6 @@ if (Test-Path $base) {
 }
 
 Say ''
-Say 'Xong. Mở AutoCAD 2022-2025: khung chat tự mở lần đầu, bấm "Đăng nhập Claude" (đăng nhập một lần trên trình duyệt).' Green
+Say 'Xong. Mở AutoCAD 2022-2027: khung chat tự mở lần đầu, bấm "Đăng nhập Claude" (đăng nhập một lần trên trình duyệt).' Green
 Say "Gỡ cài đặt: powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Uninstall$(if ($AllUsers) {' -AllUsers'})"
 exit 0

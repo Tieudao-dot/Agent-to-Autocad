@@ -12,12 +12,12 @@
 
 Trang [phát hành](https://github.com/Tieudao-dot/Agent-to-Autocad/releases/latest) ghi kích thước và mã SHA-256 của `ClaudeCAD-Setup.exe`. Nếu bộ cài báo "The source file is corrupted", mở PowerShell trong thư mục chứa file và chạy `Get-FileHash .\ClaudeCAD-Setup.exe` — mã khác với trang phát hành nghĩa là file tải về bị hỏng: tải lại vào ổ máy (không chạy từ ổ mạng / USB), hoặc tạm tắt phần mềm diệt virus khi cài.
 
-## Cài đặt (3 bước)
+## Cài đặt (4 bước)
 
 1. Tải `ClaudeCAD-Setup.exe` ở link trên.
 2. Chạy file. Nếu Windows hiện "Windows protected your PC" → **More info → Run anyway** (bộ cài chưa ký số). Không cần quyền admin, không cần cài Node.js hay Claude Code. Nên đóng AutoCAD trước khi cài.
-3. Trang cuối bộ cài: giữ ô **Đăng nhập Claude ngay** rồi bấm **Finish** → trình duyệt mở trang cấp quyền, bấm **đồng ý** bằng tài khoản Claude Pro/Max (một cửa sổ đen hiện lên và tự đóng khi xong). Không cần mở AutoCAD. Máy đã đăng nhập sẵn thì ô này không hiện.
-4. Mở AutoCAD 2022–2025 là dùng được. (Nếu đã bỏ qua bước 3, lần đầu mở AutoCAD plugin tự mở trang đăng nhập.)
+3. **Kích hoạt:** bộ cài hiện **mã máy** và dòng *"Liên hệ Zalo owner: 0344644415"*; yêu cầu được gửi tự động cho chủ plugin (email + một dòng **Chờ duyệt** trong bảng thiết bị của chủ plugin). Hai cách: **(a)** chờ chủ plugin duyệt — bấm **Next** cài tiếp không cần key, sau khi được duyệt mở AutoCAD là tự dùng được (hoặc bấm **Kiểm tra lại** trong khung chat để dùng ngay); **(b)** nhận **key** qua Zalo, dán vào ô **Key kích hoạt** rồi bấm **Next**. Máy đã kích hoạt rồi (cài đè, cập nhật) thì không hỏi lại.
+4. Trang cuối bộ cài: giữ ô **Đăng nhập Claude ngay** rồi bấm **Finish** → trình duyệt mở trang cấp quyền, bấm **đồng ý** bằng tài khoản Claude Pro/Max (một cửa sổ đen hiện lên và tự đóng khi xong). Không cần mở AutoCAD. Máy đã đăng nhập sẵn thì ô này không hiện. Sau đó mở AutoCAD 2022–2027 là dùng được (nếu bỏ qua bước này, lần đầu mở AutoCAD plugin tự mở trang đăng nhập).
 
 Sau khi cài: gõ `CLAUDECHATSELFTEST` để tự kiểm tra (báo cáo ✓/✗ mở trong Notepad). Mở khung chat: `CLAUDECHAT`, `CC` hoặc **Ctrl+Shift+Space**.
 
@@ -28,8 +28,20 @@ Sau khi cài: gõ `CLAUDECHATSELFTEST` để tự kiểm tra (báo cáo ✓/✗ 
 
 ## Cài cho nhiều máy
 
-- Cài ngầm, không hỏi gì: `ClaudeCAD-Setup.exe /VERYSILENT` (mỗi máy vẫn cần bấm **Đăng nhập Claude** một lần).
+- Cài ngầm, không hỏi gì: `ClaudeCAD-Setup.exe /VERYSILENT /KEY=XXXX-XXXX-XXXX-XXXX` (key của đúng máy đó; mỗi máy vẫn cần bấm **Đăng nhập Claude** một lần).
 - Hoặc bằng PowerShell: giải nén `ClaudeCAD-<version>.zip`, đặt `install.ps1` cạnh thư mục `ClaudeCAD.bundle`, chạy `powershell -ExecutionPolicy Bypass -File install.ps1`.
+
+## Duyệt và quản lý thiết bị (chủ plugin)
+
+- Mỗi máy chạy bộ cài (hoặc mở khung chat khi chưa kích hoạt) tự hiện thành một dòng **Chờ duyệt** trong Google Sheet **"ClaudeCAD – Thiết bị"** của chủ plugin, kèm email **"[ClaudeCAD] Yêu cầu kích hoạt: <tên máy> (<user>)"** có mã máy và **KEY** dự phòng.
+- **Cho dùng:** đổi ô **Trạng thái** của dòng đó thành `Active` → lần mở AutoCAD kế tiếp máy đó tự dùng được (hoặc bấm **Kiểm tra lại** để dùng ngay), **không cần key**. Hoặc gửi KEY trong email qua Zalo.
+- **Chống spam:** tối đa 30 máy mới mỗi giờ được thêm vào bảng, 10 email mỗi giờ và 40 email mỗi ngày; máy đã `Active` xin lại không gửi email thừa; tên máy gửi lên không chạy được như công thức trong bảng.
+- **Không né được lệnh khóa:** link máy chủ nằm sẵn trong plugin (xóa file cấu hình không tắt được kiểm tra); chỉnh lùi đồng hồ máy để kéo dài 7 ngày cũng bị phát hiện.
+- ⚠️ **Đừng đổi tên trang "Thiết bị", đừng chèn / đổi thứ tự cột** trước cột "Ghi chú" (máy chủ đọc cột theo vị trí). Chia sẻ bảng tính thì chỉ cho quyền **Người xem**: người có quyền sửa xem được khóa bí mật trong Apps Script.
+- **Ngưng cho dùng:** đổi thành `Disabled` → máy bị khóa ở lần kiểm tra kế tiếp (plugin kiểm tra mỗi lần mở AutoCAD và ~6 giờ/lần; máy cố tình ngắt mạng cũng chỉ dùng thêm tối đa 7 ngày). Đổi lại `Active` là máy dùng tiếp ngay, không cần key mới.
+- Cột **Lần cuối dùng** và **Phiên bản** cho biết máy nào còn đang dùng plugin.
+- Key chỉ dùng được trên đúng máy có mã đó. Cài lại Windows / thay mainboard thì mã máy đổi, máy xin duyệt lại như máy mới.
+- Máy không có mạng, cài máy chủ kích hoạt + bảng thiết bị, tạo key bằng tay: [`activation/README.md`](../activation/README.md).
 
 ## Khi có lỗi trên máy khác
 
@@ -55,7 +67,8 @@ Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall** (hoặc `i
 
 | Phiên bản | Nội dung chính |
 | --- | --- |
-| **0.9.3** | **Đăng nhập Claude ngay trong bộ cài** (ô "Đăng nhập Claude ngay" ở trang cuối — trình duyệt mở, bấm đồng ý, không cần mở AutoCAD); lần đầu mở AutoCAD mà chưa đăng nhập thì plugin **tự mở** trang đăng nhập; bộ cài bỏ ~2.200 file `.map` không cần thiết (nhẹ hơn, ít bị diệt virus quét chặn); chữ trong ⚙ và bảng chọn layer không còn bị cắt; trang phát hành ghi kích thước + SHA-256 của bộ cài. |
+| **0.9.5** *(gồm cả phần từng ghi là 0.9.4, chưa từng phát hành riêng; **nâng cấp từ 0.9.3 phải kích hoạt máy**)* | **Khóa bằng key theo máy + quản lý thiết bị:** bộ cài hiện mã máy + "Liên hệ Zalo owner: 0344644415", tự gửi email cho chủ plugin (tên máy, user Windows, mã máy, key) và thêm máy vào Google Sheet **"ClaudeCAD – Thiết bị"** (Chờ duyệt / Active / Disabled, lần cuối dùng, phiên bản). Chủ plugin đổi ô Trạng thái thành `Active` là máy tự kích hoạt (nút **Kiểm tra lại**, không cần key); đổi `Disabled` là máy bị khóa từ xa ở lần kiểm tra kế tiếp (mỗi lần mở AutoCAD và ~6 giờ/lần, câu trả lời có chữ ký số; mất mạng dùng tối đa 7 ngày). Key qua Zalo vẫn dùng được làm dự phòng, vĩnh viễn cho máy đó; cập nhật không hỏi lại; plugin kiểm tra giấy phép mỗi lần mở AutoCAD (chép thư mục / cài bằng .zip cũng bị hỏi key), thẻ **🔒 Kích hoạt** trong khung chat. Kèm 30 bản sửa sau đợt rà soát toàn dự án: xóa/sửa hàng loạt luôn hỏi xác nhận, tự gửi lại không nhầm bản vẽ, macro bo góc đúng đường, Claude chỉ đọc thư mục skill, báo cáo lỗi không lẫn nội dung chat, không vẽ trùng khi lệnh nặng, cuộc chat dài mở nhanh, cài ngầm `/VERYSILENT /KEY=` chạy được. **Skill theo từng đoạn chat:** + Add skill chọn nhiều file cùng lúc (vào thư viện và dùng luôn), danh sách Skill có phần *Đang dùng* (nút −) và *Thư viện* (nút +), chat mới dùng skill của chat gần nhất, bỏ ô Chuẩn. Chạy bền hơn: lỗi plugin không làm AutoCAD đóng đột ngột, khởi động lại trợ lý không sót tiến trình, ⚙ mở nhanh hơn, bộ cài không treo ở trang cuối. **Hỗ trợ AutoCAD 2026 và 2027** (vẫn một bộ cài chung 2022–2027): 2026 dùng chung bản .NET 8 với 2025, 2027 có bản .NET 10 riêng (2027 chưa thử trên AutoCAD thật). **Giao diện theo phong cách AutoCAD:** khung chat lấy màu và font từ chính theme palette của AutoCAD (giống Properties, Layer) thay vì màu tự đặt; đổi Color theme trong AutoCAD thì khung chat đổi ngay. Cỡ chữ theo AutoCAD đến khi cậu tự chọn cỡ. **Lớp vỏ kiểu palette AutoCAD:** góc vuông, tin nhắn dạng khối phẳng, thanh công cụ là hàng icon, mọi nút có tooltip giải thích ngắn; ⚙ thành lưới 2 cột với nhóm thu gọn; thanh **hạn mức** dưới thanh công cụ; thẻ xác nhận in to số đối tượng + nút *Xem trên bản vẽ*; thẻ lỗi gọn. **Gửi thêm ý khi Claude đang làm:** gõ rồi Enter, tin tự gửi khi lượt xong (có nút Bỏ). Dòng "đang làm" có thời gian + số thao tác, **Esc** trong ô nhập để dừng. **Thu gọn khung chat (nút ⌄):** palette co lại chỉ còn ô nhập, Enter gửi nhanh; lượt xong hiện một dòng báo, bấm để mở rộng và xem lại nguyên đoạn chat; khi Claude cần cậu đồng ý thì palette tự mở. **Icon ClaudeCAD trên thanh trạng thái AutoCAD** (góc dưới bên phải): chấm xanh khi Claude đang làm, chấm vàng khi cần cậu xem, bấm để mở khung chat; lượt xong lúc khung chat đóng / tự ẩn thì có bong bóng báo. Hàng nút dưới ô nhập (Chọn đối tượng, Lấy điểm, Ảnh, Chụp) cũng thành icon có tooltip. **Thẻ "Bắt đầu" mới:** 3 bước đánh số (Kích hoạt → Đăng nhập Claude → Thử một yêu cầu mẫu), bước nào xong có ✓, bước cần làm có sẵn nút. **Xem Claude đang làm bước nào:** trong lúc chạy, danh sách bước (✓ xong · ● đang chạy · ⚠ lỗi) mở sẵn ngay trên câu trả lời, xong lượt tự thu gọn. **Tiến độ theo kế hoạch:** bấm *Làm* trên thẻ kế hoạch thì thấy "Bước 3/7: Vẽ tường" với ✓ bước đã xong / ● đang làm / ○ chưa làm, cả khi thu gọn khung chat. **Tự kiểm tra mở rộng:** `CLAUDECHATSELFTEST` kiểm thêm bản plugin có đúng với đời AutoCAD không, đọc theme palette của AutoCAD, style giao diện, icon thanh trạng thái, thu gọn / mở lại không mất tin nhắn, hàng chờ gửi, skill của đoạn chat, và xác nhận bản vẽ đang mở không bị đụng tới. **Checklist thử thật** một lượt ~20 phút: [`docs/checklist-thu-that.md`](../docs/checklist-thu-that.md). |
+| 0.9.3 | **Đăng nhập Claude ngay trong bộ cài** (ô "Đăng nhập Claude ngay" ở trang cuối — trình duyệt mở, bấm đồng ý, không cần mở AutoCAD); lần đầu mở AutoCAD mà chưa đăng nhập thì plugin **tự mở** trang đăng nhập; bộ cài bỏ ~2.200 file `.map` không cần thiết (nhẹ hơn, ít bị diệt virus quét chặn); chữ trong ⚙ và bảng chọn layer không còn bị cắt; trang phát hành ghi kích thước + SHA-256 của bộ cài. |
 | 0.9.2 | **Toast** thông báo ngay trong khung chat; **giới hạn sử dụng AI** báo thẳng trong cuộc chat (cảnh báo khi sắp hết, thẻ khi hết với giờ làm mới và nút tự gửi lại); **Gửi báo cáo lỗi** (một file .zip trên Desktop: thông tin máy, log, tự kiểm tra, log cài đặt — không có chat, bản vẽ, API key); bộ cài luôn ghi log cài đặt; mục **Tài khoản AI** trong ⚙: xem đang dùng tài khoản nào, **Đổi tài khoản**, **Đăng xuất**, **Dùng API key** (lưu mã hóa). |
 | 0.9.1 | Cài 3 bước: kèm Node.js, nút **Đăng nhập Claude** ngay trong khung chat (không cần cài Claude Code / mở terminal), tự thêm thư mục plugin vào danh sách tin cậy của AutoCAD (hết cảnh báo SECURELOAD), thẻ **Bắt đầu** lần đầu mở AutoCAD, link tải cố định. |
 | 0.9.0 | Lệnh `CLAUDECHATSELFTEST`; so biên bản lúc AutoCAD rảnh, lưu phiên bản nhanh, bản vẽ lớn cập nhật dần, macro chạy theo lô; sửa 14 lỗi từ lượt soát code thứ ba. |
@@ -67,3 +80,5 @@ Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall** (hoặc `i
 | 0.3.0 | AutoCAD 2022–2025, bộ cài, cập nhật tự động. |
 
 Chi tiết từng tính năng: [`docs/palette-features.md`](../docs/palette-features.md). Danh sách cần thử trên AutoCAD thật: [`docs/test-log.md`](../docs/test-log.md).
+
+Sổ lưu trữ các bộ cài đã build (nguồn, link, hạn tải, trạng thái, cách cài từng bản): [`bo-cai/luu-tru-bo-cai.md`](luu-tru-bo-cai.md).
