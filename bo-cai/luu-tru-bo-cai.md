@@ -19,10 +19,42 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Bộ cài | Phiên bản | Trạng thái | Nguồn | Hạn tải |
 | --- | --- | --- | --- | --- |
-| 11/11/2026 | 0.9.4 trong csproj, nội dung tích hợp 0.9.5 | ✅ dùng được, đã giao client | `claude/release-0.9.5` @ `7f1a278`, run 43000757496 | 09/02/2027 |
+| **v0.9.5 — 18/11/2026** | 0.9.5 | ✅ **dùng được — bản đang dùng** | `main` @ `fc06894`, tag `v0.9.5`, run 44319064734 | không hết hạn |
+| 11/11/2026 | 0.9.4 trong csproj, nội dung tích hợp 0.9.5 | 🔁 thay thế bởi v0.9.5 (cùng code), đã giao client | `claude/release-0.9.5` @ `7f1a278`, run 43000757496 | 09/02/2027 |
 | 15/11/2026 | như trên + BiMat | ⏸ tạm hoãn, không giao | `76f1cce`, run 43665981360 | (chưa ghi) |
 | Trước 11/11/2026 | thử 0.9.4 / 0.9.5 | ⛔ không dùng | run 42993287282 trở về trước | — |
-| v0.9.3 — 09/11/2026 | 0.9.3 | 🔁 thay thế bởi bản 11/11 (vẫn tải được) | tag `v0.9.3` @ `47baddb` | không hết hạn |
+| v0.9.3 — 09/11/2026 | 0.9.3 | 🔁 thay thế bởi v0.9.5 (vẫn tải được) | tag `v0.9.3` @ `47baddb` | không hết hạn |
+
+---
+
+## v0.9.5 — 18/11/2026 (phát hành chính thức)
+
+| Mục | Giá trị |
+| --- | --- |
+| Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Ngày phát hành | 18/11/2026 |
+| Ngày thử | Cùng code với bộ cài 11/11 đã thử ổn ngày 17/11 (chỉ khác số phiên bản) |
+| Ngày giao | — (client đang dùng bản 11/11; link cố định trên Releases giờ trả bản này) |
+| Phiên bản | **0.9.5** |
+| Nguồn | `main` @ `fc06894` (PR #5 từ `claude/release-0.9.5` @ `02ca9d6`), tag `v0.9.5`. CI main run **44319064734** |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.5 (công khai). Link cố định: `releases/latest/download/ClaudeCAD-Setup.exe` |
+| Tệp | `ClaudeCAD-Setup.exe` (141 361 207 byte), `ClaudeCAD-0.9.5.zip`, `install.ps1`, `latest.json`; mã SHA-256 ghi trên trang phát hành |
+| Hạn tải | Không hết hạn |
+| AutoCAD | 2022–2027 (2027 chưa thử trên máy thật) |
+| Bản thử tương đương | `ClaudeCAD-0.9.5` của run 44317706091, artifact 14434370313 — giống hệt bản phát hành về code (cần đăng nhập GitHub, hết hạn theo CI) |
+
+**Gồm:** kích hoạt theo máy + quản lý thiết bị qua Sheet "Thiết bị" (khóa kích hoạt mới đổi 11/11), giao diện kiểu
+AutoCAD, AutoCAD 2022–2027, sửa lỗi parse `install.ps1` của 0.9.3. **Không có** BiMat / "Đã gỡ lúc" (tạm hoãn, xem
+bản 15/11).
+
+**Cài đặt:** giống hệt [bản 11/11](#cài-đặt-bản-1111) (cài thường, cài ngầm cho IT, gỡ cài đặt). Khác:
+
+- Tải `ClaudeCAD-Setup.exe` thẳng từ trang phát hành, không cần đăng nhập GitHub, không phải giải nén. Kiểm tra tệp:
+  `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 trên trang phát hành.
+- Cài bằng PowerShell (`ClaudeCAD-0.9.5.zip` + `install.ps1`) chạy được ở bản này.
+- **Nâng cấp từ 0.9.3 phải kích hoạt máy** (0.9.3 không có khóa key): chạy đè bộ cài → trang Kích hoạt → chờ duyệt
+  hoặc nhập key như bản 11/11.
+- Máy đã cài bộ cài 11/11 và đã kích hoạt: chạy đè không hỏi lại key.
 
 ---
 
@@ -30,7 +62,7 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.5 (18/11, cùng code, chỉ khác số phiên bản). Máy client đã cài vẫn dùng bình thường |
 | Ngày build | 11/11/2026 |
 | Ngày thử | 17/11/2026 — thử ổn |
 | Ngày giao | 17/11/2026 — đã giao client |
@@ -143,7 +175,7 @@ Máy nào đã lỡ cài một bản này: cài đè bằng bộ cài 11/11 rồ
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | 🔁 **Thay thế** bởi bộ cài 11/11 cho client; vẫn là bản mới nhất trên Releases |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.5 (18/11/2026); vẫn tải được trên Releases |
 | Ngày build / phát hành | 09/11/2026 |
 | Phiên bản | 0.9.3 |
 | Nguồn | `main`, tag `v0.9.3` @ `47baddb` |
