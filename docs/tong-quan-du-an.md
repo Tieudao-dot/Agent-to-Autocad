@@ -1,58 +1,47 @@
 # Tổng quan dự án ClaudeCAD
 
-*Cập nhật: 17/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
+*Cập nhật: 18/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
 
 File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `plugin-tong-quan.md` và `ke-hoach-gop-nhanh.md`.
 
 ## 1. Tình hình
 
-- **Bản đang phát hành:** v0.9.3 (09/11), nhận AutoCAD 2022–2025.
-- **Bản thử:** toàn bộ phần đã làm sau v0.9.3 nằm trên nhánh tích hợp `claude/release-0.9.5`. CI xanh, chưa phát hành.
-  - Gồm: khóa key theo máy, giao diện kiểu AutoCAD, AutoCAD 2026 / 2027, checklist thử thật.
-  - Nhánh đã gộp cả 5 nhánh, và cặp khóa kích hoạt đã được đổi mới.
-- **Bộ cài dùng (đã thử ổn, giao cho client):** [run 43000757496](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43000757496/artifacts/13847355266), bản 11/11.
-  - Tên `ClaudeCAD-0.9.4`, ~340 MB. Tệp tải từ trang CI hết hạn ngày 09/02/2027.
-  - 17/11: cậu đã thử bản này và thấy làm việc ổn. Bản này chạy với máy chủ Google hiện tại, không cần sửa gì.
-  - Không dùng các run trước 43000757496: các bản đó mang khóa cũ.
-- **Để sau: BiMat + ghi "Đã gỡ lúc".**
-  - Lưu ở nhánh `claude/device-management` (`53bb1bf`), cùng bộ cài thử run 43665981360.
-  - Đang gỡ khỏi nhánh phát hành, để luồng kích hoạt hiện tại giữ nguyên.
-  - Máy chủ Google chưa cập nhật và không cần cập nhật.
-- **Việc tiếp theo của cậu:** cài bản 11/11 cho client. Cần hỗ trợ khi cài thì hỏi ở thread cài đặt.
-- **Để sau:** phát hành chính thức (merge `main`) và các quyết định ở mục 2.
+- **Bản đang phát hành: v0.9.5** (18/11/2026, khoảng 21h giờ Việt Nam).
+  - Trang tải: [Releases v0.9.5](https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.5). Gồm `ClaudeCAD-Setup.exe` (~141 MB) và `ClaudeCAD-0.9.5.zip`.
+  - Cậu đã merge PR [Tieudao-dot/Agent-to-Autocad#5](https://github.com/Tieudao-dot/Agent-to-Autocad/pull/5). CI tự phát hành, run 44319064734 xanh.
+  - Nhận AutoCAD 2022–2027. 2027 được ghi là hỗ trợ theo lựa chọn của cậu, nhưng chưa thử trên AutoCAD 2027 thật.
+- **Nội dung so với v0.9.3:**
+  - khóa key theo máy + quản lý thiết bị qua Google Sheet;
+  - giao diện kiểu AutoCAD;
+  - AutoCAD 2026 / 2027;
+  - ~30 bản sửa sau rà soát;
+  - sửa lỗi `install.ps1`.
+- **Code khớp bản đã thử:** code của v0.9.5 giống hệt bộ cài 11/11 cậu đã thử ổn ngày 17/11. Chỉ khác số phiên bản.
+- **Người dùng v0.9.3:** sẽ được báo cập nhật lên 0.9.5. Sau khi cập nhật phải kích hoạt máy, vì 0.9.3 chưa khóa máy. Cậu cần sẵn sàng duyệt máy trong Sheet "Thiết bị" hoặc gửi key.
+- **Client đang dùng bộ cài 11/11 (0.9.4):** sẽ thấy thông báo cập nhật lên 0.9.5. Bản 0.9.5 giống hệt về chức năng; cập nhật không phải nhập lại key.
+- **Để sau: BiMat + ghi "Đã gỡ lúc".** Lưu ở nhánh `claude/device-management` (`53bb1bf`). Không có trong v0.9.5. Máy chủ Google chưa cập nhật và không cần cập nhật.
+- **Sổ bộ cài:** [`bo-cai/luu-tru-bo-cai.md`](../bo-cai/luu-tru-bo-cai.md), do thread lưu trữ bộ cài giữ.
 
-## 2. Việc cần cậu quyết (trước khi phát hành)
+## 2. Việc còn mở
 
-1. **AutoCAD 2027:**
-   - giữ trong bản phát hành;
-   - ghi là "thử nghiệm";
-   - hoặc tạm bỏ tới khi thử được trên máy thật.
-2. **Tên phiên bản và thời điểm phát hành:** 0.9.5 hay 1.0.0. Phải merge `main` mới phát hành, nên chỉ làm khi cậu đồng ý.
-3. **Các mục key ngoài 20 phút thử:**
+1. **Các mục key ngoài 20 phút thử:** chưa thử.
    - mạng: K-5, K-6;
    - chỉnh đồng hồ: K-7;
    - chép giấy phép sang máy khác và các mục còn lại: K-11 … K-16.
+2. **AutoCAD 2027:** đã ghi là hỗ trợ nhưng chưa thử trên máy thật. Nên thử khi có máy hoặc bản dùng thử.
+3. **BiMat + ghi "Đã gỡ lúc":** triển khai khi cậu muốn. Cách làm: cập nhật máy chủ Google ở thread bảo mật, rồi gộp vào bản sau.
 
-   Cậu chọn thử trước khi phát hành hay để sau.
+## 3. Việc sau phát hành
 
-## 3. Các bước còn lại tới phát hành
-
-1. Cậu thử bộ cài theo checklist (~20 phút). Phần A–E lỗi thì chặn phát hành; phần F–H sửa sau được.
-2. Thread gộp nhánh sửa theo phản hồi, chạy lại CI cho xanh, ghi kết quả vào `test-log.md`.
-3. Cậu đồng ý phát hành. Thread gộp nhánh nâng phiên bản và merge `main`, rồi CI tự phát hành bộ cài.
-   - Máy chủ kích hoạt đã gắn sẵn, nên bước chặn phát hành của CI sẽ qua.
-   - Lỗi `install.ps1` của v0.9.3 (dòng `"Node.js v$major: OK"`) đã được sửa và hết lỗi ở bản này.
-4. Sau phát hành:
-   - hướng dẫn cho người dùng cuối: đã viết trước ở [`huong-dan-su-dung.md`](huong-dan-su-dung.md); rà lại theo kết quả
-     thử thật rồi đưa vào bản phát hành;
-   - tách `ChatControl.cs` cho dễ bảo trì.
+- Hướng dẫn cho người dùng cuối đã có: [`huong-dan-su-dung.md`](huong-dan-su-dung.md). Nên rà lại theo giao diện thật.
+- Tách `ChatControl.cs` cho dễ bảo trì.
 
 ## 4. Các thread
 
 | Thread | Phạm vi | Nhánh | Trạng thái | Chi phí quy đổi* |
 | --- | --- | --- | --- | --- |
-| [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp, việc chưa có thread nhận | `claude/wizardly-heisenberg-ugup5c` | Chờ kết quả thử | ~$391 |
-| [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, sửa theo phản hồi, nâng phiên bản, phát hành | `claude/release-0.9.5` | Chờ kết quả thử | ~$8,9 |
+| [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp, việc chưa có thread nhận | `claude/wizardly-heisenberg-ugup5c` | Đã phát hành v0.9.5 | ~$391+ |
+| [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, sửa theo phản hồi, nâng phiên bản, phát hành | `claude/release-0.9.5` | Đã phát hành v0.9.5; đang chờ cậu duyệt quyền gửi tin | ~$23 |
 | [Cài đặt plugin](https://claude.ai/code/session_01D56HmFkjV3poaV54WEEFYJ) | Hướng dẫn cài / kích hoạt, gỡ rối, giúp chạy checklist; không sửa code | — | Đã gửi hướng dẫn, chờ cậu | ~$0,5 |
 | [Bảo mật, khóa key & thiết bị](https://claude.ai/code/session_01D56HmEsRHYufkFu48qFmGR) | Key, kích hoạt, Apps Script / Google Sheet | `claude/device-management` (đã gộp) | Xong; máy chủ Google chạy khóa mới | ~$66 |
 | [Giao diện & UX](https://claude.ai/code/session_01D56HmHQPBueRAkYDSecN9n) | Khung chat, theme, thu gọn, icon thanh trạng thái | `claude/ux-autocad` (đã gộp) | Xong | ~$10,7 |
@@ -145,6 +134,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 18/11 | **Phát hành v0.9.5**: cậu merge PR #5, CI tự phát hành (run 44319064734). Code giống hệt bộ cài 11/11 đã thử, chỉ khác số phiên bản. AutoCAD 2027 ghi là hỗ trợ (chưa thử thật). BiMat để sau |
 | 17/11 | Cậu đã thử bộ cài 11/11 (run 43000757496): làm việc ổn, sẽ cài cho client. BiMat + ghi "Đã gỡ lúc" để sau, giữ ở `claude/device-management`, đang gỡ khỏi nhánh phát hành. Phát hành chính thức và các quyết định để sau |
 | 15/11 | Thread bảo mật làm tính năng ghi "Đã gỡ lúc" và tách bí mật máy chủ (`53bb1bf`). Thread gộp nhánh đã gộp vào `claude/release-0.9.5` (`76f1cce`) và build bộ cài thử mới, run 43665981360. Chờ cậu cập nhật máy chủ Google rồi thử theo checklist A, H, I |
 | 11/11 | Gộp xong 5 nhánh vào `claude/release-0.9.5`, đổi cặp khóa kích hoạt, có bộ cài thử cuối (run 43000757496). Mở thread cài đặt plugin. Chờ cậu thử trên AutoCAD 2026 |
