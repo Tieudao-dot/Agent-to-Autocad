@@ -177,7 +177,11 @@ jobs:
           $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
           $v = '${{ steps.ver.outputs.version }}'
           @(
-            "ClaudeCAD $v — hướng dẫn cài: https://github.com/${{ github.repository }}/tree/main/bo-cai",
+            "ClaudeCAD $v",
+            "",
+            "Tải trực tiếp (bấm là tải): https://github.com/${{ github.repository }}/releases/download/v$v/ClaudeCAD-Setup.exe",
+            "",
+            "Hướng dẫn cài: https://github.com/${{ github.repository }}/blob/main/bo-cai/README.md",
             "",
             "Kiểm tra file tải về (PowerShell: Get-FileHash .\ClaudeCAD-Setup.exe):",
             "- ClaudeCAD-Setup.exe: $($f.Length) bytes",
