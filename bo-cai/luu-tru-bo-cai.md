@@ -2,14 +2,23 @@
 
 Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và cách cài đúng cho từng bản. **Mới nhất ở trên cùng.**
 
+## Quy tắc ghi link tải (bắt buộc với mọi bản)
+
+- **Chỉ ghi / gửi link tải trực tiếp:** bấm vào là trình duyệt tải ngay tệp `ClaudeCAD-Setup.exe`, không qua trang
+  GitHub nào. Dạng: `https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v<phiên bản>/ClaudeCAD-Setup.exe`, hoặc link luôn trỏ bản mới nhất
+  `https://github.com/Tieudao-dot/Agent-to-Autocad/releases/latest/download/ClaudeCAD-Setup.exe`.
+- **Không** ghi / gửi link trang GitHub (trang phát hành, trang run CI, trang artifact, trang repo).
+- Bộ cài thử trên CI không có link tải trực tiếp (phải đăng nhập GitHub): chỉ ghi **nguồn** (run, artifact id) để tra
+  cứu nội bộ, không đưa cho client. Bản giao client phải là bản phát hành có link tải trực tiếp.
+- Link không được chứa key, mã máy, token, email, số điện thoại hay địa chỉ máy chủ kích hoạt.
+- Kèm kích thước + SHA-256 để người nhận kiểm tra tệp: `Get-FileHash .\ClaudeCAD-Setup.exe` trong PowerShell.
+
 ## Ghi chú chung
 
-- **Bộ cài thử (từ trang CI / Artifacts):** muốn tải phải đăng nhập GitHub bằng tài khoản có quyền vào repo, và tệp
-  **tự hết hạn** (ngày hết hạn ghi ở từng mục). Chủ dự án nên tải về và **giữ một bản trên máy** (hoặc ổ lưu trữ
-  riêng) cho mỗi bản đã giao client.
-- **Bản phát hành chính thức:** tải công khai, không cần đăng nhập, không hết hạn, ở
-  [GitHub Releases](https://github.com/Tieudao-dot/Agent-to-Autocad/releases). Link luôn trỏ bản mới nhất:
-  `https://github.com/Tieudao-dot/Agent-to-Autocad/releases/latest/download/ClaudeCAD-Setup.exe`.
+- **Bộ cài thử (trên CI):** chỉ để thử nội bộ, cần đăng nhập GitHub và **tự hết hạn** (ngày hết hạn ghi ở từng
+  mục). Bản nào đã lỡ giao client thì chủ dự án nên giữ một bản trên máy.
+- **Bản phát hành chính thức:** tải trực tiếp, không cần đăng nhập, không hết hạn. Link luôn trỏ bản mới nhất:
+  https://github.com/Tieudao-dot/Agent-to-Autocad/releases/latest/download/ClaudeCAD-Setup.exe
 - Liên hệ kích hoạt / cấp key: **liên hệ chủ plugin** (sổ này không ghi key, số điện thoại, email hay địa chỉ máy chủ
   kích hoạt).
 
@@ -34,11 +43,12 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 | Trạng thái | ✅ **Dùng được — bản đang dùng** |
 | Ngày phát hành | 18/11/2026 |
 | Ngày thử | Cùng code với bộ cài 11/11 đã thử ổn ngày 17/11 (chỉ khác số phiên bản) |
-| Ngày giao | — (client đang dùng bản 11/11; link cố định trên Releases giờ trả bản này) |
+| Ngày giao | — (client đang dùng bản 11/11; link "bản mới nhất" giờ tải bản này) |
 | Phiên bản | **0.9.5** |
 | Nguồn | `main` @ `fc06894` (PR #5 từ `claude/release-0.9.5` @ `02ca9d6`), tag `v0.9.5`. CI main run **44319064734** |
-| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.5 (công khai). Link cố định: `releases/latest/download/ClaudeCAD-Setup.exe` |
-| Tệp | `ClaudeCAD-Setup.exe` (141 361 207 byte), `ClaudeCAD-0.9.5.zip`, `install.ps1`, `latest.json`; mã SHA-256 ghi trên trang phát hành |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.5/ClaudeCAD-Setup.exe (tải trực tiếp, không cần đăng nhập) |
+| Kiểm tra tệp | 141 361 207 byte · SHA-256 `88169253AB4DC8687DB6140F70617256C53993D3D008AEBCF29678B36AFF7840` |
+| Tệp khác (cho IT) | `ClaudeCAD-0.9.5.zip`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.5/ClaudeCAD-0.9.5.zip · `install.ps1`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.5/install.ps1 |
 | Hạn tải | Không hết hạn |
 | AutoCAD | 2022–2027 (2027 chưa thử trên máy thật) |
 | Bản thử tương đương | `ClaudeCAD-0.9.5` của run 44317706091, artifact 14434370313 — giống hệt bản phát hành về code (cần đăng nhập GitHub, hết hạn theo CI) |
@@ -49,8 +59,8 @@ bản 15/11).
 
 **Cài đặt:** giống hệt [bản 11/11](#cài-đặt-bản-1111) (cài thường, cài ngầm cho IT, gỡ cài đặt). Khác:
 
-- Tải `ClaudeCAD-Setup.exe` thẳng từ trang phát hành, không cần đăng nhập GitHub, không phải giải nén. Kiểm tra tệp:
-  `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 trên trang phát hành.
+- Bấm link tải là có ngay `ClaudeCAD-Setup.exe`, không cần đăng nhập GitHub, không phải giải nén. Kiểm tra tệp:
+  `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 ở bảng trên.
 - Cài bằng PowerShell (`ClaudeCAD-0.9.5.zip` + `install.ps1`) chạy được ở bản này.
 - **Nâng cấp từ 0.9.3 phải kích hoạt máy** (0.9.3 không có khóa key): chạy đè bộ cài → trang Kích hoạt → chờ duyệt
   hoặc nhập key như bản 11/11.
@@ -69,7 +79,7 @@ bản 15/11).
 | Phiên bản | Tệp `ClaudeCAD-0.9.4` (~340 MB). Trong csproj / bộ cài là **0.9.4**; nội dung là **bản tích hợp 0.9.5**, chưa phát hành chính thức |
 | Nhánh / commit | `claude/release-0.9.5` @ `7f1a278` (*Merge claude/device-management again: activation key pair rotated before release*) |
 | Run CI / artifact | Run **43000757496**, artifact id **13847355266** |
-| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43000757496/artifacts/13847355266 (cần đăng nhập GitHub) |
+| Link tải | Không có link tải trực tiếp (bản thử trên CI, cần đăng nhập GitHub). Cần cài mới thì dùng link của v0.9.5 (cùng code) |
 | Hạn tải | **09/02/2027** |
 | AutoCAD | 2022–2027 (một bộ cài chung). 2026 dùng bản .NET 8 chung với 2025; 2027 có bản .NET 10 riêng — **2027 chưa thử trên máy thật** |
 
@@ -86,8 +96,9 @@ bản 15/11).
 
 Theo `bo-cai/README.md` và `docs/checklist-thu-that.md` (phần A) tại commit `7f1a278`.
 
-**Chuẩn bị:** máy Windows 64-bit có AutoCAD bản đầy đủ (không phải LT) 2022–2027. Tải artifact ở link trên (đăng
-nhập GitHub), giải nén ra **ổ máy** (không chạy từ ổ mạng / USB) để lấy `ClaudeCAD-Setup.exe`.
+**Chuẩn bị:** máy Windows 64-bit có AutoCAD bản đầy đủ (không phải LT) 2022–2027. Lấy tệp
+`ClaudeCAD-Setup.exe` vào **ổ máy** (không chạy từ ổ mạng / USB): với v0.9.5 bấm link tải trực tiếp; với bản thử
+11/11 thì giải nén tệp artifact đã lưu.
 
 1. **Đóng AutoCAD.**
 2. Chạy `ClaudeCAD-Setup.exe`. Nếu Windows hiện "Windows protected your PC" → **More info → Run anyway** (bộ cài chưa
@@ -150,7 +161,7 @@ Ghi chú vận hành:
 | Phiên bản | Như bản 11/11 (0.9.4 trong csproj, tích hợp 0.9.5) + phần BiMat |
 | Commit | `76f1cce` |
 | Run CI / artifact | Run **43665981360**, artifact id **14142895023** |
-| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43665981360/artifacts/14142895023 (cần đăng nhập GitHub) |
+| Link tải | Không có — bản thử trên CI, tạm hoãn, không giao |
 | Hạn tải | chưa ghi (artifact CI thường giữ 90 ngày kể từ ngày build) |
 
 **Khác bản 11/11:** thêm BiMat và ghi cột "Đã gỡ lúc" vào Sheet "Thiết bị" khi gỡ cài đặt. Phần này được giữ ở nhánh
@@ -179,7 +190,8 @@ Máy nào đã lỡ cài một bản này: cài đè bằng bộ cài 11/11 rồ
 | Ngày build / phát hành | 09/11/2026 |
 | Phiên bản | 0.9.3 |
 | Nguồn | `main`, tag `v0.9.3` @ `47baddb` |
-| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.3 (công khai) |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.3/ClaudeCAD-Setup.exe (tải trực tiếp; chỉ dùng khi cần bản cũ) |
+| Kiểm tra tệp | 141 265 494 byte · SHA-256 `4B6B9AF1EB83C0251A05989D1D1007ED0BC1D13D6BF974A8F4A88179294D529B` |
 | Hạn tải | Không hết hạn |
 | AutoCAD | 2022–2025 |
 
