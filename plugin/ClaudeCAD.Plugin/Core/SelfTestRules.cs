@@ -227,7 +227,9 @@ namespace ClaudeCAD.Plugin.Core
             var brokenBuiltin = lib.Where(k => k.Builtin && k.Error != null).Select(k => k.Name + " (" + k.Error + ")").ToList();
             if (brokenBuiltin.Count > 0) return new Verdict(false, "skill mẫu đi kèm bị hỏng: " + string.Join("; ", brokenBuiltin) + " — cài lại plugin");
             var usedList = (used ?? Enumerable.Empty<string>()).ToList();
-            var readable = new HashSet<string>(lib.Where(k => k.Error == null).Select(k => k.Name), StringComparer.Ordinal);
+            var readable = new HashSet<string>(lib.Where(k => k.Error == null && !k.Hidden).Select(k => k.Name), StringComparer.Ordinal);
+            var hiddenUsed = usedList.Where(n => lib.Any(k => k.Name == n && k.Hidden)).ToList();
+            if (hiddenUsed.Count > 0) return new Verdict(false, "đoạn chat đang dùng skill chủ plugin đã ẩn: " + string.Join(", ", hiddenUsed));
             var ghost = usedList.Where(n => !readable.Contains(n)).ToList();
             if (ghost.Count > 0) return new Verdict(false, "đoạn chat đang dùng skill không đọc được: " + string.Join(", ", ghost));
             var text = $"thư viện {readable.Count} skill · đoạn chat này dùng {usedList.Count}" + (usedList.Count > 0 ? " (" + string.Join(", ", usedList) + ")" : "");
@@ -235,6 +237,9 @@ namespace ClaudeCAD.Plugin.Core
             if (missing.Count > 0) text += " · đã chọn nhưng không còn trong thư viện: " + string.Join(", ", missing);
             var brokenOwn = lib.Where(k => !k.Builtin && k.Error != null).Select(k => k.Name).ToList();
             if (brokenOwn.Count > 0) text += " · lưu ý: skill lỗi, không được nạp: " + string.Join(", ", brokenOwn);
+            var admin = lib.Where(k => k.Admin).ToList();
+            if (admin.Count > 0) // v0.9.6: skills the owner pushed to this machine
+                text += $" · chủ plugin gửi {admin.Count} skill (Admin)" + (admin.Any(k => k.Hidden) ? $", {admin.Count(k => k.Hidden)} đang ẩn" : "");
             return new Verdict(true, text);
         }
 

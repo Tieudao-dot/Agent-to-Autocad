@@ -239,6 +239,45 @@ namespace ClaudeCAD.Core.Tests
         }
 
         [Fact]
+        public void SummaryAndStateForThePalette()
+        {
+            Assert.Null(SkillPackLogic.Summary(new PackChange[0]));
+            Assert.Null(SkillPackLogic.Summary(new[] { new PackChange { Kind = PackChangeKind.Skipped, Name = "x" } }));
+            var s = SkillPackLogic.Summary(new[]
+            {
+                new PackChange { Kind = PackChangeKind.Added, Name = "cty-a" },
+                new PackChange { Kind = PackChangeKind.Updated, Name = "cty-b" },
+                new PackChange { Kind = PackChangeKind.Deleted, Name = "cty-c" },
+            });
+            Assert.StartsWith("Chủ plugin đã gửi skill mới: cty-a", s);
+            Assert.Contains("đã cập nhật skill: cty-b", s);
+            Assert.Contains("đã gỡ skill: cty-c", s);
+            Assert.Equal("Chủ plugin đã ẩn skill: cty-a.", SkillPackLogic.Summary(new[] { new PackChange { Kind = PackChangeKind.Hidden, Name = "cty-a" } }));
+
+            Assert.Equal(("", "-"), SkillPackLogic.ParseState(null));
+            Assert.Equal(("", "-"), SkillPackLogic.ParseState("rác"));
+            var ok = Verify(Pack("20261122103000", Skill("cty-a")));
+            Assert.Equal(("20261122103000", ok.Digest), SkillPackLogic.ParseState(SkillPackLogic.FormatState(ok).Replace("\n", "\r\n")));
+            Assert.Equal("CCP1|x", SkillPackLogic.FromResponse("{\"ok\":true,\"status\":\"CCS1|y\",\"skills\":\"CCP1|x\"}"));
+            Assert.Null(SkillPackLogic.FromResponse("{\"ok\":true,\"status\":\"CCS1|y\"}"));
+            Assert.Null(SkillPackLogic.FromResponse("<html>"));
+            // the old reader still works on an answer with skills (plugin 0.9.5 / LicenseLogic)
+            Assert.Equal("CCS1|y", LicenseLogic.ParseResponse("{\"ok\":true,\"status\":\"CCS1|y\",\"skills\":\"CCP1|x\"}").status);
+        }
+
+        [Fact]
+        public void SelfTestReportsOwnerSkillsAndRefusesHiddenOnesInAChat()
+        {
+            var store = new SkillStore(Temp());
+            store.ApplyPack(new[] { P("cty-a"), P("cty-b", "hide") });
+            var lib = store.Scan();
+            var ok = SelfTestRules.CheckSkills(true, store.Root, lib, new[] { "cty-a" }, new[] { "cty-a" });
+            Assert.True(ok.Ok);
+            Assert.Contains("chủ plugin gửi 2 skill (Admin), 1 đang ẩn", ok.Detail);
+            Assert.False(SelfTestRules.CheckSkills(true, store.Root, lib, new[] { "cty-b" }, new[] { "cty-b" }).Ok);
+        }
+
+        [Fact]
         public void RegistryKeepsOwnerFieldsAcrossScans()
         {
             var store = new SkillStore(Temp());

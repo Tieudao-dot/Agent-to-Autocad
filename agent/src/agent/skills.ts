@@ -3,9 +3,10 @@ import path from 'node:path';
 
 export const SKILLS_PLUGIN_NAME = 'claudecad-skills';
 
-/** Names of skills turned off with the palette's Skill list (skills.json next to the skills). */
+/** Names of skills turned off with the palette's Skill list, or hidden by the owner (skills.json next to the skills). */
 export function disabledSkills(skillsDir: string): Set<string> {
   const off = new Set<string>();
+  for (const n of hiddenSkills(skillsDir)) off.add(n);
   try {
     const reg = JSON.parse(fs.readFileSync(path.join(skillsDir, 'skills.json'), 'utf8')) as { skills?: Array<{ name?: unknown; enabled?: unknown }> };
     for (const s of reg.skills ?? []) if (typeof s.name === 'string' && s.enabled === false) off.add(s.name);
@@ -15,12 +16,28 @@ export function disabledSkills(skillsDir: string): Set<string> {
   return off;
 }
 
-/** Every skill folder of the library (has SKILL.md, not hidden), enabled or not. */
+/**
+ * Skills the owner chose "Ẩn" for in the Google Sheet (v0.9.6, "hidden": true in skills.json): kept on disk but
+ * never loaded, even when a chat still lists them.
+ */
+export function hiddenSkills(skillsDir: string): Set<string> {
+  const hidden = new Set<string>();
+  try {
+    const reg = JSON.parse(fs.readFileSync(path.join(skillsDir, 'skills.json'), 'utf8')) as { skills?: Array<{ name?: unknown; hidden?: unknown }> };
+    for (const s of reg.skills ?? []) if (typeof s.name === 'string' && s.hidden === true) hidden.add(s.name);
+  } catch {
+    /* no registry yet */
+  }
+  return hidden;
+}
+
+/** Every skill folder of the library (has SKILL.md, not a dot / underscore folder, not hidden by the owner), enabled or not. */
 export function librarySkills(skillsDir: string | undefined): string[] {
   if (!skillsDir || !fs.existsSync(skillsDir)) return [];
+  const hidden = hiddenSkills(skillsDir);
   return fs
     .readdirSync(skillsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('_'))
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('_') && !hidden.has(e.name))
     .filter((e) => fs.existsSync(path.join(skillsDir, e.name, 'SKILL.md')))
     .map((e) => e.name)
     .sort();

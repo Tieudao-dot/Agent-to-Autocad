@@ -1417,7 +1417,7 @@ namespace ClaudeCAD.Plugin.UI
         /// <summary>The library (every skill added so far) and the skills the current chat uses.</summary>
         public void SetSkills(List<SkillInfo> library, IEnumerable<string> chatSkills) => Ui(() =>
         {
-            _skills = library ?? new List<SkillInfo>();
+            _skills = (library ?? new List<SkillInfo>()).Where(k => !k.Hidden).ToList(); // "Ẩn" by the owner: not listed
             _chatSkills = new HashSet<string>(chatSkills ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
             int used = _skills.Count(k => k.Error == null && _chatSkills.Contains(k.Name));
             MarkIcon(_skillsBtn, used > 0 ? $"đang dùng {used}" : null,
@@ -1453,6 +1453,22 @@ namespace ClaudeCAD.Plugin.UI
             }
         }
 
+        /// <summary>Admin (pushed by the owner) · Default (shipped sample) · You (the user's own) — v0.9.6.</summary>
+        private static Border SkillLabel(string label)
+        {
+            var t = new TextBlock { Text = label, FontSize = 9, FontWeight = FontWeights.SemiBold };
+            Theme.Ref(t, TextBlock.ForegroundProperty, Theme.MutedFg);
+            var b = new Border
+            {
+                Child = t, CornerRadius = Theme.Corner, Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = label == "Admin" ? "Chủ plugin gửi tới máy này. Cậu sửa file thì skill thành của cậu (nhãn You) và không nhận cập nhật nữa."
+                    : label == "Default" ? "Skill mẫu đi kèm plugin" : "Skill cậu tự thêm (hoặc đã sửa)",
+            };
+            Theme.Ref(b, Border.BackgroundProperty, Theme.ChipBg);
+            return b;
+        }
+
         private static TextBlock SectionTitle(string text)
         {
             var t = MutedText(text);
@@ -1484,11 +1500,19 @@ namespace ClaudeCAD.Plugin.UI
             row.Children.Add(buttons);
 
             var info = new StackPanel();
-            var title = new TextBlock { Text = (inUse ? "✓ " : "") + k.Name + (k.Title != null && k.Title != k.Name ? "  ·  " + k.Title : ""), FontWeight = inUse ? FontWeights.SemiBold : FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis };
+            var shown = k.DisplayName;
+            var title = new TextBlock { Text = (inUse ? "✓ " : "") + shown + (k.Title != null && k.Title != shown && k.Title != k.Name ? "  ·  " + k.Title : ""), FontWeight = inUse ? FontWeights.SemiBold : FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
             Theme.Ref(title, TextBlock.ForegroundProperty, Theme.Fg);
-            info.Children.Add(title);
+            var head = new DockPanel();
+            var label = SkillLabel(k.Label);
+            DockPanel.SetDock(label, Dock.Left);
+            head.Children.Add(label);
+            head.Children.Add(title);
+            info.Children.Add(head);
+            var when = k.Added.HasValue ? " " + k.Added.Value.ToString("dd/MM/yyyy") : "";
             string status = k.Error != null ? "⚠ " + k.Error
-                : k.Builtin ? "Skill mẫu đi kèm plugin" : "Đã thêm" + (k.Added.HasValue ? " " + k.Added.Value.ToString("dd/MM/yyyy") : "");
+                : k.Admin ? "Chủ plugin gửi tới máy này" + when + (k.Name != shown ? " (thư mục " + k.Name + ", vì cậu đã có skill " + shown + ")" : "")
+                : k.Builtin ? "Skill mẫu đi kèm plugin" : "Đã thêm" + when;
             var st = new TextBlock { Text = status, FontSize = 11, TextWrapping = TextWrapping.Wrap };
             Theme.Ref(st, TextBlock.ForegroundProperty, k.Error != null ? Theme.ErrorFg : Theme.MutedFg);
             info.Children.Add(st);

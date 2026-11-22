@@ -132,6 +132,47 @@ namespace ClaudeCAD.Plugin.Core
                 return Convert.ToBase64String(sha.ComputeHash(bytes)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         }
 
+        /// <summary>The "skills" field (a CCP1 line) of an ?action=status answer, or null.</summary>
+        public static string FromResponse(string json)
+        {
+            try { return JsonCodec.ParseObject(json ?? "").TryGetValue("skills", out var v) ? v as string : null; }
+            catch { return null; }
+        }
+
+        /// <summary>skill-pack.txt: "issued\ndigest" of the last accepted pack → (issued, digest); ("", "-") when none.</summary>
+        public static (string issued, string digest) ParseState(string text)
+        {
+            var lines = (text ?? "").Replace("\r", "").Split('\n');
+            var issued = lines[0].Trim();
+            var digest = lines.Length > 1 ? lines[1].Trim() : "";
+            if (!IssuedRx.IsMatch(issued) || digest.Length == 0) return ("", NoPack);
+            return (issued, digest);
+        }
+
+        public static string FormatState(SkillPackCheck accepted) => accepted.Issued + "\n" + accepted.Digest + "\n";
+
+        /// <summary>One line for the toast / note after a pack, or null when nothing the user sees changed.</summary>
+        public static string Summary(IEnumerable<PackChange> changes)
+        {
+            var list = (changes ?? Enumerable.Empty<PackChange>()).ToList();
+            string Names(PackChangeKind k) => string.Join(", ", list.Where(c => c.Kind == k).Select(c => c.Name));
+            var parts = new List<string>();
+            var added = Names(PackChangeKind.Added);
+            var shown = Names(PackChangeKind.Shown);
+            var news = string.Join(", ", new[] { added, shown }.Where(x => x.Length > 0));
+            if (news.Length > 0) parts.Add("Chủ plugin đã gửi skill mới: " + news + " (nhãn Admin trong Thư viện, bấm + để dùng)");
+            var updated = Names(PackChangeKind.Updated);
+            if (updated.Length > 0) parts.Add("đã cập nhật skill: " + updated);
+            var hidden = Names(PackChangeKind.Hidden);
+            if (hidden.Length > 0) parts.Add("đã ẩn skill: " + hidden);
+            var deleted = Names(PackChangeKind.Deleted);
+            if (deleted.Length > 0) parts.Add("đã gỡ skill: " + deleted);
+            if (parts.Count == 0) return null;
+            if (news.Length == 0) parts[0] = "Chủ plugin " + parts[0];
+            var text = string.Join("; ", parts) + ".";
+            return char.ToUpperInvariant(text[0]) + text.Substring(1);
+        }
+
         private static string Str(Dictionary<string, object> m, string k) => m.TryGetValue(k, out var v) ? v as string : null;
     }
 }
