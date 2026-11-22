@@ -100,6 +100,9 @@ namespace ClaudeCAD.Plugin.Core
         private static readonly string[] CopyExtensions = { ".md", ".txt", ".csv", ".json" };
 
         public string Root { get; }
+        // the palette (UI thread) and a pushed pack (status check, worker thread) share one store: a Scan between
+        // writing an owner's SKILL.md and saving skills.json would take our own write for a user edit
+        private readonly object _gate = new object();
         public string RegistryPath => Path.Combine(Root, RegistryFileName);
 
         public SkillStore(string root)
@@ -248,7 +251,9 @@ namespace ClaudeCAD.Plugin.Core
         // ------------------------------------------------------------------ queries
 
         /// <summary>All skill folders (with SKILL.md) merged with the registry; new folders are registered as enabled.</summary>
-        public List<SkillInfo> Scan()
+        public List<SkillInfo> Scan() { lock (_gate) return ScanCore(); }
+
+        private List<SkillInfo> ScanCore()
         {
             var result = new List<SkillInfo>();
             if (string.IsNullOrEmpty(Root) || !Directory.Exists(Root)) return result;
@@ -328,7 +333,9 @@ namespace ClaudeCAD.Plugin.Core
         /// whole folder (reference files); any other .md becomes &lt;name&gt;\SKILL.md.
         /// overwrite=false returns Conflict when a different skill of that name exists.
         /// </summary>
-        public SkillImportResult Import(string mdPath, bool overwrite)
+        public SkillImportResult Import(string mdPath, bool overwrite) { lock (_gate) return ImportCore(mdPath, overwrite); }
+
+        private SkillImportResult ImportCore(string mdPath, bool overwrite)
         {
             string md;
             try { md = System.IO.File.ReadAllText(mdPath, Encoding.UTF8); }
@@ -407,7 +414,9 @@ namespace ClaudeCAD.Plugin.Core
             return "---\n" + string.Join("\n", lines) + text.Substring(end);
         }
 
-        public void SetEnabled(string name, bool enabled)
+        public void SetEnabled(string name, bool enabled) { lock (_gate) SetEnabledCore(name, enabled); }
+
+        private void SetEnabledCore(string name, bool enabled)
         {
             var reg = LoadRegistry();
             if (!reg.TryGetValue(name, out var e)) e = reg[name] = new Entry { Name = name, Added = DateTime.Now };
@@ -415,7 +424,9 @@ namespace ClaudeCAD.Plugin.Core
             SaveRegistry(reg.Values);
         }
 
-        public void Delete(string name)
+        public void Delete(string name) { lock (_gate) DeleteCore(name); }
+
+        private void DeleteCore(string name)
         {
             if (!IsValidName(name)) throw new ArgumentException("invalid skill name");
             var dir = Path.Combine(Root, name);
@@ -441,7 +452,9 @@ namespace ClaudeCAD.Plugin.Core
         /// Default skill of the same name is kept and the owner's copy goes to "&lt;name&gt;-admin". Skills missing
         /// from the pack stay as they are. New skills are not put into any chat (the user presses +).
         /// </summary>
-        public List<PackChange> ApplyPack(IEnumerable<PackSkill> skills)
+        public List<PackChange> ApplyPack(IEnumerable<PackSkill> skills) { lock (_gate) return ApplyPackCore(skills); }
+
+        private List<PackChange> ApplyPackCore(IEnumerable<PackSkill> skills)
         {
             var changes = new List<PackChange>();
             Directory.CreateDirectory(Root);
