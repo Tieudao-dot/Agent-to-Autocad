@@ -129,6 +129,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 | 0.4 – 0.9.3 | Khung chat 20+ tính năng, skill, macro, phiên bản 30 phút, ghi nhận sửa tay, chọn layer, báo cáo lỗi, tài khoản AI, đăng nhập trong bộ cài | Đã phát hành (v0.9.3 ngày 09/11) |
 | 0.9.5 | • Khóa key theo máy + quản lý thiết bị.<br>• ~30 bản sửa sau rà soát, rồi 3 đợt sửa tiếp.<br>• Skill theo đoạn chat.<br>• Giao diện kiểu AutoCAD.<br>• AutoCAD 2026 / 2027.<br>• Checklist thử thật + tự kiểm tra mở rộng | Đã phát hành 18/11 |
 | 0.9.6 | • Đẩy skill theo máy, nhãn Admin / Default / You.<br>• Tự kiểm bản vẽ 14 mã, bắt điểm theo đối tượng, áp chuẩn lúc vẽ.<br>• 3 skill mẫu viết lại + tự cập nhật. Chi tiết: [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md) | **Đã phát hành 22/11** (PR #7, `main` @8e38ee5, run 45034681870). Chưa thử trên AutoCAD thật |
+| 0.9.7 | Bộ cài: khi cài đè mà AutoCAD đang mở thì hỏi Thử lại / Hủy, dừng tiến trình của plugin. Plugin và trợ lý giống 0.9.6 | Đã phát hành 22/11 (PR #8). Chưa thử trên Windows thật |
 
 ## 7. Tài liệu khác
 
@@ -148,6 +149,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | **Phát hành v0.9.7** (PR #8, `main` @6e90240): chỉ sửa bộ cài. Khi cài đè mà AutoCAD đang mở, bộ cài hỏi Thử lại / Hủy bằng tiếng Việt rồi dừng tiến trình của plugin. Tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.7/ClaudeCAD-Setup.exe (SHA-256 9A7332A2…1C118B3B5B). Chưa thử trên Windows thật |
 | 22/11 | **Phát hành v0.9.6** (cậu chọn phát hành ngay, bỏ qua thử thật): PR #7, `main` @8e38ee5. Tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.6/ClaudeCAD-Setup.exe (SHA-256 6D6D4F9A…60867DA). Mô tả Release mới có phần CI tự sinh, phần "Điểm mới" cậu dán tay. Thread gộp nhánh đang làm 0.9.7: bộ cài hỏi Thử lại / Hủy khi AutoCAD đang mở |
 | 22/11 | Bộ cài thử 0.9.6 lần 2 (run 45019784560, @5fe6adc; lõi 264, trợ lý 186) có thêm "giữ bản gốc khi sửa skill". Thay bộ cài lần 1. Thử thêm S-7, S-8 |
 | 22/11 | Thread đẩy skill thêm: sửa skill Default / Admin thì plugin chép sang `<tên>-sua` (nhãn You), giữ bản gốc để vẫn nhận cập nhật (`claude/day-skill-theo-may` @d76641b, CI xanh run 45018661816; lõi 264, trợ lý 186). Chưa có trong bộ cài thử 0.9.6 |
