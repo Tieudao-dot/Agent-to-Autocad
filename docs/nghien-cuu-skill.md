@@ -197,8 +197,9 @@ Còn chờ: tài liệu chuẩn công ty (câu 6).
 - Đã soát bằng script làm đúng các kiểm tra của `agent/test/skills.test.ts` (frontmatter, mục chuẩn bị, chỉ nhắc
   tool có thật, JSON hợp lệ): cả 3 skill đạt. Chưa chạy `npm test` và chưa thử trên AutoCAD thật.
 - **Lưu ý phát hành:** bộ cài chép skill với cờ `onlyifdoesntexist` (`installer/*.iss`), nên máy đã cài sẽ **không
-  nhận** bản skill mẫu mới khi cập nhật, chỉ máy cài mới mới có. Việc này thuộc thread gộp nhánh & phát hành (đã
-  chuyển).
+  nhận** bản skill mẫu mới khi cập nhật, chỉ máy cài mới mới có. Thread gộp nhánh & phát hành đã xử lý theo cách chủ dự án
+  chọn, "đè nếu chưa sửa" (`plugin/ClaudeCAD.Plugin/Core/SampleSkills.cs`, nhánh `claude/release-0.9.5` @ `5838cf1`):
+  file mẫu chưa bị người dùng sửa sẽ được thay bằng bản mới khi khởi động.
 - `bo-cai/README.md` chưa sửa: thay đổi chưa vào phiên bản nào, dòng lịch sử phiên bản do thread phát hành ghi khi
   gộp.
 - Khi có chuẩn công ty: thay số trong các bảng mục 2, 4 (và mục ký hiệu) của từng skill, giữ nguyên định dạng bảng.
