@@ -462,8 +462,9 @@ namespace ClaudeCAD.Plugin.Core
             var reg = LoadRegistry();
             foreach (var s in skills ?? Enumerable.Empty<PackSkill>())
             {
+                // skills.json can be edited by hand: only a valid folder name is ever written or deleted (review D)
                 var mine = reg.Values.FirstOrDefault(e => e.Origin == AdminOrigin && e.AdminName == s.Name
-                    && System.IO.File.Exists(SkillFile(e.Name)));
+                    && IsValidName(e.Name) && System.IO.File.Exists(SkillFile(e.Name)));
                 try
                 {
                     if (s.Act == PackSkill.Delete)

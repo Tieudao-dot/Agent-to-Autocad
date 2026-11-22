@@ -467,6 +467,8 @@ describe('skills per machine (Apps Script, Gán skill)', () => {
     const sk = digestOf(p.skills);
     assert.equal(s.get({ action: 'status', machine, sk }).skills, undefined);
     s.lib.rows[1][1] = '4';
+    assert.equal(s.get({ action: 'status', machine, sk }).skills, undefined, 'known up to date: not worked out again for 10 min');
+    s.cache.clear();
     assert.ok(s.get({ action: 'status', machine, sk }).skills);
     // the other machine gets nothing of it
     assert.equal(s.get({ action: 'status', machine: other, sk: '-' }).skills, undefined);
@@ -532,11 +534,36 @@ describe('skills per machine (Apps Script, Gán skill)', () => {
     assert.match(String(s.assign.rows[21][3]), /Quá 20/);
   });
 
+  it('works a machine\'s pack out at most once a minute (calls with made-up sk cannot eat the quota)', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
+    let reads = 0;
+    const getRange = s.lib.getRange.bind(s.lib);
+    s.lib.getRange = (...a: [number, number, number?, number?]) => { reads++; return getRange(...a); };
+    assert.ok(s.get({ action: 'status', machine, sk: '-' }).skills);
+    const after = reads;
+    for (let i = 0; i < 20; i++) assert.equal(s.get({ action: 'status', machine, sk: 'bia-' + i }).skills, undefined);
+    assert.equal(reads, after);
+    assert.ok(s.get({ action: 'status', machine }).status, 'status itself still answers');
+  });
+
+  it('rejects names Windows cannot use as a folder', () => {
+    const s = setup();
+    s.lib.appendRow(['con', '1', skillMd('con'), '']);
+    s.assign.appendRow([machine, 'con', 'Thêm', '']);
+    s.assign.appendRow([machine, 'lpt1', 'Xóa', '']);
+    assert.equal(s.get({ action: 'status', machine, sk: '-' }).skills, undefined);
+    assert.match(String(s.assign.rows[1][3]), /không hợp lệ/);
+    assert.match(String(s.assign.rows[2][3]), /không hợp lệ/);
+  });
+
   it('a machine whose rows were all removed gets one empty pack, then nothing', () => {
     const s = setup();
     s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
     s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
     const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    s.cache.clear();
     s.assign.rows.splice(1);
     const r = s.get({ action: 'status', machine, sk: digestOf(p.skills) });
     assert.deepEqual(readPack(r.skills, s.publicKey).skills, []);

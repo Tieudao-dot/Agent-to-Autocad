@@ -60,6 +60,13 @@ var MAX_SKILLS = 20;
 var MAX_SKILL_CHARS = 45000;
 var MAX_PACK_BYTES = 400000;
 var SKILL_NAME_RE = /^[a-z0-9][a-z0-9-]{0,57}$/;
+var WINDOWS_RESERVED_RE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/; // not a folder name on Windows
+var SKILL_RECHECK_SECONDS = 60;    // a machine's pack is worked out at most once a minute…
+var SKILL_KNOWN_SECONDS = 600;     // …and a machine known to be up to date is not worked out again for 10 minutes
+
+function badSkillName(name) {
+  return !SKILL_NAME_RE.test(name) || /-admin$/.test(name) || WINDOWS_RESERVED_RE.test(name);
+}
 
 var MACHINE_RE = /^CC-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/;
 var B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
@@ -320,6 +327,19 @@ function handleStatus(p) {
  * Ghi chú cells. Returns null when the machine already has exactly this pack (sk = its digest).
  */
 function skillPackFor(machine, sk) {
+  // anyone who knows an Active machine code can call status: cap the sheet reads per machine (security review B)
+  var cache = CacheService.getScriptCache();
+  var knownKey = 'skd:' + machine, busyKey = 'skt:' + machine;
+  if (cache.get(knownKey) === sk) return null;  // up to date a moment ago
+  if (cache.get(busyKey)) return null;          // worked out less than a minute ago: the next check gets it
+  cache.put(busyKey, '1', SKILL_RECHECK_SECONDS);
+  var pack = buildSkillPack(machine, sk);
+  cache.put(knownKey, pack ? pack.digest : sk, SKILL_KNOWN_SECONDS);
+  return pack ? pack.line : null;
+}
+
+/** { line, digest } of the machine's pack, or null when sk already is that digest. */
+function buildSkillPack(machine, sk) {
   var ss = SpreadsheetApp.getActive();
   var as = ss.getSheetByName(ASSIGN_SHEET);
   if (!as || as.getLastRow() < 2) return emptyPack(machine, sk);
@@ -330,7 +350,7 @@ function skillPackFor(machine, sk) {
     var name = String(rows[i][1]).trim();
     var act = ACTIONS[String(rows[i][2]).trim().toLowerCase()];
     if (!name) continue;
-    if (!SKILL_NAME_RE.test(name) || /-admin$/.test(name)) { notes[i] = 'Tên skill không hợp lệ: chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin.'; continue; }
+    if (badSkillName(name)) { notes[i] = 'Tên skill không hợp lệ: chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin, không dùng tên con/nul/aux/prn/com1…/lpt1….'; continue; }
     if (!act) { notes[i] = 'Chọn Hành động: Thêm, Ẩn hoặc Xóa.'; continue; }
     if (!(name in wanted)) order.push(name);
     wanted[name] = { act: act, row: i }; // a lower row wins
@@ -360,13 +380,14 @@ function skillPackFor(machine, sk) {
     notes[w.row] = '';
   }
   writeNotes(as, rows.length, notes);
-  if (digest(list) === sk) return null;
-  return signedPack(machine, list);
+  var d = digest(list);
+  if (d === sk) return null;
+  return { line: signedPack(machine, list), digest: d };
 }
 
 /** Nothing assigned: a machine that never had a pack, or already has the empty one, gets nothing. */
 function emptyPack(machine, sk) {
-  return sk === '-' || sk === digest([]) ? null : signedPack(machine, []);
+  return sk === '-' || sk === digest([]) ? null : { line: signedPack(machine, []), digest: digest([]) };
 }
 
 /** "Skill" sheet → { name: { rev, md, error } }; checks what the plugin checks (SkillStore.ParseFrontmatter). */
@@ -381,7 +402,7 @@ function skillLibrary(ss) {
     if (!name) continue;
     var md = String(rows[i][2]).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
     var error = null;
-    if (!SKILL_NAME_RE.test(name) || /-admin$/.test(name)) error = 'tên không hợp lệ (chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin)';
+    if (badSkillName(name)) error = 'tên không hợp lệ (chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin, không dùng tên con/nul/aux/prn/com1…/lpt1…)';
     else if (md.length > MAX_SKILL_CHARS) error = 'dài ' + md.length + ' ký tự, tối đa ' + MAX_SKILL_CHARS;
     else error = frontmatterError(md, name);
     lib[name] = { rev: String(rows[i][1]).trim(), md: md, error: error }; // a lower row wins

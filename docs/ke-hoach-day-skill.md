@@ -4,8 +4,16 @@
 > rà bảo mật, rồi chủ dự án triển khai Apps Script. Hướng dẫn dùng: `activation/README.md` (mục "Đẩy skill tới từng
 > máy") và `skills/README.md`.
 >
-> Khác với bản plan ban đầu: máy chủ **không** dùng CacheService cho trang Skill. Mỗi lần `status`, máy chủ chỉ đọc
-> trang Skill khi máy có dòng gán, mà mỗi máy chỉ gọi khoảng 6 giờ một lần, nên cache không đáng thêm độ phức tạp.
+> Khác với bản plan ban đầu (sau khi thread bảo mật rà 22/11):
+>
+> - Máy chủ không cache nội dung trang Skill. Thay vào đó nó **giới hạn theo máy**: chỉ tính lại gói của một máy
+>   tối đa 1 lần mỗi phút, và nhớ máy đã có bản mới nhất trong 10 phút.
+> - Chặn thêm các tên Windows cấm đặt cho thư mục.
+> - Kiểm tên thư mục đọc từ `skills.json` trước khi ghi hoặc xóa.
+> - Tài liệu ghi rõ: ai biết mã máy là đọc được skill của máy đó; ai sửa được Sheet là đẩy được skill.
+>
+> **Còn chờ (A):** cách chuyển bí mật khi triển khai Apps Script mới (tách BiMat.gs hay ghép tay 3 dòng). Thread bảo
+> mật đề xuất một commit chỉ tách BiMat trên `claude/device-management`; chủ dự án chốt.
 
 ## 0. Quyết định đã chốt (22/11/2026)
 

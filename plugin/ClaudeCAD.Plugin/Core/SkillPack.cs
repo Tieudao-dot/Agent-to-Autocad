@@ -44,6 +44,7 @@ namespace ClaudeCAD.Plugin.Core
         public const int MaxNameLength = 58;      // room for the "-admin" suffix within SkillStore's 64
         public const string AdminSuffix = "-admin";
         public const string NoPack = "-";         // sk= of a machine that never received a pack
+        private static readonly Regex WindowsReservedRx = new Regex("^(con|prn|aux|nul|com[1-9]|lpt[1-9])$"); // not a folder on Windows
         private static readonly Regex IssuedRx = new Regex("^[0-9]{14}$");
 
         public static SkillPackCheck Verify(string line, string machine, string lastIssued) =>
@@ -102,7 +103,8 @@ namespace ClaudeCAD.Plugin.Core
         /// <summary>Why one skill of a pack cannot be used, or null.</summary>
         public static string Check(PackSkill s)
         {
-            if (!SkillStore.IsValidName(s.Name) || s.Name.Length > MaxNameLength || s.Name.EndsWith(AdminSuffix, StringComparison.Ordinal))
+            if (!SkillStore.IsValidName(s.Name) || s.Name.Length > MaxNameLength || s.Name.EndsWith(AdminSuffix, StringComparison.Ordinal)
+                || WindowsReservedRx.IsMatch(s.Name))
                 return "tên không hợp lệ";
             if (s.Act == PackSkill.Delete) return null;
             if (s.Act != PackSkill.Add && s.Act != PackSkill.Hide) return "hành động lạ";

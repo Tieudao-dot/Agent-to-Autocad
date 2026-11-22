@@ -105,6 +105,9 @@ namespace ClaudeCAD.Core.Tests
             Assert.False(Verify(Pack("20261122103000", bad)).Ok);
             Assert.False(Verify(Pack("20261122103000", Skill("Ten Sai"))).Ok);
             Assert.False(Verify(Pack("20261122103000", Skill("abc-admin"))).Ok);
+            Assert.False(Verify(Pack("20261122103000", Skill("con"))).Ok);
+            Assert.False(Verify(Pack("20261122103000", Skill("lpt1"))).Ok);
+            Assert.True(Verify(Pack("20261122103000", Skill("console"))).Ok);
             Assert.False(Verify(Pack("20261122103000", Skill(new string('a', 59)))).Ok);
             Assert.False(Verify(Pack("20261122103000", Skill("cty-a", md: Md("cty-b")))).Ok); // frontmatter name differs
             Assert.False(Verify(Pack("20261122103000", Skill("cty-a", md: "không có frontmatter"))).Ok);
@@ -275,6 +278,20 @@ namespace ClaudeCAD.Core.Tests
             Assert.True(ok.Ok);
             Assert.Contains("chủ plugin gửi 2 skill (Admin), 1 đang ẩn", ok.Detail);
             Assert.False(SelfTestRules.CheckSkills(true, store.Root, lib, new[] { "cty-b" }, new[] { "cty-b" }).Ok);
+        }
+
+        [Fact]
+        public void AHandEditedRegistryCannotPointADeleteOutsideTheLibrary()
+        {
+            var root = Temp();
+            var store = new SkillStore(Path.Combine(root, "skills"));
+            store.ApplyPack(new[] { P("cty-a") });
+            var outside = Path.Combine(root, "outside");
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(Path.Combine(outside, "SKILL.md"), "giữ");
+            File.WriteAllText(store.RegistryPath, File.ReadAllText(store.RegistryPath).Replace("\"name\": \"cty-a\"", "\"name\": \"../outside\"").Replace("\"name\":\"cty-a\"", "\"name\":\"../outside\""));
+            store.ApplyPack(new[] { P("cty-a", "delete") });
+            Assert.True(File.Exists(Path.Combine(outside, "SKILL.md")));
         }
 
         [Fact]

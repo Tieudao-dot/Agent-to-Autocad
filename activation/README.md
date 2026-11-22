@@ -41,7 +41,8 @@ Hai trang trong cùng Google Sheet. `caiDat` / `kiemTra` tự tạo, kèm tiêu 
   - Dán **toàn bộ** nội dung file `SKILL.md` vào một ô, gồm cả phần đầu `---` / `name:` / `description:` như trong
     [`skills/README.md`](../skills/README.md).
   - `name` phải trùng cột Tên: chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng `-admin`.
-  - Mỗi skill tối đa 45.000 ký tự.
+  - Mỗi skill tối đa 45.000 ký tự. Không dùng các tên Windows cấm đặt cho thư mục: `con`, `nul`, `aux`, `prn`,
+    `com1`…`com9`, `lpt1`…`lpt9`.
   - **Sửa nội dung thì tăng Phiên bản.**
 - **Gán skill**: Mã máy · Tên skill · Hành động · Ghi chú. Mỗi dòng là một skill cho một máy; một máy có thể có
   nhiều dòng.
@@ -66,6 +67,14 @@ Hai trang trong cùng Google Sheet. `caiDat` / `kiemTra` tự tạo, kèm tiêu 
 - **Trùng tên** với skill You hoặc Default đã có: **lưu cả hai**. Bản Admin nằm ở thư mục `<tên>-admin`; trong danh
   sách vẫn hiện tên gốc kèm nhãn Admin. Skill của khách không bị đụng tới.
 - Plugin 0.9.5 trở về trước không nhận skill. Máy đó vẫn chạy bình thường.
+- **Vừa sửa Sheet mà máy chưa thấy:** máy chủ nhớ một máy đã có bản mới nhất trong 10 phút, và chỉ tính lại gói của
+  mỗi máy tối đa 1 lần/phút để chống bị gọi dồn. Vì vậy sửa xong có thể phải chờ tới 10 phút rồi bấm
+  **Kiểm tra lại**.
+- **Ai đọc được skill:** người biết mã máy của một máy Active tải được toàn bộ skill gán cho máy đó. Mã máy không
+  phải bí mật: nó nằm trong email, trong Sheet, và khách tự gửi qua Zalo. **Không đưa mật khẩu, API key hay dữ liệu
+  riêng của khách khác vào skill.** Coi như khách và bất kỳ ai họ đưa mã máy đều đọc được skill đó.
+- **Ai sửa được bảng tính là đẩy được chỉ dẫn cho Claude trên máy mọi khách**, và xem được bí mật trong Apps Script.
+  Người khác chỉ nên có quyền **Người xem**.
 
 ## Cài máy chủ kích hoạt + bảng thiết bị (chủ plugin làm một lần, khoảng 10 phút)
 
@@ -135,11 +144,14 @@ Key vẫn riêng cho từng máy. Cài ngầm mà không có `/KEY=` thì plugin
     - mã máy;
     - thời điểm mới hơn gói đã nhận (chống gửi lại gói cũ), lưu ở `%LocalAppData%\ClaudeCAD\skill-pack.txt`;
     - giới hạn 20 skill / 45.000 ký tự / 400 KB;
-    - tên, frontmatter, `sha256` của từng skill.
+    - tên (kể cả tên Windows cấm đặt cho thư mục), frontmatter, `sha256` của từng skill.
 
     Gói sai bị bỏ **cả gói**, chỉ ghi log, và không ảnh hưởng việc máy có được dùng hay không.
   - **Ghi vào thư viện:** `SkillStore.ApplyPack` chỉ đụng skill có `origin: admin` trong `skills.json`. Skill bị
     Ẩn có `hidden: true`; trợ lý (`agent/src/agent/skills.ts`) không nạp skill đó.
+  - **Chống bị gọi dồn:** CacheService giữ hai khóa cho mỗi máy. `skd:<máy>` nhớ mã băm đã khớp trong 10 phút.
+    `skt:<máy>` bảo đảm gói của một máy chỉ được tính lại tối đa 1 lần mỗi phút; gọi với `sk` bịa cũng không làm
+    đọc lại trang Skill.
   - **Mã băm** = SHA-256 base64url của `name:act:rev:sha256\n` (sắp theo tên). Vector cố định nằm trong
     `SkillPackTests` và `agent/test/activation.test.ts`.
 - **Google Sheet:** script phải **gắn với bảng tính** (tạo từ Tiện ích mở rộng → Apps Script) vì dùng `SpreadsheetApp.getActive()`. `request` thêm dòng Chờ duyệt; `activate`/`taoKeyThuCong` đặt Active; `status` cập nhật Lần cuối dùng + Phiên bản (tối đa 30 phút/lần/máy, có LockService); `Disabled` chặn cả `request` (không email) lẫn `activate` (key đúng cũng từ chối). Máy lạ gọi `status` không được thêm dòng.
