@@ -13,6 +13,10 @@ export const VERIFY_CODES = [
   'TEXT_OVERLAP',
   'STRAY',
   'COUNT',
+  'LAYER_UNKNOWN',
+  'PROP_OVERRIDE',
+  'TEXT_HEIGHT',
+  'DIM_STYLE',
 ] as const;
 
 export const VERIFY_TOOL = 'verify_drawing';
@@ -26,10 +30,13 @@ export function verifyTools(b: ToolBridge): AnyTool[] {
         'against its neighbours. Codes: GAP (two ends closer than gap_mm but not touching), OVERSHOOT (a line runs a few mm past an intersection), ' +
         'OPEN_POLY (polyline whose ends meet but is not closed), ZERO_LEN, DUPLICATE (identical object on the same layer), ARC_MISMATCH (an arc end ' +
         'touches nothing, e.g. a door swing not reaching the jamb), LAYER_0 (objects on layer 0 / Defpoints), TEXT_OVERLAP (texts / dimension texts ' +
-        'overlapping), STRAY (an object far from the rest of what this turn drew), COUNT (new objects per layer differ from "expect"). ' +
+        'overlapping), STRAY (an object far from the rest of what this turn drew), COUNT (new objects per layer differ from "expect"); with a ' +
+        'skill that has a layer table / text table: LAYER_UNKNOWN (layer not in the standard, unless the user asked for it by name), ' +
+        'PROP_OVERRIDE (color / linetype / lineweight set on the object instead of ByLayer), TEXT_HEIGHT (height not in the skill\'s table × ' +
+        'print scale), DIM_STYLE (dimension scale / text height not the skill\'s). ' +
         'auto_fix (default true) repairs the safe ones on this turn\'s objects only, in the same undo step: joins GAPs, closes OPEN_POLYs, erases ' +
-        'DUPLICATE / ZERO_LEN copies. Fix the remaining issues with the normal tools and call it again. An issue that is intentional: pass its code ' +
-        'in "ignore" and say why in your reply. Returns {checked, ok, issues: [{code, objects, message, fix, at}], fixed?, more?}.',
+        'DUPLICATE / ZERO_LEN copies. Every other issue must be fixed with the normal tools, then call it again. ' +
+        'Returns {checked, ok, issues: [{code, objects, message, fix, at}], fixed?, more?}.',
       {
         handles: handles
           .max(5000)
@@ -44,11 +51,7 @@ export function verifyTools(b: ToolBridge): AnyTool[] {
           .min(0.1)
           .max(1000)
           .optional()
-          .describe('Largest gap / overshoot / open-polyline distance treated as a mistake, in mm. Default 10. Wider gaps are intentional (openings).'),
-        ignore: z
-          .array(z.enum(VERIFY_CODES))
-          .optional()
-          .describe('Codes not to report, because they are intentional here or the skill says so (explain it in the reply).'),
+          .describe('Largest gap / overshoot / open-polyline distance treated as a mistake, in mm. Only when the user gave one; default: the skill\'s "Ngưỡng khe hở", else 10. Wider gaps are intentional (openings).'),
         auto_fix: z.boolean().optional().describe('Repair the safe issues automatically (default true). Read-only drawings are never changed.'),
       }),
   ];

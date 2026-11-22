@@ -36,10 +36,14 @@ namespace ClaudeCAD.Plugin.Drawing
             var turn = host.TurnChanges();
             var explicitHandles = p.Has("handles") ? p.Handles("handles", MaxVerifyTargets) : null;
             var targets = explicitHandles ?? turn.Keys.ToList();
+            var std = host.Standard;
             var opts = new VOptions
             {
-                Gap = Math.Max(0.1, Math.Min(1000, p.Num("gap", VerifyRules.DefaultGap))),
-                Ignore = new HashSet<string>((p.StringsOpt("ignore") ?? new List<string>()).Select(s => s.Trim()), StringComparer.OrdinalIgnoreCase),
+                // gap: the user's own value > the skill's "Ngưỡng khe hở" > 10 mm
+                Gap = Math.Max(0.1, Math.Min(1000, p.Num("gap", std?.GapMm ?? VerifyRules.DefaultGap))),
+                Standard = std != null && !std.IsEmpty ? std : null,
+                Scale = host.PrintScale,
+                LayerAllowed = host.UserAllowsLayer,
             };
             var expect = p.ObjOpt("expect");
             if (expect != null)
@@ -214,6 +218,13 @@ namespace ClaudeCAD.Plugin.Drawing
             var s = new VShape { Handle = e.Handle.ToString(), Layer = e.Layer, Type = "OTHER" };
             var ext = EntityInfo.Extents(e);
             if (ext.HasValue) { s.Min = P2(ext.Value.MinPoint); s.Max = P2(ext.Value.MaxPoint); }
+            try
+            {
+                s.ColorOverride = !e.Color.IsByLayer;
+                s.LinetypeOverride = !string.Equals(e.Linetype, "BYLAYER", StringComparison.OrdinalIgnoreCase);
+                s.LineweightOverride = e.LineWeight != LineWeight.ByLayer;
+            }
+            catch (Autodesk.AutoCAD.Runtime.Exception) { }
             switch (e)
             {
                 case Line l:
@@ -251,12 +262,14 @@ namespace ClaudeCAD.Plugin.Drawing
                     s.Text = t.TextString;
                     s.Box = TextBox(t, ext);
                     s.Insert = P2(t.Justify == AttachmentPoint.BaseLeft ? t.Position : t.AlignmentPoint);
+                    s.TextHeight = t.Height;
                     break;
                 case MText m:
                     s.Type = "TEXT";
                     s.Text = m.Text;
                     s.Box = MTextBox(m, ext);
                     s.Insert = P2(m.Location);
+                    s.TextHeight = m.TextHeight;
                     break;
                 case BlockReference br:
                     s.Insert = P2(br.Position);
@@ -267,6 +280,10 @@ namespace ClaudeCAD.Plugin.Drawing
                 case Dimension d:
                     s.Type = "DIM";
                     s.Box = DimTextBox(d);
+                    try { s.DimScale = d.Dimscale; s.DimTextHeight = d.Dimtxt; } catch (Autodesk.AutoCAD.Runtime.Exception) { }
+                    break;
+                case Hatch _:
+                    s.Type = "HATCH";
                     break;
             }
             return s;

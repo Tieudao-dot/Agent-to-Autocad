@@ -86,7 +86,6 @@ export class SelfCheckTracker {
         block: true,
         reason:
           `${VERIFY_TOOL} still reports ${this.issues} issue(s) (${this.codes.join(', ')}). Fix them with the normal tools, then call ${VERIFY_TOOL} again. ` +
-          `If one is intentional, call ${VERIFY_TOOL} again with its code in "ignore" and explain why in your reply. ` +
           (left === 0
             ? 'This is the last fix round: after it, list every issue still open in your reply.'
             : `Fix rounds left after this one: ${left}.`),

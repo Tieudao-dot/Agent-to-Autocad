@@ -75,6 +75,9 @@ namespace ClaudeCAD.Plugin
         private readonly ChangeTracker _changes = new ChangeTracker();
         /// <summary>Last verify_drawing of the running turn ("Tự kiểm" card), null = none.</summary>
         private SelfCheckSummary _selfCheck;
+        /// <summary>Standard of the chat's skills for the running turn, and the layers the user chose for it.</summary>
+        private DrawingStandard _turnStandard;
+        private List<string> _turnLayers = new List<string>();
         private readonly System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>> _turnMacros =
             new System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>>();
         private MacroStore _macroStore;
@@ -835,6 +838,8 @@ namespace ClaudeCAD.Plugin
             _recorder.Clear();
             _changes.Clear();
             _selfCheck = null;
+            _turnLayers = userEntry?.Layers?.ToList() ?? new List<string>();
+            _turnStandard = LoadStandard(ChatSkills());
             // a slow (Wblock) version copy is prepared now, before any tool call can time out waiting for it
             if (_settings.Versions && doc != null)
             {
@@ -2178,6 +2183,32 @@ namespace ClaudeCAD.Plugin
         }
 
         public void RecordSelfCheck(SelfCheckSummary summary) => _selfCheck = summary;
+
+        public DrawingStandard Standard => _turnStandard;
+
+        public double? PrintScale => DrawingStandard.ScaleDenominator(_settings.Scale);
+
+        public bool UserAllowsLayer(string layer) =>
+            !string.IsNullOrEmpty(layer) &&
+            (_turnLayers.Any(l => string.Equals(l, layer, StringComparison.OrdinalIgnoreCase)) || DrawingStandard.TextNamesLayer(_turnLabel, layer));
+
+        /// <summary>The machine-readable tables of the chat's skills (layer B); a broken file only loses its standard.</summary>
+        private DrawingStandard LoadStandard(List<string> skills)
+        {
+            if (_skillStore == null || skills == null || skills.Count == 0) return null;
+            var list = new List<DrawingStandard>();
+            foreach (var name in skills)
+            {
+                try
+                {
+                    var file = _skillStore.SkillFile(name);
+                    if (System.IO.File.Exists(file)) list.Add(DrawingStandard.Parse(System.IO.File.ReadAllText(file, Encoding.UTF8), name));
+                }
+                catch (Exception ex) { Logger.Warn($"standard of skill {name} not read: {ex.Message}"); }
+            }
+            var std = DrawingStandard.Merge(list);
+            return std.IsEmpty ? null : std;
+        }
 
         /// <summary>First change of a chat turn: keep a copy of the drawing as it was (every 30 min max).</summary>
         public void BeforeWrite(Document doc)

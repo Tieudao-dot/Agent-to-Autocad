@@ -7,7 +7,7 @@ namespace ClaudeCAD.Plugin.Core
 {
     /// <summary>
     /// One drawing object as the self-check sees it (AutoCAD-independent, 2D, WCS millimetres).
-    /// Type: LINE, POLY (lightweight polyline), ARC, CIRCLE, TEXT (TEXT / MTEXT), DIM, OTHER.
+    /// Type: LINE, POLY (lightweight polyline), ARC, CIRCLE, TEXT (TEXT / MTEXT), DIM, HATCH, OTHER.
     /// </summary>
     public sealed class VShape
     {
@@ -36,6 +36,12 @@ namespace ClaudeCAD.Plugin.Core
         public string Text;
         /// <summary>Insertion point (text, block reference, point): the "ins" snap.</summary>
         public double[] Insert;
+        /// <summary>Color / linetype / lineweight set on the object instead of ByLayer.</summary>
+        public bool ColorOverride, LinetypeOverride, LineweightOverride;
+        /// <summary>TEXT: height in the model.</summary>
+        public double TextHeight;
+        /// <summary>DIM: overall scale (DIMSCALE, 0 = annotative) and text height on paper (DIMTXT).</summary>
+        public double DimScale, DimTextHeight;
     }
 
     /// <summary>A safe automatic repair of one issue (verify_drawing auto_fix).</summary>
@@ -69,8 +75,12 @@ namespace ClaudeCAD.Plugin.Core
         public double Gap = VerifyRules.DefaultGap;
         /// <summary>Two points closer than this coincide (mm).</summary>
         public double Tol = VerifyRules.DefaultTol;
-        /// <summary>Codes not reported (Claude / the skill judged them intentional).</summary>
-        public HashSet<string> Ignore = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Standard of the chat's skills (layer table, text heights); null = no standard checks.</summary>
+        public DrawingStandard Standard;
+        /// <summary>Print scale denominator (100 for 1:100); null = unknown (no text height checks).</summary>
+        public double? Scale;
+        /// <summary>Layers outside the standard the user asked for by name (not LAYER_UNKNOWN).</summary>
+        public Func<string, bool> LayerAllowed;
         /// <summary>Expected count of new objects per layer (COUNT), null = no COUNT check.</summary>
         public Dictionary<string, int> Expect;
         public int MaxIssues = 30;
@@ -177,6 +187,7 @@ namespace ClaudeCAD.Plugin.Core
         public static readonly string[] Codes =
         {
             "GAP", "OVERSHOOT", "OPEN_POLY", "ZERO_LEN", "DUPLICATE", "ARC_MISMATCH", "LAYER_0", "TEXT_OVERLAP", "STRAY", "COUNT",
+            "LAYER_UNKNOWN", "PROP_OVERRIDE", "TEXT_HEIGHT", "DIM_STYLE",
         };
 
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -387,11 +398,11 @@ namespace ClaudeCAD.Plugin.Core
             CheckTextOverlap(live, liveTurn, all);
             CheckStray(liveTurn, all);
             CheckCount(turn, o, all);
+            CheckStandard(liveTurn, o, all);
 
             var rep = new VReport { Checked = turn.Count };
             foreach (var i in all)
             {
-                if (o.Ignore != null && o.Ignore.Contains(i.Code)) continue;
                 if (rep.Issues.Count < o.MaxIssues) rep.Issues.Add(i);
                 else rep.Omitted[i.Code] = (rep.Omitted.TryGetValue(i.Code, out var n) ? n : 0) + 1;
             }
@@ -686,9 +697,12 @@ namespace ClaudeCAD.Plugin.Core
 
         // ---- LAYER_0
 
+        private static bool IsLayer0(string layer) =>
+            string.Equals(layer, "0", StringComparison.Ordinal) || string.Equals(layer, "DEFPOINTS", StringComparison.OrdinalIgnoreCase);
+
         private static void CheckLayer0(List<VShape> liveTurn, List<VIssue> all)
         {
-            var bad = liveTurn.Where(s => string.Equals(s.Layer, "0", StringComparison.Ordinal) || string.Equals(s.Layer, "DEFPOINTS", StringComparison.OrdinalIgnoreCase)).ToList();
+            var bad = liveTurn.Where(s => IsLayer0(s.Layer)).ToList();
             foreach (var grp in bad.GroupBy(s => s.Layer.ToUpperInvariant()))
             {
                 var list = grp.ToList();
@@ -823,6 +837,75 @@ namespace ClaudeCAD.Plugin.Core
             }
         }
 
+        // ---- LAYER_UNKNOWN / PROP_OVERRIDE / TEXT_HEIGHT / DIM_STYLE (the skill's tables)
+
+        private static void CheckStandard(List<VShape> liveTurn, VOptions o, List<VIssue> all)
+        {
+            var std = o.Standard;
+            if (std == null) return;
+            if (std.HasLayers)
+            {
+                var unknown = liveTurn.Where(s => !IsLayer0(s.Layer) && !std.Layers.ContainsKey(s.Layer ?? "") && !(o.LayerAllowed?.Invoke(s.Layer) ?? false));
+                foreach (var g in unknown.GroupBy(s => s.Layer, StringComparer.OrdinalIgnoreCase))
+                {
+                    var list = g.ToList();
+                    all.Add(new VIssue
+                    {
+                        Code = "LAYER_UNKNOWN", Handles = list.Select(s => s.Handle).ToList(), At = First(list[0]),
+                        Message = $"{list.Count} đối tượng trên layer {g.Key}, không có trong bảng layer chuẩn",
+                        Hint = $"Move them to the right standard layer ({std.LayerList(g.Key)}) with set_entity_props.",
+                    });
+                }
+                var overridden = liveTurn.Where(s => s.Type != "HATCH" && (s.ColorOverride || s.LinetypeOverride || s.LineweightOverride));
+                foreach (var g in overridden.GroupBy(s => s.Layer, StringComparer.OrdinalIgnoreCase))
+                {
+                    var list = g.ToList();
+                    var what = new List<string>();
+                    if (list.Any(s => s.ColorOverride)) what.Add("màu");
+                    if (list.Any(s => s.LinetypeOverride)) what.Add("nét");
+                    if (list.Any(s => s.LineweightOverride)) what.Add("lineweight");
+                    all.Add(new VIssue
+                    {
+                        Code = "PROP_OVERRIDE", Handles = list.Select(s => s.Handle).ToList(), At = First(list[0]),
+                        Message = $"{list.Count} đối tượng gán riêng {string.Join(" / ", what)} thay vì theo layer (layer {g.Key})",
+                        Hint = "Set color, linetype and lineweight back to \"bylayer\" (set_entity_props); the layer carries them.",
+                    });
+                }
+            }
+            if (o.Scale is double sc && sc > 0)
+            {
+                if (std.HasTexts)
+                {
+                    var allowed = string.Join(" / ", std.TextHeights(sc).Select(Mm));
+                    var bad = liveTurn.Where(s => s.Type == "TEXT" && s.TextHeight > 0 && !std.TextHeightOk(s.TextHeight, sc));
+                    foreach (var g in bad.GroupBy(s => Math.Round(s.TextHeight, 3)))
+                    {
+                        var list = g.ToList();
+                        all.Add(new VIssue
+                        {
+                            Code = "TEXT_HEIGHT", Handles = list.Select(s => s.Handle).ToList(), At = First(list[0]),
+                            Message = $"{list.Count} chữ cao {Mm(g.Key)}, chuẩn 1:{Mm(sc)} là {allowed}",
+                            Hint = $"Set the height to one of {allowed} (edit_text) according to the kind of text in the skill's table.",
+                        });
+                    }
+                }
+                if (std.DimTextMm is double dt)
+                {
+                    var bad = liveTurn.Where(s => s.Type == "DIM" && (s.DimScale > 0 && Math.Abs(s.DimScale - sc) > sc * 1e-6 || s.DimTextHeight > 0 && Math.Abs(s.DimTextHeight - dt) > dt * 0.01));
+                    foreach (var g in bad.GroupBy(s => (Math.Round(s.DimScale, 3), Math.Round(s.DimTextHeight, 3))))
+                    {
+                        var list = g.ToList();
+                        all.Add(new VIssue
+                        {
+                            Code = "DIM_STYLE", Handles = list.Select(s => s.Handle).ToList(), At = First(list[0]),
+                            Message = $"{list.Count} dim có scale {Mm(g.Key.Item1)}, chữ {Mm(g.Key.Item2)} mm; chuẩn 1:{Mm(sc)} là scale {Mm(sc)}, chữ {Mm(dt)} mm",
+                            Hint = $"Use the dimension style of the skill for 1:{Mm(sc)} (create_dim_style with scale {Mm(sc)} and text_height {Mm(dt)}, then set_current_styles), and set it on these dimensions.",
+                        });
+                    }
+                }
+            }
+        }
+
         // ------------------------------------------------------------------ fixes
 
         /// <summary>The automatic repairs of a report, without conflicts: erases first, then one move per end.</summary>
@@ -876,6 +959,8 @@ namespace ClaudeCAD.Plugin.Core
             Pts = s.Pts.Select(p => (double[])p.Clone()).ToList(), Bulges = s.Bulges?.ToList(), Closed = s.Closed,
             Center = s.Center, Radius = s.Radius, StartAngle = s.StartAngle, EndAngle = s.EndAngle,
             Box = s.Box, Min = s.Min, Max = s.Max, Text = s.Text, Insert = s.Insert,
+            ColorOverride = s.ColorOverride, LinetypeOverride = s.LinetypeOverride, LineweightOverride = s.LineweightOverride,
+            TextHeight = s.TextHeight, DimScale = s.DimScale, DimTextHeight = s.DimTextHeight,
         };
 
         /// <summary>Short Vietnamese label of a code (the "Tự kiểm" card).</summary>
@@ -893,6 +978,10 @@ namespace ClaudeCAD.Plugin.Core
                 case "TEXT_OVERLAP": return "chữ đè nhau";
                 case "STRAY": return "đối tượng lạc";
                 case "COUNT": return "thiếu / thừa";
+                case "LAYER_UNKNOWN": return "layer ngoài chuẩn";
+                case "PROP_OVERRIDE": return "thuộc tính gán riêng";
+                case "TEXT_HEIGHT": return "chiều cao chữ";
+                case "DIM_STYLE": return "dim sai chuẩn";
                 default: return code;
             }
         }

@@ -321,13 +321,6 @@ namespace ClaudeCAD.Core.Tests
         }
 
         [Fact]
-        public void IgnoredCodesAreLeftOut()
-        {
-            var shapes = new List<VShape> { Text(0, 0, 1000, 250), Text(500, 100, 1000, 250, "WC") };
-            Assert.Empty(VerifyRules.Check(shapes, new VOptions { Ignore = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "text_overlap" } }).Issues);
-        }
-
-        [Fact]
         public void ReportIsCappedWithOmittedCounts()
         {
             var shapes = Enumerable.Range(0, 40).Select(i => Line(i * 1000, 0, i * 1000 + 500, 0, "0")).ToList();

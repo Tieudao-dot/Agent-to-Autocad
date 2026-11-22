@@ -204,8 +204,8 @@ describe('verify_drawing tool', () => {
     assert.ok(tool);
     const schema = z.object(tool.inputSchema as z.ZodRawShape);
     assert.equal(schema.safeParse({}).success, true);
-    assert.equal(schema.safeParse({ expect: { 'A-WALL': 4 }, gap: 10, ignore: ['TEXT_OVERLAP'], auto_fix: false }).success, true);
-    assert.equal(schema.safeParse({ ignore: ['NOT_A_CODE'] }).success, false);
+    assert.equal(schema.safeParse({ expect: { 'A-WALL': 4 }, gap: 10, auto_fix: false }).success, true);
+    assert.ok(!('ignore' in (tool.inputSchema as Record<string, unknown>)), 'every code must be fixed: no way to ignore one');
     assert.equal(schema.safeParse({ gap: 0 }).success, false);
     assert.equal(schema.safeParse({ expect: { 'A-WALL': -1 } }).success, false);
   });

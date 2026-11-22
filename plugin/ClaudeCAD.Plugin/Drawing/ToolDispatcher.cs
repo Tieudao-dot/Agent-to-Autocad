@@ -53,6 +53,12 @@ namespace ClaudeCAD.Plugin.Drawing
         IReadOnlyDictionary<string, string> TurnChanges();
         /// <summary>Result of verify_drawing, for the "Tự kiểm" card of the turn.</summary>
         void RecordSelfCheck(SelfCheckSummary summary);
+        /// <summary>Standard of the skills of the turn's chat (layer table, text heights, gap); null = none.</summary>
+        DrawingStandard Standard { get; }
+        /// <summary>Print scale denominator chosen in the palette (100 for 1:100); null = not chosen.</summary>
+        double? PrintScale { get; }
+        /// <summary>The user asked for this layer by name in the turn's message, or picked it with the Layer button.</summary>
+        bool UserAllowsLayer(string layer);
     }
 
     /// <summary>
