@@ -1,7 +1,7 @@
 # Kế hoạch: đẩy skill tới từng máy theo mã máy
 
-> Trạng thái: plan được duyệt 22/11/2026. **Đã code xong** trên nhánh `claude/day-skill-theo-may`; còn chờ CI Windows,
-> rà bảo mật, rồi chủ dự án triển khai Apps Script. Hướng dẫn dùng: `activation/README.md` (mục "Đẩy skill tới từng
+> Trạng thái: plan được duyệt 22/11/2026. **Đã code xong** trên nhánh `claude/day-skill-theo-may` (CI xanh @b712ea6, đã
+> qua rà bảo mật). **Máy chủ Google đã triển khai 22/11** (BiMat tách riêng, ping `"ready":true`). Còn chờ gộp vào 0.9.6. Hướng dẫn dùng: `activation/README.md` (mục "Đẩy skill tới từng
 > máy") và `skills/README.md`.
 >
 > Khác với bản plan ban đầu (sau khi thread bảo mật rà 22/11):
