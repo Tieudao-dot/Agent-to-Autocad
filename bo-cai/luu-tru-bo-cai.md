@@ -28,7 +28,8 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Bộ cài | Phiên bản | Trạng thái | Nguồn | Hạn tải |
 | --- | --- | --- | --- | --- |
-| **v0.9.6 — 22/11/2026** | 0.9.6 | ✅ **dùng được — bản đang dùng** | `main` @ `8e38ee5`, tag `v0.9.6`, run 45034681870 | không hết hạn |
+| **v0.9.7 — 22/11/2026** | 0.9.7 | ✅ **dùng được — bản đang dùng** | `main` @ `6e90240`, tag `v0.9.7`, run 45036552875 | không hết hạn |
+| v0.9.6 — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.7 (vẫn tải được) | `main` @ `8e38ee5`, tag `v0.9.6`, run 45034681870 | không hết hạn |
 | Bản thử 0.9.6 (lần 2) — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.6 (cùng code) | `claude/release-0.9.5` @ `5fe6adc`, run 45019784560 | 20/02/2027 |
 | Bản thử 0.9.6 (lần 1) — 22/11/2026 | 0.9.6 | 🔁 thay thế (bởi bản thử lần 2, rồi v0.9.6) | `23e8ed6`, run 45011984540 | 20/02/2027 |
 | Bản thử 22/11/2026 (`5838cf1`) | 0.9.5 trong bộ cài (nội dung mới hơn v0.9.5) | 🔁 thay thế bởi bản thử 0.9.6 | `claude/release-0.9.5` @ `5838cf1`, run 45007148184 | theo CI (~90 ngày) |
@@ -40,11 +41,41 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 ---
 
-## v0.9.6 — 22/11/2026 (phát hành chính thức)
+## v0.9.7 — 22/11/2026 (phát hành chính thức)
 
 | Mục | Giá trị |
 | --- | --- |
 | Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Ngày phát hành | 22/11/2026 (15:14 UTC) |
+| Ngày thử | Plugin giống 0.9.6; phần bộ cài mới **chưa thử trên Windows thật** (test-log I-6) |
+| Ngày giao | — |
+| Phiên bản | **0.9.7** (⚙ ghi 0.9.7) |
+| Nguồn | `main` @ `6e90240` (PR #8 từ `claude/release-0.9.5` @ `8c788f2`), tag `v0.9.7`. CI main run **45036552875** |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.7/ClaudeCAD-Setup.exe (tải trực tiếp, không cần đăng nhập). Link "bản mới nhất" `releases/latest/download/ClaudeCAD-Setup.exe` giờ tải bản này |
+| Kiểm tra tệp | 141 412 321 byte · SHA-256 `9A7332A264A2261EEEBB895027DF52E78F6CC744D30ACA7858531C1C118B3B5B` (khớp mã GitHub ghi cho tệp) |
+| Tệp khác (cho IT) | `ClaudeCAD-0.9.7.zip`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.7/ClaudeCAD-0.9.7.zip · `install.ps1`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.7/install.ps1 |
+| Hạn tải | Không hết hạn |
+| AutoCAD | 2022–2027 (2027 chưa thử trên máy thật) |
+| Thay bản nào | v0.9.6 |
+
+**Khác v0.9.6 (chỉ sửa bộ cài):** cài đè khi AutoCAD đang mở thì bộ cài nhắc bằng tiếng Việt; tự dừng tiến trình
+trợ lý còn sót trong thư mục plugin. Plugin giống hệt 0.9.6.
+
+**Cài đặt:** như [bản 11/11](#cài-đặt-bản-1111). Khác / lưu ý:
+
+- Chạy `ClaudeCAD-Setup.exe` đè lên bản đang cài: không phải kích hoạt lại.
+- Nếu AutoCAD đang mở, bộ cài hiện hộp tiếng Việt **"AutoCAD đang mở… bấm Retry"**: đóng AutoCAD rồi bấm **Retry**.
+- Mở AutoCAD → ⚙ ghi **0.9.7**.
+- Máy mới hoặc nâng từ 0.9.3: làm trang Kích hoạt như bản 11/11.
+- Kiểm tệp: `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 ở bảng trên.
+
+---
+
+## v0.9.6 — 22/11/2026 (phát hành chính thức)
+
+| Mục | Giá trị |
+| --- | --- |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.7 (22/11/2026, chỉ sửa bộ cài); vẫn tải được |
 | Ngày phát hành | 22/11/2026 (14:56 UTC) |
 | Ngày thử | Cùng code với bộ cài thử 0.9.6 lần 2 (`5fe6adc`) |
 | Ngày giao | — |
