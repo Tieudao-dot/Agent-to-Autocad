@@ -78,11 +78,15 @@ Hai trang trong cùng Google Sheet. `caiDat` / `kiemTra` tự tạo, kèm tiêu 
 
 ## Cài máy chủ kích hoạt + bảng thiết bị (chủ plugin làm một lần, khoảng 10 phút)
 
-Cần file **`ClaudeCAD-Code.gs`** do người phát triển gửi riêng. File này đã điền sẵn email nhận thông báo và khóa bí mật. **Không chia sẻ file này, không đưa lên GitHub**: ai có file này thì tự tạo được key.
+Dự án Apps Script gồm **2 file**:
+
+- **`BiMat.gs`** — 3 dòng bí mật (`EMAIL`, `SECRET`, `PRIVATE_KEY`), người phát triển tạo bằng lệnh kín từ `activation/apps-script/BiMat.gs.template` và gửi riêng. **Không chia sẻ, không đưa lên GitHub**: ai có file này thì tự tạo được key. Tạo một lần, nâng cấp không đụng tới.
+- **`Code.gs`** — phần xử lý, **không chứa bí mật**: dán nguyên văn file `activation/apps-script/Code.gs.template` của repo. Nâng cấp máy chủ chỉ thay file này.
 
 1. Mở <https://sheets.new> bằng Gmail nhận thông báo → đặt tên bảng tính, ví dụ `ClaudeCAD – Thiết bị`.
 2. Trong bảng tính: **Tiện ích mở rộng** (Extensions) → **Apps Script**. Đặt tên dự án, ví dụ `ClaudeCAD kích hoạt`.
-3. Xóa hết nội dung trong `Code.gs`, dán **toàn bộ** nội dung file `ClaudeCAD-Code.gs`, rồi bấm 💾 **Lưu**.
+3. Xóa hết nội dung trong `Code.gs`, dán **toàn bộ** file `Code.gs.template` (phần xử lý), rồi bấm 💾 **Lưu**.
+   Bấm dấu **+** cạnh chữ **Tệp** (Files) → **Tập lệnh** (Script) → đặt tên `BiMat` → dán **toàn bộ** file `BiMat.gs` → 💾 **Lưu**.
 4. Trên thanh công cụ, chọn hàm **`kiemTra`** rồi bấm ▶ **Chạy** (Run). Google sẽ hỏi quyền:
    **Xem lại quyền** → chọn tài khoản → màn hình "Google chưa xác minh ứng dụng này" → **Nâng cao** (Advanced) → **Đi tới … (không an toàn)** → **Cho phép** (Allow).
    Màn hình này hiện vì script do chính cậu tạo, chưa qua kiểm duyệt của Google. Script chỉ xin quyền **gửi email** và **sửa bảng tính này** bằng tài khoản của cậu.
@@ -94,17 +98,16 @@ Cần file **`ClaudeCAD-Code.gs`** do người phát triển gửi riêng. File 
 6. Thử: mở URL đó trên trình duyệt, thêm `?action=ping` vào cuối. Thấy `{"ok":true,"service":"ClaudeCAD activation"}` là xong.
 7. Gửi URL này cho người phát triển. URL được ghi vào `activation/activation.json`, và các bản phát hành sau sẽ dùng nó.
 
-**Cập nhật lên bản có đẩy skill (0.9.6)** trên máy chủ đang chạy:
+Nâng cấp máy chủ về sau: **chỉ thay file `Code.gs`** (không đụng `BiMat.gs`) → 💾 Lưu → chạy **`kiemTra`** một lần (để Google hỏi thêm quyền nếu bản mới cần) → **Triển khai → Quản lý triển khai** (Manage deployments) → ✏️ → Phiên bản: **Phiên bản mới** (New version) → Triển khai. Làm như vậy thì URL giữ nguyên. Nếu bấm "Tùy chọn triển khai mới", URL sẽ đổi và bộ cài đã phát hành sẽ không gọi được máy chủ mới.
 
-1. Mở dự án Apps Script (Sheet → Tiện ích mở rộng → Apps Script).
-2. Thay **phần code**, **giữ nguyên** 3 dòng đầu `var EMAIL = …`, `var SECRET = …`, `var PRIVATE_KEY = …` đang có.
-   Lấy code từ `activation/apps-script/Code.gs.template`, bỏ 3 dòng chứa `{{…}}` của file mẫu.
-3. Chạy `kiemTra` một lần. Hàm này tạo trang Skill và Gán skill, và không cần quyền mới.
-4. Triển khai phiên bản mới **trên bản triển khai cũ** như đoạn dưới.
+**Cập nhật lên bản có đẩy skill (0.9.6), đồng thời chuyển từ 1 file sang 2 file** (máy chủ đang chạy `Code.gs` còn chứa 3 dòng bí mật, làm một lần):
+1. Trong Apps Script, bấm **+** cạnh **Tệp** → **Tập lệnh** → đặt tên `BiMat`. Xóa hết nội dung mẫu trong file mới.
+2. Mở `Code.gs`. Gần đầu file có 3 dòng liền nhau `var EMAIL = …`, `var SECRET = …`, `var PRIVATE_KEY = …` (dòng PRIVATE_KEY rất dài, chạy ra ngoài màn hình là bình thường). Bấm vào **số thứ tự dòng** ở đầu dòng `var EMAIL`, giữ **Shift** rồi bấm vào số thứ tự dòng của `var PRIVATE_KEY` (cả 3 dòng được bôi màu) → `Ctrl+C` → sang file `BiMat` → `Ctrl+V` → 💾 Lưu. File `BiMat` phải có đúng 3 dòng bắt đầu bằng `var`.
+3. Quay lại `Code.gs` → `Ctrl+A` → dán đè file `Code.gs.template` mới → 💾 Lưu → chạy `kiemTra` (email "Máy chủ kích hoạt hoạt động" phải về, key thử giống lần trước; báo thiếu `BiMat.gs` nghĩa là bước 2 chưa đúng) → Quản lý triển khai → **Phiên bản mới**.
+4. Thử `URL?action=ping`: phải thấy `"ready":true`.
 
-Làm phần máy chủ **trước** khi phát hành plugin 0.9.6: plugin cũ không bị ảnh hưởng.
-
-Sửa script về sau: dán code mới → 💾 Lưu → chạy **`kiemTra`** một lần (để Google hỏi thêm quyền nếu bản mới cần) → **Triển khai → Quản lý triển khai** (Manage deployments) → ✏️ → Phiên bản: **Phiên bản mới** (New version) → Triển khai. Làm như vậy thì URL giữ nguyên. Nếu bấm "Tùy chọn triển khai mới", URL sẽ đổi và bộ cài đã phát hành sẽ không gọi được máy chủ mới.
+`kiemTra` cũng tạo sẵn trang **Skill** và **Gán skill** (đẩy skill theo máy), không cần quyền mới. Làm phần máy chủ
+**trước** khi phát hành plugin 0.9.6; plugin cũ không bị ảnh hưởng.
 
 ## Cấp key bằng tay (máy không có mạng)
 
@@ -155,9 +158,10 @@ Key vẫn riêng cho từng máy. Cài ngầm mà không có `/KEY=` thì plugin
   - **Mã băm** = SHA-256 base64url của `name:act:rev:sha256\n` (sắp theo tên). Vector cố định nằm trong
     `SkillPackTests` và `agent/test/activation.test.ts`.
 - **Google Sheet:** script phải **gắn với bảng tính** (tạo từ Tiện ích mở rộng → Apps Script) vì dùng `SpreadsheetApp.getActive()`. `request` thêm dòng Chờ duyệt; `activate`/`taoKeyThuCong` đặt Active; `status` cập nhật Lần cuối dùng + Phiên bản (tối đa 30 phút/lần/máy, có LockService); `Disabled` chặn cả `request` (không email) lẫn `activate` (key đúng cũng từ chối). Máy lạ gọi `status` không được thêm dòng.
-- **Tạo lại `ClaudeCAD-Code.gs`** (đổi email, hoặc mất file):
+- **Hai file Apps Script:** `Code.gs.template` (xử lý, không bí mật, dán nguyên văn làm `Code.gs`) + `BiMat.gs` (sinh từ `BiMat.gs.template`, bí mật, **không bao giờ commit**). Apps Script dùng chung biến toàn cục giữa các file của một dự án. Thiếu `BiMat.gs` thì mọi yêu cầu trả lỗi rõ ràng, `?action=ping` trả `"ready":false`.
+- **Tạo lại `BiMat.gs`** (đổi email, hoặc mất file) — chạy trong lệnh kín, không mở / in file kết quả:
   ```bash
-  node activation/make-apps-script.mjs --private-key license-private.pem --email <gmail> --secret <secret cũ> --out ClaudeCAD-Code.gs
+  node activation/make-apps-script.mjs --private-key license-private.pem --email <gmail> --secret <secret cũ> --out BiMat.gs
   ```
   Bỏ `--secret` thì script tạo SECRET mới, và mọi key đã gửi trước đó đều không còn dùng được để kích hoạt máy mới. Giấy phép đã kích hoạt vẫn dùng được.
 - **Đổi cặp khóa** (lộ khóa riêng): tạo khóa mới bằng `openssl genrsa -out license-private.pem 2048`, chạy `--print-public` để lấy khóa công khai, cập nhật `LicenseLogic.PublicModulus`, rồi phát hành bản mới. Lưu ý: giấy phép cũ sẽ hết hiệu lực trên bản mới, nên mọi máy phải kích hoạt lại.

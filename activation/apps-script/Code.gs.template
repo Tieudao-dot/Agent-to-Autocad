@@ -28,16 +28,15 @@
  *     hai dòng cùng máy + cùng skill thì dòng dưới thắng. Máy nhận ở lần kiểm tra kế tiếp (mở AutoCAD, ~6 giờ/lần,
  *     hoặc nút "Kiểm tra lại"). Lỗi (skill không có, quá dài…) ghi vào cột Ghi chú.
  *
- * BÍ MẬT: file này chứa khóa riêng để ký giấy phép. Không chia sẻ, không đưa lên GitHub.
- * Mất file này / lộ file này → báo người phát triển để đổi cặp khóa trong bản plugin mới.
+ * File này KHÔNG chứa bí mật và được dán nguyên văn làm Code.gs. Gmail, SECRET và khóa riêng nằm trong file
+ * BiMat.gs cùng dự án (activation/apps-script/BiMat.gs.template, chủ plugin tạo một lần). Nâng cấp máy chủ chỉ thay Code.gs.
  *
  * Tạo key bằng tay (máy không có mạng): sửa MAY_THU_CONG bên dưới rồi chạy hàm taoKeyThuCong
  * (nút ▶ Run) — key, mã kích hoạt offline và mã miễn-kiểm-tra được gửi vào email của cậu.
  */
 
-var EMAIL = '{{EMAIL}}';
-var SECRET = '{{SECRET}}';
-var PRIVATE_KEY = '{{PRIVATE_KEY}}';
+// EMAIL, SECRET, PRIVATE_KEY: in BiMat.gs (Apps Script shares globals between the files of a project)
+var MISSING_SECRETS_MSG = 'Máy chủ kích hoạt thiếu file BiMat.gs (Gmail, SECRET, khóa riêng) — chủ plugin xem lại hướng dẫn cài.';
 var TIME_ZONE = 'Asia/Ho_Chi_Minh';
 var MAY_THU_CONG = 'CC-0000-0000-0000';
 var SHEET_NAME = 'Thiết bị';
@@ -76,15 +75,22 @@ function doGet(e) {
   var out;
   try {
     var action = String(p.action || '');
-    if (action === 'request') out = handleRequest(p);
+    if (action === 'ping') out = { ok: true, service: 'ClaudeCAD activation', ready: !secretsMissing() };
+    else if (secretsMissing()) out = { ok: false, error: MISSING_SECRETS_MSG };
+    else if (action === 'request') out = handleRequest(p);
     else if (action === 'activate') out = handleActivate(p);
     else if (action === 'status') out = handleStatus(p);
-    else if (action === 'ping') out = { ok: true, service: 'ClaudeCAD activation' };
     else out = { ok: false, error: 'Yêu cầu không hợp lệ.' };
   } catch (err) {
     out = { ok: false, error: 'Lỗi máy chủ kích hoạt: ' + err };
   }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** True while BiMat.gs (the owner's Gmail, SECRET and private key) is missing from the project or left unfilled. */
+function secretsMissing() {
+  if (typeof EMAIL === 'undefined' || typeof SECRET === 'undefined' || typeof PRIVATE_KEY === 'undefined') return true;
+  return !EMAIL || !SECRET || !PRIVATE_KEY || (String(EMAIL) + String(SECRET) + String(PRIVATE_KEY)).indexOf('{{') >= 0;
 }
 
 // ======================================================================= Google Sheet "Thiết bị"
@@ -543,6 +549,7 @@ function cellText(s) {
 
 /** Emails the key, the offline activation code and the no-network pass for MAY_THU_CONG. */
 function taoKeyThuCong() {
+  if (secretsMissing()) throw new Error(MISSING_SECRETS_MSG);
   var machine = normMachine(MAY_THU_CONG);
   if (!machine || machine === 'CC-0000-0000-0000') throw new Error('Sửa MAY_THU_CONG ở đầu file thành mã máy cần kích hoạt (dạng CC-XXXX-XXXX-XXXX).');
   var key = makeKey(machine);
@@ -562,6 +569,7 @@ function taoKeyThuCong() {
 
 /** Run once from the editor after pasting the file: builds the sheet, checks the keys and sends a test email. */
 function kiemTra() {
+  if (secretsMissing()) throw new Error(MISSING_SECRETS_MSG + ' Tạo file BiMat.gs (dấu + cạnh "Tệp" → Tập lệnh) và dán 3 dòng EMAIL / SECRET / PRIVATE_KEY vào đó.');
   caiDat();
   var machine = 'CC-1234-5678-9ABC';
   var key = makeKey(machine);

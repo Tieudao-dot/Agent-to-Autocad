@@ -12,8 +12,8 @@
 > - Kiểm tên thư mục đọc từ `skills.json` trước khi ghi hoặc xóa.
 > - Tài liệu ghi rõ: ai biết mã máy là đọc được skill của máy đó; ai sửa được Sheet là đẩy được skill.
 >
-> **Còn chờ (A):** cách chuyển bí mật khi triển khai Apps Script mới (tách BiMat.gs hay ghép tay 3 dòng). Thread bảo
-> mật đề xuất một commit chỉ tách BiMat trên `claude/device-management`; chủ dự án chốt.
+> **A (chốt 22/11):** bí mật được tách ra `BiMat.gs` (commit `9ea7e33` của thread bảo mật, đã merge vào nhánh).
+> Code.gs không còn bí mật, nên mỗi lần cập nhật chỉ cần dán đè.
 
 ## 0. Quyết định đã chốt (22/11/2026)
 
@@ -193,18 +193,19 @@ Xem bảng ở mục 0.
   5. Khách sửa file → nhãn chuyển thành You.
   6. Máy thứ hai không được gán thì không nhận gì.
 
-## 7. Việc chủ dự án làm tay trên Google (sau khi code xong và thread bảo mật rà xong)
+## 7. Việc chủ dự án làm tay trên Google (một lần)
 
-1. Mở dự án Apps Script đang chạy (Sheet → Tiện ích mở rộng → Apps Script).
-2. **Thay phần code, giữ nguyên 3 dòng `EMAIL` / `SECRET` / `PRIVATE_KEY` đang có.** Code lấy từ
-   `activation/apps-script/Code.gs.template`, bỏ 3 dòng `{{…}}`. Không chạy lại `make-apps-script.mjs` mà thiếu
-   `--secret` cũ: nếu thiếu, script sẽ tạo SECRET mới và mọi key đã cấp sẽ hết dùng được.
-3. Chạy `kiemTra` một lần (▶). Hàm này gọi `caiDat`, nên tự tạo trang Skill và Gán skill, rồi tự kiểm.
-4. **Triển khai → Quản lý bản triển khai → sửa (✎) bản đang có → Phiên bản: Mới → Triển khai.** Không bấm
-   "Bản triển khai mới": làm vậy sẽ ra URL mới, và mọi máy đã cài sẽ mất kết nối.
-5. Dán skill vào tab Skill. Thêm dòng ở tab Gán skill: mã máy khách, tên skill, chọn Thêm. Xong.
+Làm theo `activation/README.md`, mục **"Cập nhật lên bản có đẩy skill (0.9.6), đồng thời chuyển từ 1 file sang 2 file"**:
 
-Thứ tự an toàn: triển khai Apps Script mới **trước** (máy cũ không bị ảnh hưởng), phát hành plugin 0.9.6 **sau**.
+1. Tạo file `BiMat` trong dự án Apps Script và chép 3 dòng `var EMAIL / SECRET / PRIVATE_KEY` từ `Code.gs` sang.
+2. Dán đè `Code.gs` bằng `activation/apps-script/Code.gs.template` của nhánh này. File này không chứa bí mật.
+3. Chạy `kiemTra`: email kiểm tra về, key thử giống lần trước, và trang Skill / Gán skill được tạo.
+4. **Quản lý bản triển khai → sửa (✎) bản đang có → Phiên bản mới.** Không bấm "Bản triển khai mới": làm vậy sẽ ra
+   URL mới.
+5. Mở `URL?action=ping`, phải thấy `"ready":true`.
+6. Dán skill vào trang Skill, thêm dòng ở trang Gán skill.
+
+Làm máy chủ **trước**, phát hành plugin 0.9.6 **sau**. Máy chạy plugin cũ không bị ảnh hưởng.
 
 ## 8. Ước tính công sức
 
