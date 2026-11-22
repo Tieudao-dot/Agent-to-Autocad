@@ -79,5 +79,6 @@ tình hình, việc chờ quyết, thread, plugin, nhật ký; luồng chính c�
 | Lưu trữ bộ cài | `session_01D56HmGL5w4NCZNzEyatioe` | Nhánh `claude/luu-tru-bo-cai`: sổ `bo-cai/luu-tru-bo-cai.md` (ngày, phiên bản, link tải, các bước cài của từng bộ cài). Thread gộp nhánh & phát hành nhắn thread này mỗi khi có bộ cài mới; không sửa code |
 | Nghiên cứu Skill | `session_01D56HmG6vg6SvpZDrVxxKT7` | Nhánh `claude/nghien-cuu-skill`: nghiên cứu và đề xuất về Skill (chất lượng skill, quản lý skill, skill mới, chuẩn Agent Skills); viết `docs/nghien-cuu-skill.md`, không sửa code |
 | Tự kiểm trước khi báo xong | `session_01D56HmJy4Urvum4vU5EmdwS` | Nhánh `claude/tu-kiem-tra`: thiết kế + code bước plugin tự kiểm bản vẽ (verify, hook trước khi kết thúc lượt, thẻ Tự kiểm) sau khi Claude làm xong việc người dùng giao và trước khi báo xong trong khung chat |
+| Đẩy skill theo máy | `session_01D56HmERgjnrwP5MTbkGKro` | Nhánh `claude/day-skill-theo-may`: chủ plugin gán bộ skill cho từng mã máy trong Sheet, máy chủ trả kèm có chữ ký số, plugin tự nhận vào thư viện. Phần máy chủ + chữ ký nhờ thread bảo mật rà trước khi triển khai |
 
 Link mở thread: `https://claude.ai/code/<session id>`.
