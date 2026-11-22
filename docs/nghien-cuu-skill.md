@@ -141,7 +141,7 @@ handle, mô tả, cách sửa gợi ý, và có `auto_fix` hay không.
 | Phần | Ở đâu | Ước tính | Thread gợi ý |
 | --- | --- | --- | --- |
 | E. Viết lại 3 skill + README (bản chưa có tool mới) | `skills/` | 0,5–1 ngày + thử thật | Thread này (đã chốt, đang làm) |
-| A. Tham chiếu điểm + `get_snap_points` | `agent/src/tools`, `plugin/.../Drawing` | 2–3 ngày, kèm test | Thread mới "Công cụ vẽ & tự kiểm" (đã chốt) |
+| A. Tham chiếu điểm + `get_snap_points` | `agent/src/tools`, `plugin/.../Drawing` | 2–3 ngày, kèm test | Thread "Tự kiểm trước khi báo xong" (`session_01D56HmJy4Urvum4vU5EmdwS`, nhánh `claude/tu-kiem-tra`) |
 | C. `verify_drawing` (12 mã lỗi, auto_fix) | plugin `Drawing/` + tool phía agent | 3–4 ngày, kèm test | như trên |
 | B. Áp chuẩn lúc vẽ (đọc bảng trong `SKILL.md`) | plugin + `SkillStore.cs` | 1,5–2 ngày | như trên |
 | D. Hook Stop / PostToolUse + quy tắc prompt | `agent/src/agent/session.ts`, `systemPrompt.ts` | 0,5–1 ngày | như trên |
@@ -168,7 +168,7 @@ Tổng khoảng 8–12 ngày công. Thứ tự đề xuất theo hiệu quả gi
 | # | Câu hỏi | Đã chốt |
 | --- | --- | --- |
 | 1 | Thứ tự làm | Theo đề xuất: E (viết lại skill) → A (bắt điểm) → C + D (`verify_drawing` + hook) → B (tự áp chuẩn) → thẻ UI |
-| 2 | Ai làm phần code (A, B, C, D) | **Thread mới** "Công cụ vẽ & tự kiểm", nhánh riêng; luồng chính mở thread và giao việc |
+| 2 | Ai làm phần code (A, B, C, D) | Chủ dự án chọn thread **"Tự kiểm trước khi báo xong"** (`session_01D56HmJy4Urvum4vU5EmdwS`, nhánh `claude/tu-kiem-tra`), đã có sẵn `verify_drawing` 10 mã + hook Stop + thẻ Tự kiểm |
 | 3 | Mức chặt khi kiểm ra lỗi | **Bắt buộc sửa hết** mọi mã lỗi, tối đa 2 vòng; còn lỗi thì liệt kê cho người dùng |
 | 4 | Chuẩn dạng máy đọc | **Đọc bảng trong `SKILL.md`** (không thêm `standard.json`); plugin báo ngay khi thêm skill có bảng sai định dạng |
 | 5 | Khe hở | Ngưỡng **10 mm** trong model, **tự nối** (`auto_fix`), skill sửa được ngưỡng; gõ U hoàn tác được |
