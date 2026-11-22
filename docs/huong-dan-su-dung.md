@@ -359,8 +359,8 @@ việc**: mức càng cao thì Claude cân nhắc càng kỹ, nhưng chậm hơn
 
 **Gỡ cài đặt:** đóng AutoCAD, vào Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall**.
 
-- Nếu máy có mạng lúc gỡ, chủ plugin thấy máy đã gỡ và giờ gỡ. Việc này chỉ để ghi chú, không khóa máy; cài lại thì máy
-  dùng tiếp như trước. Máy không có mạng vẫn gỡ bình thường.
+- Gỡ không cần mạng và không báo gì về cho chủ plugin (việc ghi lại giờ gỡ chưa có trong bản này). Cài lại thì máy
+  dùng tiếp như trước, không phải kích hoạt lại.
 - Dữ liệu của bạn (lịch sử chat, macro, mẫu lệnh) vẫn nằm trong `%LocalAppData%\ClaudeCAD` và `%AppData%\ClaudeCAD`. Xóa
   tay nếu không cần nữa.
 
@@ -425,7 +425,7 @@ vẽ** (mặc định tắt), plugin lưu thêm thư mục ẩn `.claudecad` c�
 Chế độ Chỉ xem chỉ ngăn sửa bản vẽ; Claude vẫn đọc dữ liệu bản vẽ để trả lời.
 
 **Chủ plugin thấy gì.** Để quản lý giấy phép, chủ plugin thấy: tên máy, tên người dùng Windows, mã máy, lần cuối dùng,
-phiên bản plugin, và giờ gỡ cài đặt nếu có.
+phiên bản plugin.
 
 ## 11. Bảng lệnh tóm tắt
 

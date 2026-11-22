@@ -1,70 +1,72 @@
 # Tổng quan dự án ClaudeCAD
 
-*Cập nhật: 17/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
+*Cập nhật: 18/11/2026 (giờ Việt Nam). Luồng chính cập nhật mục "Tình hình" và "Nhật ký" khi có mốc mới.*
 
 File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `plugin-tong-quan.md` và `ke-hoach-gop-nhanh.md`.
 
 ## 1. Tình hình
 
-- **Bản đang phát hành:** v0.9.3 (09/11), nhận AutoCAD 2022–2025.
-- **Bản thử:** toàn bộ phần đã làm sau v0.9.3 nằm trên nhánh tích hợp `claude/release-0.9.5`. CI xanh, chưa phát hành.
-  - Gồm: khóa key theo máy, giao diện kiểu AutoCAD, AutoCAD 2026 / 2027, checklist thử thật.
-  - Nhánh đã gộp cả 5 nhánh, và cặp khóa kích hoạt đã được đổi mới.
-- **Bộ cài dùng (đã thử ổn, giao cho client):** [run 43000757496](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/43000757496/artifacts/13847355266), bản 11/11.
-  - Tên `ClaudeCAD-0.9.4`, ~340 MB. Tệp tải từ trang CI hết hạn ngày 09/02/2027.
-  - 17/11: cậu đã thử bản này và thấy làm việc ổn. Bản này chạy với máy chủ Google hiện tại, không cần sửa gì.
-  - Không dùng các run trước 43000757496: các bản đó mang khóa cũ.
-- **Để sau: BiMat + ghi "Đã gỡ lúc".**
-  - Lưu ở nhánh `claude/device-management` (`53bb1bf`), cùng bộ cài thử run 43665981360.
-  - Đang gỡ khỏi nhánh phát hành, để luồng kích hoạt hiện tại giữ nguyên.
-  - Máy chủ Google chưa cập nhật và không cần cập nhật.
-- **Việc tiếp theo của cậu:** cài bản 11/11 cho client. Cần hỗ trợ khi cài thì hỏi ở thread cài đặt.
-- **Để sau:** phát hành chính thức (merge `main`) và các quyết định ở mục 2.
+- **Bản đang phát hành: v0.9.5** (18/11/2026, khoảng 21h giờ Việt Nam).
+  - Trang tải: [Releases v0.9.5](https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.5). Gồm `ClaudeCAD-Setup.exe` (~141 MB) và `ClaudeCAD-0.9.5.zip`.
+  - Cậu đã merge PR [Tieudao-dot/Agent-to-Autocad#5](https://github.com/Tieudao-dot/Agent-to-Autocad/pull/5). CI tự phát hành, run 44319064734 xanh.
+  - Nhận AutoCAD 2022–2027. 2027 được ghi là hỗ trợ theo lựa chọn của cậu, nhưng chưa thử trên AutoCAD 2027 thật.
+- **Nội dung so với v0.9.3:**
+  - khóa key theo máy + quản lý thiết bị qua Google Sheet;
+  - giao diện kiểu AutoCAD;
+  - AutoCAD 2026 / 2027;
+  - ~30 bản sửa sau rà soát;
+  - sửa lỗi `install.ps1`.
+- **Code khớp bản đã thử:** code của v0.9.5 giống hệt bộ cài 11/11 cậu đã thử ổn ngày 17/11. Chỉ khác số phiên bản.
+- **Người dùng v0.9.3:** sẽ được báo cập nhật lên 0.9.5. Sau khi cập nhật phải kích hoạt máy, vì 0.9.3 chưa khóa máy. Cậu cần sẵn sàng duyệt máy trong Sheet "Thiết bị" hoặc gửi key.
+- **Client đang dùng bộ cài 11/11 (0.9.4):** sẽ thấy thông báo cập nhật lên 0.9.5. Bản 0.9.5 giống hệt về chức năng; cập nhật không phải nhập lại key.
+- **Để sau: BiMat + ghi "Đã gỡ lúc".** Lưu ở nhánh `claude/device-management` (`53bb1bf`). Không có trong v0.9.5. Máy chủ Google chưa cập nhật và không cần cập nhật.
+- **Sổ bộ cài:** [`bo-cai/luu-tru-bo-cai.md`](../bo-cai/luu-tru-bo-cai.md), do thread lưu trữ bộ cài giữ.
 
-## 2. Việc cần cậu quyết (trước khi phát hành)
+## 2. Việc còn mở
 
-1. **AutoCAD 2027:**
-   - giữ trong bản phát hành;
-   - ghi là "thử nghiệm";
-   - hoặc tạm bỏ tới khi thử được trên máy thật.
-2. **Tên phiên bản và thời điểm phát hành:** 0.9.5 hay 1.0.0. Phải merge `main` mới phát hành, nên chỉ làm khi cậu đồng ý.
-3. **Các mục key ngoài 20 phút thử:**
+0. **Máy đã đổi Disabled vẫn dùng được (18/11):** thread bảo mật đã kiểm, máy chủ trả trạng thái đúng. Lỗi nghi ở phía máy khách. Thread cần cậu gửi:
+   - mã máy `CC-…` của máy đó;
+   - nếu đóng / mở lại AutoCAD mà vẫn dùng được: bộ cài tải từ đâu, ngày nào.
+
+   Lưu ý: plugin kiểm tra trạng thái khi mở AutoCAD và 6 giờ một lần, nên thường phải mở lại AutoCAD thì Disabled mới có hiệu lực.
+1. **Các mục key ngoài 20 phút thử:** chưa thử.
    - mạng: K-5, K-6;
    - chỉnh đồng hồ: K-7;
    - chép giấy phép sang máy khác và các mục còn lại: K-11 … K-16.
+2. **AutoCAD 2027:** đã ghi là hỗ trợ nhưng chưa thử trên máy thật. Nên thử khi có máy hoặc bản dùng thử.
+3. **BiMat + ghi "Đã gỡ lúc":** triển khai khi cậu muốn. Cách làm: cập nhật máy chủ Google ở thread bảo mật, rồi gộp vào bản sau.
+4. **Đẩy skill theo máy (22/11):** sẵn sàng gộp, `claude/day-skill-theo-may` @b712ea6, CI xanh (run 45006820369). **Máy chủ Google đã cập nhật** (đã tách BiMat, Code.gs mới, Phiên bản mới cùng link; `ping` trả `ready:true`). Còn chờ cậu quyết gộp vào 0.9.6.
+5. **Tự kiểm trước khi báo xong:** đợt 2 xong, `claude/tu-kiem-tra` @1eacfe3, CI xanh (run 45009114005). Gồm bắt điểm theo đối tượng + `get_snap_points`, `verify_drawing` 14 mã đọc bảng SKILL.md, tool vẽ tự áp chuẩn layer / chữ; đã gộp 3 skill mẫu mới. Lõi 236/236, trợ lý 172/172. Danh sách tool tăng ~2,5k token mỗi lượt (có cache). **Chờ cậu:** thử thật phần I checklist (I10–I13), rồi quyết gộp vào bản nào.
 
-   Cậu chọn thử trước khi phát hành hay để sau.
+## 3. Việc sau phát hành
 
-## 3. Các bước còn lại tới phát hành
+- Hướng dẫn cho người dùng cuối đã có: [`huong-dan-su-dung.md`](huong-dan-su-dung.md). Nên rà lại theo giao diện thật.
+- Tách `ChatControl.cs` cho dễ bảo trì.
 
-1. Cậu thử bộ cài theo checklist (~20 phút). Phần A–E lỗi thì chặn phát hành; phần F–H sửa sau được.
-2. Thread gộp nhánh sửa theo phản hồi, chạy lại CI cho xanh, ghi kết quả vào `test-log.md`.
-3. Cậu đồng ý phát hành. Thread gộp nhánh nâng phiên bản và merge `main`, rồi CI tự phát hành bộ cài.
-   - Máy chủ kích hoạt đã gắn sẵn, nên bước chặn phát hành của CI sẽ qua.
-   - Lỗi `install.ps1` của v0.9.3 (dòng `"Node.js v$major: OK"`) đã được sửa và hết lỗi ở bản này.
-4. Sau phát hành:
-   - hướng dẫn cho người dùng cuối: đã viết trước ở [`huong-dan-su-dung.md`](huong-dan-su-dung.md); rà lại theo kết quả
-     thử thật rồi đưa vào bản phát hành;
-   - tách `ChatControl.cs` cho dễ bảo trì.
+## 4. Các thread (rà soát 18/11/2026)
 
-## 4. Các thread
+| Thread | Phạm vi | Nhánh | Đã làm | Trạng thái | Chi phí* |
+| --- | --- | --- | --- | --- | --- |
+| [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp, việc chưa có thread nhận | `claude/wizardly-heisenberg-ugup5c` | Tính năng tới 0.9.3, rà soát + 30 bản sửa, kế hoạch gộp, tổng quan, hướng dẫn sử dụng, tạo repo Full | Rảnh. Chờ cậu `/compact` (~460k) | ~$423 |
+| [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, nâng phiên bản, phát hành | `claude/release-0.9.5` | Gộp 5 nhánh, các bộ cài thử, gỡ BiMat, ghi chú phát hành, **phát hành v0.9.5** (18/11) | Xong | ~$24 |
+| [Bảo mật, khóa key & thiết bị](https://claude.ai/code/session_01D56HmEsRHYufkFu48qFmGR) | Key, kích hoạt, Apps Script / Google Sheet | `claude/device-management` | Khóa key theo máy, quản lý thiết bị, đổi cặp khóa, BiMat + ghi "Đã gỡ lúc" (để sau) | **Chờ cậu:** gửi mã máy `CC-…` của máy đã đổi Disabled mà vẫn dùng được, và nói bộ cài tải từ đâu, ngày nào | ~$83 |
+| [Lưu trữ bộ cài](https://claude.ai/code/session_01D56HmGL5w4NCZNzEyatioe) | Sổ `bo-cai/luu-tru-bo-cai.md` | `claude/luu-tru-bo-cai` | Tạo sổ; đã ghi v0.9.5 trên nhánh riêng | Xong. Dòng v0.9.5 chưa vào `main` | ~$2 |
+| [QnA](https://claude.ai/code/session_01D56HmGkaq6YFfr46Xdigci) | Hỏi đáp về plugin, không sửa code | — | Trả lời câu hỏi; chuyển yêu cầu "Đã gỡ lúc" và phát hành 0.9.5 sang thread phù hợp | Rảnh | ~$13 |
+| [Cài đặt plugin](https://claude.ai/code/session_01D56HmFkjV3poaV54WEEFYJ) | Hướng dẫn cài / kích hoạt, gỡ rối | — | Gửi hướng dẫn cài bản thử trên AutoCAD 2026 | Đã lưu trữ (18/11) | ~$0,5 |
+| [Giao diện & UX](https://claude.ai/code/session_01D56HmHQPBueRAkYDSecN9n) | Khung chat, theme, thu gọn, icon thanh trạng thái | `claude/ux-autocad` (đã gộp) | 5 đợt giao diện, tiến độ từng bước | Đã lưu trữ (18/11) | ~$11 |
+| [Kiểm thử](https://claude.ai/code/session_01D56HmG5SsqRGRPe9bHKUad) | Checklist thử thật, tự kiểm tra | `claude/test-checklist` (đã gộp) | Checklist ~20 phút, tự kiểm tra mở rộng | Đã lưu trữ (18/11) | ~$8 |
+| [AutoCAD 2026/2027](https://claude.ai/code/session_01D56HmFfmat4UZDMPVZar76) | Bản AutoCAD mới, build .NET 10 | `claude/acad-2026-2027` (đã gộp) | Hỗ trợ 2026 (R25.1) + 2027 (R26.0), sửa `install.ps1` | Đã lưu trữ (18/11). 2027 chưa thử trên máy thật | ~$7 |
+| [Dùng thử & Autodesk](https://claude.ai/code/session_01D56HmGdeNRHtH8Vob4cXGr) | Bản dùng thử AutoCAD, case Autodesk 26568211 | — | Bản dùng thử từ 10/11, khoảng 30 ngày | Rảnh, chờ email Autodesk | ~$1 |
+| [Nghiên cứu Skill](https://claude.ai/code/session_01D56HmG6vg6SvpZDrVxxKT7) | Nghiên cứu, đề xuất về Skill | `claude/nghien-cuu-skill` | `docs/nghien-cuu-skill.md`, viết lại 3 skill mẫu (6313359) | Xong. Chờ chuẩn vẽ thật của công ty | — |
+| [Tự kiểm trước khi báo xong](https://claude.ai/code/session_01D56HmJy4Urvum4vU5EmdwS) | Plugin tự kiểm bản vẽ trước khi báo xong | `claude/tu-kiem-tra` | `verify_drawing`, hook trước khi kết thúc lượt, thẻ Tự kiểm (eecf3a9, CI xanh) | Để sau | — |
+| [Đẩy skill theo máy](https://claude.ai/code/session_01D56HmERgjnrwP5MTbkGKro) | Gán skill theo mã máy trong Sheet, gói ký số `CCP1` | `claude/day-skill-theo-may` | Code xong, rà bảo mật xong (874d2e4) | Chờ thread bảo mật tách `BiMat.gs`, rồi triển khai Apps Script | — |
 
-| Thread | Phạm vi | Nhánh | Trạng thái | Chi phí quy đổi* |
-| --- | --- | --- | --- | --- |
-| [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp, việc chưa có thread nhận | `claude/wizardly-heisenberg-ugup5c` | Chờ kết quả thử | ~$391 |
-| [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, sửa theo phản hồi, nâng phiên bản, phát hành | `claude/release-0.9.5` | Chờ kết quả thử | ~$8,9 |
-| [Cài đặt plugin](https://claude.ai/code/session_01D56HmFkjV3poaV54WEEFYJ) | Hướng dẫn cài / kích hoạt, gỡ rối, giúp chạy checklist; không sửa code | — | Đã gửi hướng dẫn, chờ cậu | ~$0,5 |
-| [Bảo mật, khóa key & thiết bị](https://claude.ai/code/session_01D56HmEsRHYufkFu48qFmGR) | Key, kích hoạt, Apps Script / Google Sheet | `claude/device-management` (đã gộp) | Xong; máy chủ Google chạy khóa mới | ~$66 |
-| [Giao diện & UX](https://claude.ai/code/session_01D56HmHQPBueRAkYDSecN9n) | Khung chat, theme, thu gọn, icon thanh trạng thái | `claude/ux-autocad` (đã gộp) | Xong | ~$10,7 |
-| [Kiểm thử](https://claude.ai/code/session_01D56HmG5SsqRGRPe9bHKUad) | Checklist thử thật, tự kiểm tra, test-log | `claude/test-checklist` (đã gộp) | Xong | ~$7,9 |
-| [AutoCAD 2026/2027](https://claude.ai/code/session_01D56HmFfmat4UZDMPVZar76) | Bản AutoCAD mới, build .NET 10 | `claude/acad-2026-2027` (đã gộp) | Xong | ~$7,1 |
-| [QnA](https://claude.ai/code/session_01D56HmGkaq6YFfr46Xdigci) | Hỏi đáp về plugin, không sửa code | — | Rảnh | ~$5,8 |
-| [Dùng thử & Autodesk](https://claude.ai/code/session_01D56HmGdeNRHtH8Vob4cXGr) | Bản dùng thử AutoCAD (từ 10/11, 30 ngày), case Autodesk 26568211 | — | Chờ email Autodesk | ~$1,1 |
+\* Số hệ thống ghi nhận cho từng thread, quy đổi theo giá API. Tổng cộng khoảng $572; luồng chính chiếm ~74% vì ngữ cảnh dài.
+Việc mới nên làm ở thread ngắn.
 
-\* Số hệ thống ghi nhận cho từng thread, quy đổi theo giá API. Tổng cộng khoảng $500, trong đó luồng chính chiếm
-~78% vì ngữ cảnh dài. Việc mới nên làm ở thread ngắn.
+Thread "Agent to AutoCAD Full" tạo nhầm hôm 12/11 đã được lưu trữ. Project Full chạy riêng, nằm ngoài danh sách này.
 
-Các nhánh đã gộp coi như đóng băng; sửa tiếp làm trên `claude/release-0.9.5`. Quy tắc làm việc và danh bạ thread nằm ở
+Các nhánh đã gộp coi như đóng băng. Sửa tiếp thì làm trên nhánh mới tách từ `main` (v0.9.5). Quy tắc làm việc và danh bạ thread nằm ở
 [`CLAUDE.md`](../CLAUDE.md).
 
 ## 5. Plugin làm gì
@@ -125,7 +127,8 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 | Phiên bản | Nội dung | Trạng thái |
 | --- | --- | --- |
 | 0.4 – 0.9.3 | Khung chat 20+ tính năng, skill, macro, phiên bản 30 phút, ghi nhận sửa tay, chọn layer, báo cáo lỗi, tài khoản AI, đăng nhập trong bộ cài | Đã phát hành (v0.9.3 ngày 09/11) |
-| 0.9.5 (bản thử, gồm phần từng ghi 0.9.4) | • Khóa key theo máy + quản lý thiết bị.<br>• ~30 bản sửa sau rà soát, rồi 3 đợt sửa tiếp.<br>• Skill theo đoạn chat.<br>• Giao diện kiểu AutoCAD.<br>• AutoCAD 2026 / 2027.<br>• Checklist thử thật + tự kiểm tra mở rộng | Đã gộp, CI xanh, chờ thử trên AutoCAD thật. csproj vẫn ghi 0.9.4 tới khi chốt tên |
+| 0.9.5 | • Khóa key theo máy + quản lý thiết bị.<br>• ~30 bản sửa sau rà soát, rồi 3 đợt sửa tiếp.<br>• Skill theo đoạn chat.<br>• Giao diện kiểu AutoCAD.<br>• AutoCAD 2026 / 2027.<br>• Checklist thử thật + tự kiểm tra mở rộng | Đã phát hành 18/11 |
+| 0.9.6 | • Đẩy skill theo máy, nhãn Admin / Default / You.<br>• Tự kiểm bản vẽ 14 mã, bắt điểm theo đối tượng, áp chuẩn lúc vẽ.<br>• 3 skill mẫu viết lại + tự cập nhật. Chi tiết: [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md) | Bộ cài thử 22/11 (run 45011984540, `claude/release-0.9.5` @23e8ed6), chờ cậu thử |
 
 ## 7. Tài liệu khác
 
@@ -145,6 +148,16 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Bộ cài thử 0.9.6 xong (run 45011984540, CI xanh; lõi 257, trợ lý 186), đã ghi vào sổ lưu trữ bộ cài. Có báo cáo [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md). Chờ cậu thử |
+| 22/11 | Cậu duyệt gộp cả 3 nhóm (đẩy skill, tự kiểm, skill mẫu tự cập nhật) vào 0.9.6. Đã giao thread gộp nhánh tạo `claude/release-0.9.6` và bộ cài thử; chưa merge `main`. Nội dung: [`ban-0.9.6.md`](ban-0.9.6.md) |
+| 22/11 | Cậu cập nhật máy chủ Google cho đẩy skill: tách BiMat, dán Code.gs mới, chạy `kiemTra`, tạo Phiên bản mới cùng link. `ping` trả `ready:true`. Bản 0.9.5 vẫn chạy bình thường |
+| 22/11 | Tự kiểm đợt 2 xong (@1eacfe3, CI xanh run 45009114005; lõi 236, trợ lý 172). Chờ cậu thử thật phần I và quyết gộp |
+| 22/11 | Đẩy skill sẵn sàng gộp (@b712ea6, CI xanh run 45006820369, đã tách `BiMat.gs`). Chờ cậu cập nhật máy chủ Google trước khi phát hành 0.9.6 |
+| 22/11 | Thread Tự kiểm: cậu duyệt kế hoạch đợt 2 (@2207c47, 4,5–5,5 ngày công). Thread này sẽ gộp `claude/nghien-cuu-skill` @6313359 vào nhánh của nó và sửa mục kiểm tra cùng ví dụ cửa của 3 skill mẫu; đã báo thread nghiên cứu tránh 2 chỗ đó |
+| 22/11 | Thread nghiên cứu Skill viết lại cấu trúc 3 skill mẫu (`claude/nghien-cuu-skill` @6313359, giữ số liệu cũ, chưa chạy CI). Đã chuyển cho thread gộp nhánh việc bộ cài không cập nhật skill mẫu trên máy đã cài. Chờ cậu gửi chuẩn công ty |
+| 22/11 | Gói "Công cụ vẽ & tự kiểm" (thiết kế ở `claude/nghien-cuu-skill` @670dfb2) giao cho thread Tự kiểm làm tiếp trên `claude/tu-kiem-tra`, không mở thread mới |
+| 22/11 | Thread đẩy skill code xong (`claude/day-skill-theo-may` @874d2e4; CI xanh ở `08f4838`, run 45004919780). Rà bảo mật xong; cậu chọn tách `BiMat.gs`, việc này đã chuyển cho thread bảo mật. Triển khai Apps Script chờ commit đó, rồi gộp vào 0.9.6 |
+| 18/11 | **Phát hành v0.9.5**: cậu merge PR #5, CI tự phát hành (run 44319064734). Code giống hệt bộ cài 11/11 đã thử, chỉ khác số phiên bản. AutoCAD 2027 ghi là hỗ trợ (chưa thử thật). BiMat để sau |
 | 17/11 | Cậu đã thử bộ cài 11/11 (run 43000757496): làm việc ổn, sẽ cài cho client. BiMat + ghi "Đã gỡ lúc" để sau, giữ ở `claude/device-management`, đang gỡ khỏi nhánh phát hành. Phát hành chính thức và các quyết định để sau |
 | 15/11 | Thread bảo mật làm tính năng ghi "Đã gỡ lúc" và tách bí mật máy chủ (`53bb1bf`). Thread gộp nhánh đã gộp vào `claude/release-0.9.5` (`76f1cce`) và build bộ cài thử mới, run 43665981360. Chờ cậu cập nhật máy chủ Google rồi thử theo checklist A, H, I |
 | 11/11 | Gộp xong 5 nhánh vào `claude/release-0.9.5`, đổi cặp khóa kích hoạt, có bộ cài thử cuối (run 43000757496). Mở thread cài đặt plugin. Chờ cậu thử trên AutoCAD 2026 |
