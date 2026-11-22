@@ -74,7 +74,7 @@ Nơi làm: schema `point` trong `agent/src/tools/common.ts` (thêm dạng tham c
 - Từ chối vẽ lên layer `0` và layer không có trong chuẩn của skill đang dùng (lỗi `LAYER_NOT_IN_STANDARD`, gợi ý
   layer đúng). Layer chuẩn còn thiếu thì tự tạo đúng màu / nét / lineweight.
 - Chiều cao chữ: nếu Claude không ghi, công cụ tự tính theo loại chữ × tỷ lệ trên thanh ngữ cảnh.
-- Cần chuẩn ở **dạng máy đọc được**. Hai cách (chủ dự án chọn, mục 6):
+- Cần chuẩn ở **dạng máy đọc được**. Hai cách (đã chốt cách 2, xem mục 6):
   1. File `standard.json` cạnh `SKILL.md`: layer (tên, màu, nét, lineweight), bảng chiều cao chữ trên giấy, dim
      style, sai số cho phép. Skill vẫn giữ bảng chữ cho người đọc.
   2. Plugin đọc thẳng bảng Markdown "Bảng layer chuẩn" trong `SKILL.md`. Không thêm file, nhưng dễ vỡ khi người
@@ -88,7 +88,7 @@ handle, mô tả, cách sửa gợi ý, và có `auto_fix` hay không.
 
 | Mã lỗi | Dò gì | Nhóm |
 | --- | --- | --- |
-| `GAP` | Hai đầu nét cách nhau trong khoảng (0, ngưỡng], mặc định 50 mm: gần như chạm mà không chạm | 1 |
+| `GAP` | Hai đầu nét cách nhau trong khoảng (0, ngưỡng], mặc định 10 mm (đã chốt), tự nối: gần như chạm mà không chạm | 1 |
 | `OVERSHOOT` | Nét vượt quá giao điểm một đoạn ngắn (< ngưỡng) | 1, 4 |
 | `OPEN_POLY` | Polyline có điểm đầu ≈ điểm cuối nhưng không `closed` | 1, 4 |
 | `LAYER_0` / `LAYER_UNKNOWN` | Đối tượng trên layer `0` hoặc ngoài bảng chuẩn | 2 |
@@ -116,8 +116,9 @@ handle, mô tả, cách sửa gợi ý, và có `auto_fix` hay không.
      cuối chưa, kết quả còn lỗi không.
   2. `Stop`: nếu có ghi mà chưa verify, hoặc verify còn lỗi chưa xử lý → **chặn kết thúc**, gửi lại cho Claude:
      "Chạy verify_drawing cho các đối tượng vừa vẽ và sửa lỗi trước khi báo xong."
-  3. Giới hạn: tối đa 2 vòng sửa. Vòng thứ 3 vẫn còn lỗi thì cho kết thúc, nhưng câu trả lời phải liệt kê lỗi còn
-     lại (system prompt bắt buộc), tránh vòng lặp vô tận và tốn token.
+  3. Đã chốt **bắt buộc sửa hết**: mọi mã lỗi (kể cả chữ đè, thiếu / thừa đối tượng) đều chặn kết thúc. Giới hạn
+     tối đa 2 vòng sửa. Vòng thứ 3 vẫn còn lỗi thì cho kết thúc, nhưng câu trả lời phải liệt kê lỗi còn lại (system
+     prompt bắt buộc), tránh vòng lặp vô tận và tốn token.
   4. Bỏ qua khi lượt chỉ đọc, ở chế độ Chỉ xem, hoặc khi người dùng bấm Dừng.
 - Khung chat: thẻ nhỏ cuối lượt "Tự kiểm: 12 ✓ · 1 ✗ (khe hở 3 mm ở góc trục A-1)", bấm vào thì chọn đối tượng
   lỗi trong bản vẽ.
@@ -139,10 +140,10 @@ handle, mô tả, cách sửa gợi ý, và có `auto_fix` hay không.
 
 | Phần | Ở đâu | Ước tính | Thread gợi ý |
 | --- | --- | --- | --- |
-| E. Viết lại 3 skill + README (bản chưa có tool mới) | `skills/` | 0,5–1 ngày + thử thật | Thread này (nếu được giao) |
-| A. Tham chiếu điểm + `get_snap_points` | `agent/src/tools`, `plugin/.../Drawing` | 2–3 ngày, kèm test | Chưa có thread nhận → luồng chính giao |
+| E. Viết lại 3 skill + README (bản chưa có tool mới) | `skills/` | 0,5–1 ngày + thử thật | Thread này (đã chốt, đang làm) |
+| A. Tham chiếu điểm + `get_snap_points` | `agent/src/tools`, `plugin/.../Drawing` | 2–3 ngày, kèm test | Thread "Tự kiểm trước khi báo xong" (`session_01D56HmJy4Urvum4vU5EmdwS`, nhánh `claude/tu-kiem-tra`) |
 | C. `verify_drawing` (12 mã lỗi, auto_fix) | plugin `Drawing/` + tool phía agent | 3–4 ngày, kèm test | như trên |
-| B. Áp chuẩn lúc vẽ + `standard.json` | plugin + `SkillStore.cs` | 1,5–2 ngày | như trên |
+| B. Áp chuẩn lúc vẽ (đọc bảng trong `SKILL.md`) | plugin + `SkillStore.cs` | 1,5–2 ngày | như trên |
 | D. Hook Stop / PostToolUse + quy tắc prompt | `agent/src/agent/session.ts`, `systemPrompt.ts` | 0,5–1 ngày | như trên |
 | Thẻ "Tự kiểm" trong khung chat | `plugin/.../UI` | 0,5 ngày | Giao diện & UX |
 | Checklist thử thật cho các lỗi trên | `docs/checklist-thu-that.md` | 0,5 ngày | Kiểm thử |
@@ -162,13 +163,42 @@ Tổng khoảng 8–12 ngày công. Thứ tự đề xuất theo hiệu quả gi
 - **API hook của SDK** thay đổi nhanh. Phải tra bản đang dùng (`^0.3.318`) trước khi làm.
 - Hiệu năng `verify_drawing` trên bản vẽ lớn: chỉ xét handle của lượt và vùng lân cận, không quét cả bản vẽ.
 
-## 6. Việc cần chủ dự án quyết
+## 6. Quyết định của chủ dự án (22/11/2026)
 
-1. Duyệt thứ tự làm: E → A → C + D → B → UI, hay đổi thứ tự.
-2. Giao phần code (A, B, C, D) cho thread nào: hiện chưa có thread phụ trách công cụ vẽ / trợ lý.
-3. Mức chặt của hook: **bắt buộc sửa** (chặn kết thúc tới 2 vòng) hay **chỉ bắt báo lỗi** (chạy kiểm, báo cậu,
-   không ép sửa).
-4. Chuẩn dạng dữ liệu: `standard.json` riêng hay đọc bảng trong `SKILL.md`.
-5. Ngưỡng khe hở mặc định (đề xuất 50 mm trong model) và có cho tự nối (`auto_fix`) không.
-6. Có cung cấp chuẩn thật của công ty / TCVN để thay số liệu mẫu trong 3 skill không.
-7. Có cho thread này làm luôn lớp E (viết lại 3 skill mẫu) không.
+| # | Câu hỏi | Đã chốt |
+| --- | --- | --- |
+| 1 | Thứ tự làm | Theo đề xuất: E (viết lại skill) → A (bắt điểm) → C + D (`verify_drawing` + hook) → B (tự áp chuẩn) → thẻ UI |
+| 2 | Ai làm phần code (A, B, C, D) | Chủ dự án chọn thread **"Tự kiểm trước khi báo xong"** (`session_01D56HmJy4Urvum4vU5EmdwS`, nhánh `claude/tu-kiem-tra`), đã có sẵn `verify_drawing` 10 mã + hook Stop + thẻ Tự kiểm |
+| 3 | Mức chặt khi kiểm ra lỗi | **Bắt buộc sửa hết** mọi mã lỗi, tối đa 2 vòng; còn lỗi thì liệt kê cho người dùng |
+| 4 | Chuẩn dạng máy đọc | **Đọc bảng trong `SKILL.md`** (không thêm `standard.json`); plugin báo ngay khi thêm skill có bảng sai định dạng |
+| 5 | Khe hở | Ngưỡng **10 mm** trong model, **tự nối** (`auto_fix`), skill sửa được ngưỡng; gõ U hoàn tác được |
+| 6 | Số liệu chuẩn | Chủ dự án **gửi chuẩn công ty**; khi có thì thay số liệu mẫu trong 3 skill |
+| 7 | Viết lại 3 skill mẫu | Thread này **làm luôn phần cấu trúc** (lớp E), giữ số liệu cũ đến khi có chuẩn công ty |
+
+Còn chờ: tài liệu chuẩn công ty (câu 6).
+
+### Ghi chú cho thread làm phần code
+
+- Bảng layer trong `SKILL.md` phải giữ định dạng cố định để máy đọc: tiêu đề mục chứa "Bảng layer chuẩn", cột
+  `Layer | Nội dung | Màu | Linetype | Lineweight`, tên layer trong dấu `` ` ``. Bảng chiều cao chữ: mục chứa
+  "Chữ và kích thước theo tỷ lệ in", cột "Trên giấy" tính bằng mm. 3 skill mẫu đã viết theo định dạng này.
+- Ngưỡng khe hở có thể ghi đè trong skill bằng dòng `Ngưỡng khe hở: <số> mm` ở mục "Kiểm tra trước khi báo xong".
+- Khi `verify_drawing` và bắt điểm có rồi, cập nhật lại mục kiểm tra của 3 skill (thay chuỗi lệnh đo thủ công bằng
+  một lệnh `verify_drawing`) và test `agent/test/skills.test.ts` (chỉ cho nhắc tool có thật).
+
+## 7. Lớp E đã làm (22/11/2026)
+
+- 3 skill mẫu viết lại phần cấu trúc, **giữ nguyên số liệu cũ**: thêm "Danh mục trước khi vẽ", ghi nhớ số đối
+  tượng layer `0`, cách dựng hình bằng `offset_entity` / `trim_entities` / `extend_entities`, mục "Kiểm tra trước
+  khi báo xong" bằng lệnh đo có sẵn (dòng `Ngưỡng khe hở: 10 mm`, tối đa 2 vòng sửa), "Lỗi hay gặp", "Báo cáo
+  cuối lượt" có dòng "Tự kiểm". Ví dụ kiến trúc viết lại theo 4 bước: polyline kín → offset → trim lỗ cửa → cửa, dim,
+  chữ. Đầu mỗi skill ghi rõ "số liệu chưa được duyệt theo chuẩn công ty".
+- `skills/README.md` có mục "Viết skill để Claude vẽ đúng và tự kiểm lại"; `docs/huong-dan-su-dung.md` cập nhật theo.
+- Đã soát bằng script làm đúng các kiểm tra của `agent/test/skills.test.ts` (frontmatter, mục chuẩn bị, chỉ nhắc
+  tool có thật, JSON hợp lệ): cả 3 skill đạt. Chưa chạy `npm test` và chưa thử trên AutoCAD thật.
+- **Lưu ý phát hành:** bộ cài chép skill với cờ `onlyifdoesntexist` (`installer/*.iss`), nên máy đã cài sẽ **không
+  nhận** bản skill mẫu mới khi cập nhật, chỉ máy cài mới mới có. Việc này thuộc thread gộp nhánh & phát hành (đã
+  chuyển).
+- `bo-cai/README.md` chưa sửa: thay đổi chưa vào phiên bản nào, dòng lịch sử phiên bản do thread phát hành ghi khi
+  gộp.
+- Khi có chuẩn công ty: thay số trong các bảng mục 2, 4 (và mục ký hiệu) của từng skill, giữ nguyên định dạng bảng.

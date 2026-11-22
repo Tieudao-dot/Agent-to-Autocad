@@ -231,7 +231,9 @@ description: Chuẩn vẽ kết cấu của công ty - layer S-*, dầm, cột, 
 - `name`: chữ thường không dấu, số, gạch nối. Bỏ trống thì plugin lấy theo tên file.
 - `description` (bắt buộc, 20–1024 ký tự): ghi rõ **khi nào dùng** skill và các từ khóa. Claude dựa vào dòng này để chọn.
 - Phần thân: bảng layer, chiều cao chữ, quy cách. Nên có mục *"Quy trình chuẩn bị"*: xem thông tin bản vẽ và danh sách
-  layer trước, tạo layer / style còn thiếu theo chuẩn, rồi mới vẽ. Mở skill mẫu `ve-kien-truc` để tham khảo.
+  layer trước, tạo layer / style còn thiếu theo chuẩn, rồi mới vẽ. Để Claude ít lỗi vặt, thêm các mục *"Danh mục trước
+  khi vẽ"*, *"Kiểm tra trước khi báo xong"* (lệnh đo cụ thể cho layer, điểm khớp, chữ, thiếu / thừa) và *"Lỗi hay gặp"*.
+  Danh sách mục đầy đủ ở `skills/README.md`; mở skill mẫu `ve-kien-truc` để tham khảo.
 - Chia sẻ file cho đồng nghiệp; mỗi người thêm bằng ＋ Add skill. Trùng tên skill đã có thì plugin hỏi có thay không.
 - Gõ *"tạo skill từ cuộc chat này"*: Claude soạn bản nháp, có nút **Xem / sửa** và **Thêm vào plugin**.
 - Bỏ hẳn một skill khỏi thư viện: xóa thư mục mang tên skill đó trong

@@ -55,4 +55,18 @@ Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.cs
 | `ve-mep` | điện (chiếu sáng, ổ cắm, máng cáp) và cấp thoát nước |
 | `ve-ha-tang` | đường, lý trình, cao độ, cống, ranh giới, bảng tọa độ |
 
-Nên có mục **"Quy trình chuẩn bị"** nhắc Claude gọi `get_drawing_info` + `list_layers` trước, tạo layer/style còn thiếu theo bảng chuẩn, rồi mới vẽ. Xem `ve-kien-truc/SKILL.md` làm mẫu.
+Skill mẫu là **khung**: số liệu (màu, nét, chiều cao chữ…) chưa được duyệt theo chuẩn công ty, cậu thay bằng chuẩn của mình.
+
+## Viết skill để Claude vẽ đúng và tự kiểm lại
+
+Mỗi skill nên có đủ các mục sau (xem `ve-kien-truc/SKILL.md` làm mẫu):
+
+1. **Quy trình chuẩn bị** (bắt buộc): gọi `get_drawing_info` + `list_layers` trước, tạo layer/style còn thiếu theo bảng chuẩn, ghi nhớ số đối tượng trên layer `0`, rồi mới vẽ.
+2. **Danh mục trước khi vẽ:** Claude nêu số đối tượng dự kiến theo layer; lúc kiểm tra so lại để bắt thiếu / thừa.
+3. **Bảng layer chuẩn** với đúng các cột `Layer | Nội dung | Màu | Linetype | Lineweight`, tên layer trong dấu `` ` ``. Giữ định dạng này: công cụ tự kiểm sau này đọc thẳng bảng.
+4. **Bảng chữ theo tỷ lệ in:** chiều cao trên giấy (mm) và giá trị trong model cho từng tỷ lệ.
+5. **Cách dựng hình không phải tự tính tọa độ:** nét thứ hai bằng `offset_entity`, lỗ / giao nhau bằng `trim_entities` / `extend_entities`, đầu nét lấy đúng điểm của đối tượng có sẵn. Đây là cách giảm lỗi "điểm không khớp".
+6. **Ví dụ hoàn chỉnh** từng bước (JSON hợp lệ).
+7. **Kiểm tra trước khi báo xong:** liệt kê lệnh đo cụ thể cho từng nhóm (layer, thuộc tính, điểm khớp, hình học, chữ/dim, thiếu/thừa, ảnh `capture_view`), dòng `Ngưỡng khe hở: 10 mm`, sửa tối đa 2 vòng, còn lỗi thì liệt kê.
+8. **Lỗi hay gặp:** những lỗi cậu đã thấy trong thực tế và cách tránh. Gặp lỗi mới thì thêm vào đây.
+9. **Báo cáo cuối lượt** theo mẫu cố định, có dòng "Tự kiểm: ✓ / ✗".
