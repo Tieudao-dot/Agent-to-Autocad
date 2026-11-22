@@ -593,6 +593,54 @@ begin
   end;
 end;
 
+{ ======================================================================= installing over an existing copy
+  AutoCAD keeps the plugin dll open and Restart Manager cannot close AutoCAD: the user only saw the English box
+  "Setup was unable to automatically close all applications". So before any file is copied: ask (in Vietnamese)
+  to close AutoCAD, and stop the plugin's own helper processes (bundled node.exe, Claude Code) if any is left. }
+function AcadRunning(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec(ExpandConstant('{cmd}'), '/C tasklist /FI "IMAGENAME eq acad.exe" /NH 2>nul | find /I "acad.exe" >nul',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+procedure StopBundleProcesses();
+var
+  ResultCode: Integer;
+  Dir, Args: String;
+begin
+  { only processes whose executable is inside the plugin folder: no other Node.js on the machine is touched }
+  Dir := AddBackslash(ExpandConstant('{app}'));
+  StringChangeEx(Dir, '''', '''''', True);
+  Args := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$d = ''' + Dir + '''; ' +
+    'Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($d, [StringComparison]::OrdinalIgnoreCase) } | ' +
+    'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"';
+  if Exec('powershell.exe', Args, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('upgrade: helper processes in the plugin folder stopped (powershell exit ' + IntToStr(ResultCode) + ')')
+  else
+    Log('upgrade: could not run powershell to stop helper processes');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  { first install: nothing of ours is in use }
+  if not DirExists(ExpandConstant('{app}\Contents')) then exit;
+  while AcadRunning() do
+  begin
+    Log('upgrade: AutoCAD is running');
+    if SuppressibleMsgBox('AutoCAD đang mở nên chưa cập nhật được ClaudeCAD.' + #13#10#13#10 +
+         'Hãy lưu bản vẽ, đóng hết các cửa sổ AutoCAD rồi bấm Retry (Thử lại).',
+         mbError, MB_RETRYCANCEL, IDCANCEL) <> IDRETRY then
+    begin
+      Result := 'AutoCAD đang mở. Hãy đóng AutoCAD rồi chạy lại bộ cài ClaudeCAD.';
+      exit;
+    end;
+  end;
+  StopBundleProcesses();
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   Err: String;

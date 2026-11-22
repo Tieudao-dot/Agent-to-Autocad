@@ -241,3 +241,10 @@ Cần test trên AutoCAD thật: K-8 … K-16 (cùng K-1 … K-7, R-1 … R-6).
 - Test: core 173 (9 bài `SampleSkillsTests`), agent 136; build net48 + net8 + net10.
 
 Cần test trên AutoCAD thật: S-6, S-7.
+
+### Sau v0.9.6 — bộ cài: cài đè khi AutoCAD đang mở ✅ code xong (nhánh `claude/release-0.9.5`, chưa phát hành, chưa thử trên Windows)
+
+- **Lỗi được báo (22/11):** chạy `ClaudeCAD-Setup.exe` 0.9.5 đè lên bản đang cài → "Closing applications…" → hộp "Setup was unable to automatically close all applications". AutoCAD giữ file dll của plugin, Restart Manager không đóng được AutoCAD.
+- **Sửa (`installer/ClaudeCAD.iss`, `PrepareToInstall`):** khi đã có bản cài, bộ cài kiểm `acad.exe` đang chạy → hộp tiếng Việt Retry / Cancel cho tới khi AutoCAD đóng; sau đó dừng các tiến trình có file chạy nằm trong thư mục plugin (node.exe kèm plugin, Claude Code). Cài lần đầu không kiểm.
+- Trợ lý vốn tự thoát khi AutoCAD đóng (kiểm `--parent-pid` + JobObject), nên không đổi code plugin. Đường tự cập nhật (`CLAUDECHATUPDATE`) chờ AutoCAD thoát rồi mới chép, có thử lại 5 lần, không đổi.
+- Chỉ CI biên dịch được script Inno; hành vi thật cần thử trên Windows (`test-log.md` I-6).
