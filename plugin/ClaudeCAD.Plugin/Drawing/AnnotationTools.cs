@@ -50,6 +50,9 @@ namespace ClaudeCAD.Plugin.Drawing
 
         private static double DefaultTextHeight(ToolContext ctx, ObjectId styleId)
         {
+            // layer B: the skill's "ghi chú" height × print scale when the chat has a text table
+            var scale = ctx.Dispatcher?.Host?.PrintScale;
+            if (ctx.Standard?.DefaultTextHeight(scale ?? 0) is double std && scale > 0) return std;
             var st = (TextStyleTableRecord)ctx.Tr.GetObject(styleId, OpenMode.ForRead);
             return st.TextSize > 0 ? st.TextSize : ctx.Db.Textsize;
         }

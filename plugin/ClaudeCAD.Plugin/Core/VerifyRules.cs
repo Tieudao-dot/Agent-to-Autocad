@@ -394,7 +394,7 @@ namespace ClaudeCAD.Plugin.Core
             CheckDuplicates(live, liveTurn, o, all);
             CheckOpenPolys(liveTurn, o, all);
             CheckEnds(live, liveTurn, segs, o, all);
-            CheckLayer0(liveTurn, all);
+            CheckLayer0(liveTurn.Where(s => !(o.LayerAllowed?.Invoke(s.Layer) ?? false)).ToList(), all);
             CheckTextOverlap(live, liveTurn, all);
             CheckStray(liveTurn, all);
             CheckCount(turn, o, all);
@@ -697,8 +697,7 @@ namespace ClaudeCAD.Plugin.Core
 
         // ---- LAYER_0
 
-        private static bool IsLayer0(string layer) =>
-            string.Equals(layer, "0", StringComparison.Ordinal) || string.Equals(layer, "DEFPOINTS", StringComparison.OrdinalIgnoreCase);
+        private static bool IsLayer0(string layer) => DrawingStandard.IsLayer0(layer);
 
         private static void CheckLayer0(List<VShape> liveTurn, List<VIssue> all)
         {

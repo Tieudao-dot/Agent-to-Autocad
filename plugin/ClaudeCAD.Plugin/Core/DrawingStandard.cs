@@ -215,10 +215,30 @@ namespace ClaudeCAD.Plugin.Core
             return string.Join(", ", names.Take(12)) + (names.Count > 12 ? ", ..." : "");
         }
 
+        public static bool IsLayer0(string layer) =>
+            string.Equals(layer, "0", StringComparison.Ordinal) || string.Equals(layer, "DEFPOINTS", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Drawing on this layer is refused (null = allowed): layer 0 / Defpoints and layers outside the table, unless
+        /// the user asked for that layer. Only when the chat's skills have a layer table.
+        /// </summary>
+        public string LayerRefusal(string layer, Func<string, bool> userAllows, string tool)
+        {
+            if (!HasLayers || string.IsNullOrEmpty(layer)) return null;
+            if (userAllows != null && userAllows(layer)) return null;
+            if (IsLayer0(layer))
+                return $"{tool}: LAYER_NOT_IN_STANDARD — objects must not go on layer {layer}. Pass \"layer\" with a layer of the skill's table: {LayerList()}.";
+            if (Layers.ContainsKey(layer)) return null;
+            return $"{tool}: LAYER_NOT_IN_STANDARD — layer '{layer}' is not in the skill's layer table. Use the right standard layer ({LayerList(layer)}); " +
+                   $"use '{layer}' only if the user names it.";
+        }
+
         /// <summary>Layer names of the drawing a user message names ("vẽ lên layer XYZ", "@XYZ"): whole words, any case.</summary>
         public static bool TextNamesLayer(string text, string layer)
         {
             if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(layer)) return false;
+            // "0" is everywhere in numbers: only "layer 0" counts
+            if (layer == "0") return Regex.IsMatch(text, @"\blayer\s*0(?![\p{N}]|[.,]\p{N})", RegexOptions.IgnoreCase);
             return Regex.IsMatch(text, @"(?<![\p{L}\p{N}_\-])" + Regex.Escape(layer) + @"(?![\p{L}\p{N}_\-])", RegexOptions.IgnoreCase);
         }
     }

@@ -21,6 +21,9 @@ namespace ClaudeCAD.Plugin.Drawing
         public bool Writable { get; }
         public ToolDispatcher Dispatcher { get; }
 
+        /// <summary>Standard of the chat's skills (layer B); null = no standard, nothing enforced.</summary>
+        public DrawingStandard Standard => Dispatcher?.Host?.Standard;
+
         /// <summary>Set by handlers that changed the display; the dispatcher regens once at the end.</summary>
         public bool NeedsRegen { get; set; }
 

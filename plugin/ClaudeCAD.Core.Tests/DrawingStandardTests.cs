@@ -179,6 +179,60 @@ namespace ClaudeCAD.Core.Tests
             Assert.Contains(issues, x => x.Handles.SequenceEqual(new[] { "2" }) && x.Message.Contains("scale 50"));
         }
 
+        // ------------------------------------------------------------------ layer B: refusing a layer while drawing
+
+        [Fact]
+        public void DrawingOnLayer0OrOutsideTheTableIsRefusedWithTheStandardLayers()
+        {
+            var std = DrawingStandard.Parse(RepoSkill("ve-kien-truc"), "ve-kien-truc");
+            Assert.Null(std.LayerRefusal("A-WALL", null, "draw_line"));
+            Assert.Null(std.LayerRefusal("a-wall", null, "draw_line"));
+            var zero = std.LayerRefusal("0", null, "draw_line");
+            Assert.Contains("LAYER_NOT_IN_STANDARD", zero);
+            Assert.Contains("A-WALL", zero);
+            var other = std.LayerRefusal("A-WALLS", null, "draw_line");
+            Assert.Contains("A-WALL", other); // the A-* layers are suggested
+            Assert.DoesNotContain("E-LIGHT", other);
+            Assert.Null(std.LayerRefusal("XYZ", l => l == "XYZ", "draw_line"));
+            Assert.Null(std.LayerRefusal("0", l => l == "0", "draw_line"));
+        }
+
+        [Fact]
+        public void NoLayerTableNothingIsRefused()
+        {
+            var std = DrawingStandard.Parse("Ngưỡng khe hở: 5 mm", "x");
+            Assert.Null(std.LayerRefusal("0", null, "draw_line"));
+        }
+
+        [Fact]
+        public void Layer0CountsAsNamedOnlyWithTheWordLayer()
+        {
+            Assert.True(DrawingStandard.TextNamesLayer("vẽ 3 đường trên layer 0", "0"));
+            Assert.True(DrawingStandard.TextNamesLayer("đưa về Layer 0.", "0"));
+            Assert.False(DrawingStandard.TextNamesLayer("cửa rộng 0.9 m, tường 0", "0"));
+            Assert.False(DrawingStandard.TextNamesLayer("layer 01", "0"));
+        }
+
+        [Fact]
+        public void Layer0IsNotReportedWhenTheUserAskedForIt()
+        {
+            var shapes = new List<VShape> { Line("1", "0") };
+            Assert.Equal("LAYER_0", Assert.Single(VerifyRules.Check(shapes, Opts()).Issues).Code);
+            Assert.Empty(VerifyRules.Check(shapes, Opts(l => l == "0")).Issues);
+        }
+
+        [Fact]
+        public void SkillWithBrokenTablesGetsAWarningButStillWorks()
+        {
+            var good = RepoSkill("ve-kien-truc");
+            Assert.Null(SkillStore.StandardWarning(good));
+            var broken = good.Replace("| `A-WALL` |", "| A-WALL |");
+            var w = SkillStore.StandardWarning(broken);
+            Assert.NotNull(w);
+            Assert.Contains("dấu", w);
+            Assert.Null(SkillStore.StandardWarning("---\nname: x\ndescription: y\n---\n# không có bảng\n"));
+        }
+
         [Fact]
         public void NewCodesHaveLabels()
         {

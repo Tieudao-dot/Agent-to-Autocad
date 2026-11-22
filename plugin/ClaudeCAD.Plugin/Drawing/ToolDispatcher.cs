@@ -93,6 +93,9 @@ namespace ClaudeCAD.Plugin.Drawing
 
         public void Register(ToolDef def) => _tools[def.Name] = def;
 
+        /// <summary>The chat turn the calls belong to (standard of its skills, print scale...).</summary>
+        internal ITurnHost Host => _host;
+
         public bool TryGet(string name, out ToolDef def) => _tools.TryGetValue(name, out def);
 
         public IReadOnlyCollection<string> ToolNames => _tools.Keys.ToList();

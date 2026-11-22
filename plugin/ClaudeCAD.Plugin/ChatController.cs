@@ -500,6 +500,8 @@ namespace ClaudeCAD.Plugin
                         default:
                             added.Add(r.Name);
                             Ui.AddNote("✓ " + r.Message + " Đã dùng trong đoạn chat này; Claude áp dụng từ tin nhắn tiếp theo (vẫn nhớ cuộc chat).");
+                            if (r.Warning != null)
+                                Ui.AddErrorCard($"Skill \"{r.Name}\": plugin không đọc được bảng chuẩn, nên chưa tự áp chuẩn và tự kiểm theo bảng này. {r.Warning}\n\nSửa bằng nút Sửa trong danh sách Skill (định dạng bảng: xem skill mẫu ve-kien-truc).", false);
                             break;
                     }
                 }
@@ -2184,7 +2186,8 @@ namespace ClaudeCAD.Plugin
 
         public void RecordSelfCheck(SelfCheckSummary summary) => _selfCheck = summary;
 
-        public DrawingStandard Standard => _turnStandard;
+        /// <summary>A macro replays what the user saved: no standard is enforced on it.</summary>
+        public DrawingStandard Standard => _macroRunning ? null : _turnStandard;
 
         public double? PrintScale => DrawingStandard.ScaleDenominator(_settings.Scale);
 

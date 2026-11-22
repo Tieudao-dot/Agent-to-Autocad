@@ -1488,9 +1488,10 @@ namespace ClaudeCAD.Plugin.UI
             Theme.Ref(title, TextBlock.ForegroundProperty, Theme.Fg);
             info.Children.Add(title);
             string status = k.Error != null ? "⚠ " + k.Error
+                : k.Warning != null ? "⚠ Bảng chuẩn chưa đọc được (chưa tự áp chuẩn): " + k.Warning
                 : k.Builtin ? "Skill mẫu đi kèm plugin" : "Đã thêm" + (k.Added.HasValue ? " " + k.Added.Value.ToString("dd/MM/yyyy") : "");
             var st = new TextBlock { Text = status, FontSize = 11, TextWrapping = TextWrapping.Wrap };
-            Theme.Ref(st, TextBlock.ForegroundProperty, k.Error != null ? Theme.ErrorFg : Theme.MutedFg);
+            Theme.Ref(st, TextBlock.ForegroundProperty, k.Error != null ? Theme.ErrorFg : k.Warning != null ? Theme.WarnFg : Theme.MutedFg);
             info.Children.Add(st);
             if (!string.IsNullOrEmpty(k.Description))
             {
