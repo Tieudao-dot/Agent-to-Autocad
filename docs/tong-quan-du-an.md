@@ -148,6 +148,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Thread đẩy skill thêm: sửa skill Default / Admin thì plugin chép sang `<tên>-sua` (nhãn You), giữ bản gốc để vẫn nhận cập nhật (`claude/day-skill-theo-may` @d76641b, CI xanh run 45018661816; lõi 264, trợ lý 186). Chưa có trong bộ cài thử 0.9.6 |
 | 22/11 | Bộ cài thử 0.9.6 xong (run 45011984540, CI xanh; lõi 257, trợ lý 186), đã ghi vào sổ lưu trữ bộ cài. Có báo cáo [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md). Chờ cậu thử |
 | 22/11 | Cậu duyệt gộp cả 3 nhóm (đẩy skill, tự kiểm, skill mẫu tự cập nhật) vào 0.9.6. Đã giao thread gộp nhánh tạo `claude/release-0.9.6` và bộ cài thử; chưa merge `main`. Nội dung: [`ban-0.9.6.md`](ban-0.9.6.md) |
 | 22/11 | Cậu cập nhật máy chủ Google cho đẩy skill: tách BiMat, dán Code.gs mới, chạy `kiemTra`, tạo Phiên bản mới cùng link. `ping` trả `ready:true`. Bản 0.9.5 vẫn chạy bình thường |
