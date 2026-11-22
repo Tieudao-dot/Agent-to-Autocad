@@ -36,13 +36,31 @@ Mỗi đoạn chat (mỗi bản vẽ) dùng **bộ skill riêng**, lấy từ **
 
 Muốn bỏ hẳn một skill khỏi thư viện: xóa thư mục `<tên skill>` trong thư mục skill (đường dẫn ở bảng dưới).
 
+## Nhãn skill và skill do chủ plugin gửi (từ 0.9.6)
+
+Cạnh tên mỗi skill trong danh sách có một nhãn:
+
+| Nhãn | Nghĩa |
+| --- | --- |
+| **Admin** | Chủ plugin gửi tới riêng máy này (qua Google Sheet, xem [`activation/README.md`](../activation/README.md#đẩy-skill-tới-từng-máy-chủ-plugin-từ-plugin-096)). Máy tự nhận ở lần kiểm tra trạng thái kế tiếp, có toast báo. Skill **không tự dùng**: bấm **+** khi cần. |
+| **Default** | 3 skill mẫu đi kèm plugin. |
+| **You** | Skill cậu tự thêm bằng **+ Add skill**. |
+
+- **Sửa một skill Admin:** sau khi sửa, skill đó thành của cậu (nhãn **You**). Bản của cậu không bị ghi đè, và chủ
+  plugin không ẩn hay xóa được nó nữa. Nếu chủ plugin gửi bản mới, bản đó được lưu thêm bên cạnh.
+- **Trùng tên:** nếu chủ plugin gửi một skill trùng tên với skill của cậu, máy giữ cả hai. Bản Admin nằm ở thư mục
+  `<tên>-admin`.
+- **Chủ plugin ẩn skill:** skill biến khỏi danh sách và Claude không dùng nữa, kể cả trong đoạn chat đang dùng nó.
+- **Chủ plugin gỡ skill:** skill bị xóa khỏi máy.
+
 ## Lưu ở đâu
 
 | | Đường dẫn |
 | --- | --- |
 | Thư mục skill của plugin | `%AppData%\Autodesk\ApplicationPlugins\ClaudeCAD.bundle\Contents\skills\` |
 | Mỗi skill | `...\skills\<tên>\SKILL.md` (+ file tham khảo nếu skill là một thư mục) |
-| File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn |
+| File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn; với skill Admin thêm `origin`, `rev`, `hidden` |
+| Gói skill chủ plugin gửi lần gần nhất | `%LocalAppData%\ClaudeCAD\skill-pack.txt` (thời điểm + mã băm, để không tải lại) |
 | Skill của từng đoạn chat | lưu cùng lịch sử chat của bản vẽ (`%LocalAppData%\ClaudeCAD\chats`); skill của đoạn chat gần nhất trong `%AppData%\ClaudeCAD\settings.json` |
 
 Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill cậu đã thêm hay đã sửa, cũng không đụng `skills.json`. Riêng 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) và file README này: nếu cậu **chưa sửa** thì lần mở AutoCAD đầu tiên sau khi cập nhật plugin tự thay bằng bản mẫu mới; đã sửa dù chỉ một chữ thì giữ nguyên bản của cậu (bản mẫu mới nằm ở `Contents\skills-mau` để cậu so và chép tay nếu muốn).

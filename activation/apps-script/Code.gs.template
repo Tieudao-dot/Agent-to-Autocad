@@ -19,17 +19,24 @@
  *   ?action=status&machine=CC-XXXX-XXXX-XXXX&ver=...
  *       → trả trạng thái có chữ ký (CCS1|máy|trạng thái|ngày|chữ ký); máy Active nhận kèm giấy phép
  *         nên được duyệt qua Sheet là tự kích hoạt, không cần key. Cập nhật "Lần cuối dùng" + "Phiên bản".
+ *       &sk=<mã băm bộ skill máy đang có> (plugin ≥ 0.9.6): máy Active có bộ skill được gán khác mã băm đó nhận
+ *         thêm "skills": gói skill có chữ ký (CCP1|máy|thời điểm|nội dung|chữ ký).
  *
- * BÍ MẬT: file này chứa khóa riêng để ký giấy phép. Không chia sẻ, không đưa lên GitHub.
- * Mất file này / lộ file này → báo người phát triển để đổi cặp khóa trong bản plugin mới.
+ * ĐẨY SKILL THEO MÁY (docs/ke-hoach-day-skill.md):
+ *   - Trang "Skill": Tên | Phiên bản | Nội dung SKILL.md | Ghi chú. Sửa nội dung thì tăng Phiên bản.
+ *   - Trang "Gán skill": Mã máy | Tên skill | Hành động (Thêm / Ẩn / Xóa) | Ghi chú. Mỗi dòng một skill cho một máy;
+ *     hai dòng cùng máy + cùng skill thì dòng dưới thắng. Máy nhận ở lần kiểm tra kế tiếp (mở AutoCAD, ~6 giờ/lần,
+ *     hoặc nút "Kiểm tra lại"). Lỗi (skill không có, quá dài…) ghi vào cột Ghi chú.
+ *
+ * File này KHÔNG chứa bí mật và được dán nguyên văn làm Code.gs. Gmail, SECRET và khóa riêng nằm trong file
+ * BiMat.gs cùng dự án (activation/apps-script/BiMat.gs.template, chủ plugin tạo một lần). Nâng cấp máy chủ chỉ thay Code.gs.
  *
  * Tạo key bằng tay (máy không có mạng): sửa MAY_THU_CONG bên dưới rồi chạy hàm taoKeyThuCong
  * (nút ▶ Run) — key, mã kích hoạt offline và mã miễn-kiểm-tra được gửi vào email của cậu.
  */
 
-var EMAIL = '{{EMAIL}}';
-var SECRET = '{{SECRET}}';
-var PRIVATE_KEY = '{{PRIVATE_KEY}}';
+// EMAIL, SECRET, PRIVATE_KEY: in BiMat.gs (Apps Script shares globals between the files of a project)
+var MISSING_SECRETS_MSG = 'Máy chủ kích hoạt thiếu file BiMat.gs (Gmail, SECRET, khóa riêng) — chủ plugin xem lại hướng dẫn cài.';
 var TIME_ZONE = 'Asia/Ho_Chi_Minh';
 var MAY_THU_CONG = 'CC-0000-0000-0000';
 var SHEET_NAME = 'Thiết bị';
@@ -44,6 +51,22 @@ var MAX_NEW_DEVICES_PER_HOUR = 30;
 // 10 an hour could still use up the ~100 emails of a day in ~10 hours of made-up requests.
 var MAX_MAILS_PER_DAY = 40;
 
+var SKILL_SHEET = 'Skill';
+var ASSIGN_SHEET = 'Gán skill';
+var ACTIONS = { 'thêm': 'add', 'ẩn': 'hide', 'xóa': 'delete' }; // dropdown: Thêm / Ẩn / Xóa
+// same limits as plugin/ClaudeCAD.Plugin/Core/SkillPack.cs (the plugin refuses a whole pack over them)
+var MAX_SKILLS = 20;
+var MAX_SKILL_CHARS = 45000;
+var MAX_PACK_BYTES = 400000;
+var SKILL_NAME_RE = /^[a-z0-9][a-z0-9-]{0,57}$/;
+var WINDOWS_RESERVED_RE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/; // not a folder name on Windows
+var SKILL_RECHECK_SECONDS = 60;    // a machine's pack is worked out at most once a minute…
+var SKILL_KNOWN_SECONDS = 600;     // …and a machine known to be up to date is not worked out again for 10 minutes
+
+function badSkillName(name) {
+  return !SKILL_NAME_RE.test(name) || /-admin$/.test(name) || WINDOWS_RESERVED_RE.test(name);
+}
+
 var MACHINE_RE = /^CC-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/;
 var B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
 
@@ -52,15 +75,22 @@ function doGet(e) {
   var out;
   try {
     var action = String(p.action || '');
-    if (action === 'request') out = handleRequest(p);
+    if (action === 'ping') out = { ok: true, service: 'ClaudeCAD activation', ready: !secretsMissing() };
+    else if (secretsMissing()) out = { ok: false, error: MISSING_SECRETS_MSG };
+    else if (action === 'request') out = handleRequest(p);
     else if (action === 'activate') out = handleActivate(p);
     else if (action === 'status') out = handleStatus(p);
-    else if (action === 'ping') out = { ok: true, service: 'ClaudeCAD activation' };
     else out = { ok: false, error: 'Yêu cầu không hợp lệ.' };
   } catch (err) {
     out = { ok: false, error: 'Lỗi máy chủ kích hoạt: ' + err };
   }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** True while BiMat.gs (the owner's Gmail, SECRET and private key) is missing from the project or left unfilled. */
+function secretsMissing() {
+  if (typeof EMAIL === 'undefined' || typeof SECRET === 'undefined' || typeof PRIVATE_KEY === 'undefined') return true;
+  return !EMAIL || !SECRET || !PRIVATE_KEY || (String(EMAIL) + String(SECRET) + String(PRIVATE_KEY)).indexOf('{{') >= 0;
 }
 
 // ======================================================================= Google Sheet "Thiết bị"
@@ -82,7 +112,21 @@ function caiDat() {
   sh.setFrozenRows(1);
   var rule = SpreadsheetApp.newDataValidation().requireValueInList(STATUS_VALUES, true).setAllowInvalid(false).build();
   sh.getRange(2, 6, 998, 1).setDataValidation(rule);
+  caiDatSkill(ss);
   return sh;
+}
+
+/** Builds / repairs the "Skill" and "Gán skill" sheets (data kept). */
+function caiDatSkill(ss) {
+  var sk = ss.getSheetByName(SKILL_SHEET) || ss.insertSheet(SKILL_SHEET);
+  sk.getRange(1, 1, 1, 4).setValues([['Tên', 'Phiên bản', 'Nội dung SKILL.md', 'Ghi chú']]).setFontWeight('bold');
+  sk.setFrozenRows(1);
+  sk.getRange(2, 3, 998, 1).setNumberFormat('@').setWrap(false);
+  var as = ss.getSheetByName(ASSIGN_SHEET) || ss.insertSheet(ASSIGN_SHEET);
+  as.getRange(1, 1, 1, 4).setValues([['Mã máy', 'Tên skill', 'Hành động', 'Ghi chú']]).setFontWeight('bold');
+  as.setFrozenRows(1);
+  var rule = SpreadsheetApp.newDataValidation().requireValueInList(['Thêm', 'Ẩn', 'Xóa'], true).setAllowInvalid(false).build();
+  as.getRange(2, 3, 998, 1).setDataValidation(rule);
 }
 
 function nowText() {
@@ -270,7 +314,179 @@ function handleStatus(p) {
   }
   var out = { ok: true, status: makeStatus(machine, status) };
   if (status === 'active') out.license = makeLicense(machine); // approved via the sheet: no key needed
+  if (status === 'active' && p.sk) {
+    // after "status": the installer's JSON reader looks for the first "status":"…"
+    try {
+      var pack = skillPackFor(machine, String(p.sk));
+      if (pack) out.skills = pack;
+    } catch (err) {
+      console.log('skill pack failed for ' + machine + ': ' + err); // never blocks the status answer
+    }
+  }
   return out;
+}
+
+// ======================================================================= skills per machine
+
+/**
+ * The machine's assigned skills from "Gán skill" + "Skill", checked with the plugin's rules; problems go to the
+ * Ghi chú cells. Returns null when the machine already has exactly this pack (sk = its digest).
+ */
+function skillPackFor(machine, sk) {
+  // anyone who knows an Active machine code can call status: cap the sheet reads per machine (security review B)
+  var cache = CacheService.getScriptCache();
+  var knownKey = 'skd:' + machine, busyKey = 'skt:' + machine;
+  if (cache.get(knownKey) === sk) return null;  // up to date a moment ago
+  if (cache.get(busyKey)) return null;          // worked out less than a minute ago: the next check gets it
+  cache.put(busyKey, '1', SKILL_RECHECK_SECONDS);
+  var pack = buildSkillPack(machine, sk);
+  cache.put(knownKey, pack ? pack.digest : sk, SKILL_KNOWN_SECONDS);
+  return pack ? pack.line : null;
+}
+
+/** { line, digest } of the machine's pack, or null when sk already is that digest. */
+function buildSkillPack(machine, sk) {
+  var ss = SpreadsheetApp.getActive();
+  var as = ss.getSheetByName(ASSIGN_SHEET);
+  if (!as || as.getLastRow() < 2) return emptyPack(machine, sk);
+  var rows = as.getRange(2, 1, as.getLastRow() - 1, 3).getDisplayValues();
+  var wanted = {}, order = [], notes = {};
+  for (var i = 0; i < rows.length; i++) {
+    if (normMachine(rows[i][0]) !== machine) continue;
+    var name = String(rows[i][1]).trim();
+    var act = ACTIONS[String(rows[i][2]).trim().toLowerCase()];
+    if (!name) continue;
+    if (badSkillName(name)) { notes[i] = 'Tên skill không hợp lệ: chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin, không dùng tên con/nul/aux/prn/com1…/lpt1….'; continue; }
+    if (!act) { notes[i] = 'Chọn Hành động: Thêm, Ẩn hoặc Xóa.'; continue; }
+    if (!(name in wanted)) order.push(name);
+    wanted[name] = { act: act, row: i }; // a lower row wins
+  }
+  if (!order.length) {
+    writeNotes(as, rows.length, notes);
+    return emptyPack(machine, sk);
+  }
+  var lib = skillLibrary(ss);
+  var list = [], bytes = 0;
+  for (var j = 0; j < order.length; j++) {
+    var w = wanted[order[j]];
+    var item = { name: order[j], act: w.act, rev: '' };
+    if (w.act !== 'delete') {
+      var s = lib[order[j]];
+      if (!s) { notes[w.row] = 'Không có skill "' + order[j] + '" trong trang ' + SKILL_SHEET + '.'; continue; }
+      if (s.error) { notes[w.row] = 'Skill "' + order[j] + '": ' + s.error; continue; }
+      item.rev = s.rev;
+      item.sha256 = sha256(s.md);
+      item.md = s.md;
+    } else if (lib[order[j]]) item.rev = lib[order[j]].rev;
+    if (list.length >= MAX_SKILLS) { notes[w.row] = 'Quá ' + MAX_SKILLS + ' skill cho một máy: dòng này chưa được gửi.'; continue; }
+    var size = utf8Length(JSON.stringify(item));
+    if (bytes + size > MAX_PACK_BYTES - 1000) { notes[w.row] = 'Tổng các skill của máy này quá ' + (MAX_PACK_BYTES / 1000) + ' KB: dòng này chưa được gửi.'; continue; }
+    bytes += size;
+    list.push(item);
+    notes[w.row] = '';
+  }
+  writeNotes(as, rows.length, notes);
+  var d = digest(list);
+  if (d === sk) return null;
+  return { line: signedPack(machine, list), digest: d };
+}
+
+/** Nothing assigned: a machine that never had a pack, or already has the empty one, gets nothing. */
+function emptyPack(machine, sk) {
+  return sk === '-' || sk === digest([]) ? null : { line: signedPack(machine, []), digest: digest([]) };
+}
+
+/** "Skill" sheet → { name: { rev, md, error } }; checks what the plugin checks (SkillStore.ParseFrontmatter). */
+function skillLibrary(ss) {
+  var sh = ss.getSheetByName(SKILL_SHEET);
+  var lib = {};
+  if (!sh || sh.getLastRow() < 2) return lib;
+  var rows = sh.getRange(2, 1, sh.getLastRow() - 1, 3).getDisplayValues();
+  var notes = {};
+  for (var i = 0; i < rows.length; i++) {
+    var name = String(rows[i][0]).trim();
+    if (!name) continue;
+    var md = String(rows[i][2]).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+    var error = null;
+    if (badSkillName(name)) error = 'tên không hợp lệ (chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin, không dùng tên con/nul/aux/prn/com1…/lpt1…)';
+    else if (md.length > MAX_SKILL_CHARS) error = 'dài ' + md.length + ' ký tự, tối đa ' + MAX_SKILL_CHARS;
+    else error = frontmatterError(md, name);
+    lib[name] = { rev: String(rows[i][1]).trim(), md: md, error: error }; // a lower row wins
+    notes[i] = error ? 'Lỗi: ' + error + '.' : '';
+  }
+  writeNotes(sh, rows.length, notes);
+  return lib;
+}
+
+function frontmatterError(md, name) {
+  if (md.indexOf('---\n') !== 0) return 'thiếu phần đầu (frontmatter) với name và description';
+  var end = md.indexOf('\n---', 4);
+  if (end < 0) return 'phần đầu (frontmatter) chưa được đóng bằng dòng ---';
+  var fmName = null, desc = null;
+  var lines = md.substring(4, end).split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/\s+$/, '');
+    var colon = line.indexOf(':');
+    if (colon <= 0 || /\s/.test(line.charAt(0))) continue;
+    var key = line.substring(0, colon).trim().toLowerCase();
+    var value = line.substring(colon + 1).trim().replace(/^["']+|["']+$/g, '');
+    if (key === 'name') fmName = value;
+    else if (key === 'description') desc = value;
+  }
+  if (!desc) return 'thiếu dòng description';
+  if (desc.length < 20) return 'dòng description quá ngắn (ít nhất 20 ký tự)';
+  if (desc.length > 1024) return 'dòng description dài quá 1024 ký tự';
+  if (fmName !== name) return 'dòng name trong nội dung phải là "' + name + '"';
+  return null;
+}
+
+/** Ghi chú = column 4; rows 0-based from row 2. Writes only cells that change (most status calls write nothing). */
+function writeNotes(sh, count, notes) {
+  var keys = Object.keys(notes);
+  if (!keys.length) return;
+  var cur = sh.getRange(2, 4, count, 1).getDisplayValues();
+  var todo = keys.filter(function (k) { return cur[k][0] !== notes[k]; });
+  if (!todo.length) return;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(3000)) return;
+  try {
+    todo.forEach(function (k) { sh.getRange(Number(k) + 2, 4).setValue(cellText(notes[k])); });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** CCP1|<machine>|<yyyyMMddHHmmss UTC>|<base64url JSON>|<signature> — checked by plugin Core/SkillPack.cs. */
+function signedPack(machine, list) {
+  var body = JSON.stringify({ v: 1, skills: list });
+  return signLine('CCP1|' + machine + '|' + Utilities.formatDate(new Date(), 'UTC', 'yyyyMMddHHmmss') + '|' + b64url(utf8Bytes(body)));
+}
+
+/** sk: SHA-256 of "name:act:rev:sha256\n" sorted by name (SkillPackLogic.Digest). */
+function digest(list) {
+  var sorted = list.slice().sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
+  var text = '';
+  for (var i = 0; i < sorted.length; i++) {
+    var s = sorted[i];
+    text += s.name + ':' + s.act + ':' + s.rev + ':' + (s.act === 'delete' ? '' : s.sha256) + '\n';
+  }
+  return sha256(text);
+}
+
+function sha256(text) {
+  return b64url(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8));
+}
+
+function utf8Bytes(text) {
+  return Utilities.newBlob('').setDataFromString(text, 'UTF-8').getBytes();
+}
+
+function utf8Length(text) {
+  return unescape(encodeURIComponent(text)).length;
+}
+
+function b64url(bytes) {
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, '');
 }
 
 // ======================================================================= keys, licences, signed status
@@ -333,6 +549,7 @@ function cellText(s) {
 
 /** Emails the key, the offline activation code and the no-network pass for MAY_THU_CONG. */
 function taoKeyThuCong() {
+  if (secretsMissing()) throw new Error(MISSING_SECRETS_MSG);
   var machine = normMachine(MAY_THU_CONG);
   if (!machine || machine === 'CC-0000-0000-0000') throw new Error('Sửa MAY_THU_CONG ở đầu file thành mã máy cần kích hoạt (dạng CC-XXXX-XXXX-XXXX).');
   var key = makeKey(machine);
@@ -352,6 +569,7 @@ function taoKeyThuCong() {
 
 /** Run once from the editor after pasting the file: builds the sheet, checks the keys and sends a test email. */
 function kiemTra() {
+  if (secretsMissing()) throw new Error(MISSING_SECRETS_MSG + ' Tạo file BiMat.gs (dấu + cạnh "Tệp" → Tập lệnh) và dán 3 dòng EMAIL / SECRET / PRIVATE_KEY vào đó.');
   caiDat();
   var machine = 'CC-1234-5678-9ABC';
   var key = makeKey(machine);
@@ -360,6 +578,10 @@ function kiemTra() {
   if (!act.status || act.status.indexOf('CCS1|' + machine + '|active|') !== 0) throw new Error('Tự kiểm tra thất bại: trạng thái ký không đúng.');
   var st = handleStatus({ machine: machine, ver: 'kiemTra' });
   if (!st.ok || !st.license) throw new Error('Tự kiểm tra thất bại: máy Active phải nhận được giấy phép qua ?action=status.');
+  if (st.skills) throw new Error('Tự kiểm tra thất bại: plugin cũ (không gửi sk) không được nhận gói skill.');
+  var pack = signedPack(machine, []);
+  if (pack.indexOf('CCP1|' + machine + '|') !== 0 || pack.split('|').length !== 5) throw new Error('Tự kiểm tra thất bại: gói skill sai định dạng.');
+  if (digest([]) !== '47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU') throw new Error('Tự kiểm tra thất bại: mã băm bộ skill khác plugin.');
   MailApp.sendEmail(EMAIL, '[ClaudeCAD] Máy chủ kích hoạt hoạt động',
     'Đã cài xong máy chủ kích hoạt + quản lý thiết bị ClaudeCAD.\n' +
     'Trang "' + SHEET_NAME + '" trong Google Sheet là nơi duyệt (Active) / khóa (Disabled) từng máy.\n' +

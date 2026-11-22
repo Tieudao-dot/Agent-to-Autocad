@@ -372,7 +372,7 @@ namespace ClaudeCAD.Plugin
             {
                 // after an update: newer sample skills replace the installed ones the user never edited
                 string pristine = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(SkillsRoot)) ?? "", SampleSkills.PristineFolderName);
-                var samples = SampleSkills.Refresh(pristine, SkillsRoot);
+                var samples = _skillStore.RefreshSamples(pristine);
                 if (samples.Updated.Count > 0) Logger.Info("sample skills updated: " + string.Join(", ", samples.Updated));
                 if (samples.Kept.Count > 0) Logger.Info("sample skills kept (edited by the user): " + string.Join(", ", samples.Kept));
             }
@@ -381,6 +381,10 @@ namespace ClaudeCAD.Plugin
                 Logger.Warn("sample skills not refreshed: " + ex.Message);
             }
             RefreshSkills();
+            // v0.9.6: skills the owner assigns to this machine in the Google Sheet arrive with the status check
+            Activation.Skills = _skillStore;
+            Activation.SkillsPushed -= OnSkillsPushed;
+            Activation.SkillsPushed += OnSkillsPushed;
             try
             {
                 Directory.CreateDirectory(_skillStore.Root);
@@ -400,6 +404,23 @@ namespace ClaudeCAD.Plugin
         }
 
         private readonly object _skillDebounceLock = new object();
+        private DateTime _quietSkillReloadUntil; // a pushed pack shows its own toast, not "Skill đã thay đổi"
+
+        private void OnSkillsPushed(List<PackChange> changes)
+        {
+            if (changes.Count == 0) return;
+            _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10);
+            var msg = SkillPackLogic.Summary(changes);
+            Ui.Enqueue(() =>
+            {
+                if (_disposed) return;
+                RefreshSkills();
+                ReloadSkillsInAgent();
+                if (msg == null) return;
+                Ui.AddNote(msg);
+                Ui.ShowToast(msg, ChatControl.ToastKind.Info, 10);
+            });
+        }
 
         /// <summary>
         /// File watcher events come on several threads at once: one timer, pushed back 1.5 s by every event,
@@ -417,7 +438,8 @@ namespace ClaudeCAD.Plugin
                     {
                         RefreshSkills();
                         ReloadSkillsInAgent();
-                        Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
+                        if (DateTime.UtcNow >= _quietSkillReloadUntil)
+                            Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
                     }), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
                 try { _skillDebounce.Change(1500, System.Threading.Timeout.Infinite); }
                 catch (ObjectDisposedException) { }
@@ -2683,6 +2705,7 @@ namespace ClaudeCAD.Plugin
                 DrawingHistory.Instance.ObjectChanged -= OnDbChanged;
                 Notifier.Dispose();
                 _skillWatcher?.Dispose();
+                Activation.SkillsPushed -= OnSkillsPushed;
                 lock (_skillDebounceLock)
                 {
                     _disposed = true;
