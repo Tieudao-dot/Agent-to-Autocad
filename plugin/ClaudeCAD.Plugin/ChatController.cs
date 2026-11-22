@@ -73,6 +73,8 @@ namespace ClaudeCAD.Plugin
         // v0.6: macros, change summary, suggestions, plans
         private readonly MacroRecorder _recorder = new MacroRecorder();
         private readonly ChangeTracker _changes = new ChangeTracker();
+        /// <summary>Last verify_drawing of the running turn ("Tự kiểm" card), null = none.</summary>
+        private SelfCheckSummary _selfCheck;
         private readonly System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>> _turnMacros =
             new System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>>();
         private MacroStore _macroStore;
@@ -832,6 +834,7 @@ namespace ClaudeCAD.Plugin
             }
             _recorder.Clear();
             _changes.Clear();
+            _selfCheck = null;
             // a slow (Wblock) version copy is prepared now, before any tool call can time out waiting for it
             if (_settings.Versions && doc != null)
             {
@@ -951,10 +954,13 @@ namespace ClaudeCAD.Plugin
             Autodesk.AutoCAD.DatabaseServices.Database turnDb;
             Document turnStartDoc;
             List<string> suggestions;
+            SelfCheckSummary selfCheck;
             lock (_gate)
             {
                 if (!_busy) return;
                 _busy = false;
+                selfCheck = _selfCheck;
+                _selfCheck = null;
                 turnDb = _turnDb;
                 _turnDb = null;
                 turnStartDoc = _turnStartDoc;
@@ -1010,6 +1016,7 @@ namespace ClaudeCAD.Plugin
                 if (!empty)
                 {
                     assistant.Changes = changes;
+                    assistant.SelfCheck = selfCheck;
                     bool canMacro = macroCalls != null;
                     if (canMacro) { _turnMacros.Remove(assistant); _turnMacros.Add(assistant, macroCalls); }
                     _transcript?.Entries.Add(assistant);
@@ -2162,9 +2169,21 @@ namespace ClaudeCAD.Plugin
 
         public void RecordCall(string tool, Dictionary<string, object> parameters, object result) => _recorder.Record(tool, parameters, result);
 
+        public IReadOnlyDictionary<string, string> TurnChanges()
+        {
+            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (kind, h) in _changes.Snapshot())
+                if (kind != "erased") d[h] = kind;
+            return d;
+        }
+
+        public void RecordSelfCheck(SelfCheckSummary summary) => _selfCheck = summary;
+
         /// <summary>First change of a chat turn: keep a copy of the drawing as it was (every 30 min max).</summary>
         public void BeforeWrite(Document doc)
         {
+            var check = _selfCheck;
+            if (check != null) check.Stale = true; // changed again after the last self-check (a new check replaces it)
             if (_versionChecked || !_settings.Versions || doc == null) return;
             _versionChecked = true;
             try

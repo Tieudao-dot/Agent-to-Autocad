@@ -49,6 +49,10 @@ namespace ClaudeCAD.Plugin.Drawing
         void RecordCall(string tool, Dictionary<string, object> parameters, object result);
         /// <summary>Right before the first change of the turn (version history copy).</summary>
         void BeforeWrite(Document doc);
+        /// <summary>Entities of the turn's drawing the turn added / changed so far: handle → "added" | "modified".</summary>
+        IReadOnlyDictionary<string, string> TurnChanges();
+        /// <summary>Result of verify_drawing, for the "Tự kiểm" card of the turn.</summary>
+        void RecordSelfCheck(SelfCheckSummary summary);
     }
 
     /// <summary>
@@ -188,7 +192,7 @@ namespace ClaudeCAD.Plugin.Drawing
         {
             if (def.NoDocument) return def.Handler(null, p);
             var doc = _host.ResolveDocument();
-            bool writes = def.Writes || (def.Name == "batch_execute" && BatchWrites(p));
+            bool writes = def.Writes || (def.Name == "batch_execute" && BatchWrites(p)) || (def.Name == DrawingService.VerifyTool && DrawingService.VerifyWrites(p, _host));
             // undo_last_turn is registered as a read (it only queues U) but it changes the drawing
             // save_drawing writes the DWG on disk (with a path it also renames the drawing): a change too, even
             // without a path — it would store the user's unsaved manual edits while "Chỉ xem" is on

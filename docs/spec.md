@@ -212,6 +212,7 @@ Bộ tool chia 8 nhóm, 60+ tool. Mọi tool vẽ nhận tham số tùy chọn c
 | `get_bounding_box` | `handles[]` |  |
 | `get_drawing_info` |  | đơn vị, extents, số entity, layer hiện hành, style hiện hành |
 | `count_entities` | cùng filter với `list_entities` | đếm nhanh không trả chi tiết |
+| `verify_drawing` | `handles[]?`, `expect?{layer: số}`, `gap?` (mm, mặc định 10), `ignore[]?`, `auto_fix?` (mặc định true) | tự kiểm đối tượng của lượt: 10 mã lỗi (khe hở, nét thừa, polyline chưa đóng, dài 0, trùng, cung không chạm, layer 0, chữ đè, đối tượng lạc, thiếu / thừa theo `expect`); tự sửa lỗi an toàn trên đối tượng của lượt; hook Stop bắt chạy trước khi báo xong (`docs/ke-hoach-tu-kiem.md`) |
 
 ### 7.7. View và tài liệu
 
@@ -256,6 +257,7 @@ System prompt của sidecar phải quy định:
 8. Sau mỗi tác vụ: báo cáo một đoạn ngắn đã làm gì (số đối tượng, layer nào), nhắc rằng gõ U một lần là hoàn tác cả lượt nếu không ưng.
 9. Gặp lỗi tool: đọc message lỗi, tự sửa (ví dụ tạo layer thiếu) tối đa 2 lần, quá thì dừng và báo người dùng.
 10. Yêu cầu mơ hồ về vị trí/kích thước → hỏi lại một câu gọn thay vì đoán bừa; yêu cầu đơn giản đủ thông tin thì làm luôn.
+11. Lượt có vẽ / sửa: gọi `verify_drawing` sau lần sửa cuối và sửa lỗi nó báo **trước khi** báo xong. Hook `Stop` của Agent SDK chặn kết thúc lượt khi chưa kiểm (tối đa 2 lần nhắc) hoặc còn lỗi (tối đa 2 vòng sửa); hết vòng thì câu trả lời phải liệt kê lỗi còn lại. Khung chat hiện thẻ **Tự kiểm** dưới câu trả lời.
 
 ## 10. Hiệu năng, an toàn dữ liệu, xử lý lỗi
 

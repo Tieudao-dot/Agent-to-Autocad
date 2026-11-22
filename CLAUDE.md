@@ -77,6 +77,7 @@ tình hình, việc chờ quyết, thread, plugin, nhật ký; luồng chính c�
 | Dùng thử & hỗ trợ Autodesk | `session_01D56HmGdeNRHtH8Vob4cXGr` | Bản dùng thử AutoCAD, làm việc với Autodesk |
 | Cài đặt plugin (bộ cài thử AutoCAD 2026) | `session_01D56HmFkjV3poaV54WEEFYJ` | Hướng dẫn cài / kích hoạt bộ cài thử, gỡ rối khi cài, giúp chạy checklist; không sửa code. Lỗi bộ cài / plugin chuyển cho thread gộp nhánh & phát hành |
 
+| Tự kiểm trước khi báo xong | `session_01D56HmJy4Urvum4vU5EmdwS` | Nhánh `claude/tu-kiem-tra`: `verify_drawing`, hook Stop bắt kiểm / sửa trước khi báo xong, thẻ Tự kiểm (`docs/ke-hoach-tu-kiem.md`) |
 | Lưu trữ bộ cài | `session_01D56HmGL5w4NCZNzEyatioe` | Nhánh `claude/luu-tru-bo-cai`: sổ `bo-cai/luu-tru-bo-cai.md` (ngày, phiên bản, link tải, các bước cài của từng bộ cài). Thread gộp nhánh & phát hành nhắn thread này mỗi khi có bộ cài mới; không sửa code |
 
 Link mở thread: `https://claude.ai/code/<session id>`.

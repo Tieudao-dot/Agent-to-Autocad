@@ -80,7 +80,7 @@ namespace ClaudeCAD.Plugin.Core
         /// <summary>Tools never recorded: view changes, file operations, undo, purge.</summary>
         public static readonly HashSet<string> NotRecorded = new HashSet<string>(StringComparer.Ordinal)
         {
-            "zoom_extents", "zoom_window", "regen", "save_drawing", "purge_unused", "undo_last_turn", "batch_execute",
+            "zoom_extents", "zoom_window", "regen", "save_drawing", "purge_unused", "undo_last_turn", "batch_execute", "verify_drawing",
         };
 
         public const int MaxCalls = 2000;

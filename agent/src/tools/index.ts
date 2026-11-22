@@ -13,6 +13,7 @@ import { layoutTools } from './layouts.js';
 import { modifyTools } from './modify.js';
 import { queryTools } from './query.js';
 import { styleTools } from './styles.js';
+import { verifyTools } from './verify.js';
 import { systemTools } from './system.js';
 import { viewTools } from './view.js';
 
@@ -22,6 +23,7 @@ export const MCP_SERVER_NAME = 'claudecad';
 export function buildTools(bridge: ToolBridge): AnyTool[] {
   return [
     ...queryTools(bridge),
+    ...verifyTools(bridge),
     ...batchTools(bridge),
     ...drawTools(bridge),
     ...layerTools(bridge),

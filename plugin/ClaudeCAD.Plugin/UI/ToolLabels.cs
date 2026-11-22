@@ -74,6 +74,7 @@ namespace ClaudeCAD.Plugin.UI
             ["set_dynamic_props"] = "Sửa dynamic block",
             ["zoom_extents"] = "Zoom toàn bộ",
             ["capture_view"] = "Nhìn bản vẽ (chụp ảnh kiểm tra)",
+            ["verify_drawing"] = "Tự kiểm bản vẽ",
             ["zoom_window"] = "Zoom cửa sổ",
             ["regen"] = "Regen",
             ["save_drawing"] = "Lưu bản vẽ",

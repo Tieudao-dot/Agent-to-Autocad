@@ -1,6 +1,7 @@
 # Kế hoạch: tự kiểm trên bản vẽ trước khi báo xong
 
-Thread "ClaudeCAD — tự kiểm trước khi báo xong", nhánh `claude/tu-kiem-tra`, 22/11/2026. Dựa trên
+Thread "ClaudeCAD — tự kiểm trước khi báo xong", nhánh `claude/tu-kiem-tra`, 22/11/2026. **Đã code xong đợt đầu**
+(mục 8). Dựa trên
 `docs/nghien-cuu-skill.md` (lớp C, D và thẻ "Tự kiểm"). Chủ dự án đã trả lời các câu ở mục 7; chờ duyệt kế hoạch rồi mới code.
 
 Phạm vi thread: lớp **kiểm** (`verify_drawing`), **hook** bắt buộc kiểm, **thẻ Tự kiểm**. Không thuộc thread này:
@@ -51,8 +52,8 @@ Chỉ những mã **không cần chuẩn dạng dữ liệu** (lớp B). Bốn m
 | `COUNT` | Số đối tượng theo layer khác `expect` Claude khai trước khi vẽ (chỉ khi có `expect`) | Không |
 
 - **Dung sai trùng điểm:** 0,01 mm (cố định). **Ngưỡng khe hở:** 10 mm (cậu chọn 22/11).
-- **Loại trừ báo nhầm:** layer có chữ `DOOR` / `WIND` / `CUA` không tính `GAP` (lỗ cửa cố ý); skill tắt được
-  từng mã bằng dòng `verify: off GAP,TEXT_OVERLAP` trong `SKILL.md` (đợt đầu chỉ đọc dòng này, chưa đọc bảng).
+- **Loại trừ báo nhầm:** ngưỡng 10 mm nhỏ hơn mọi lỗ cửa nên không cần loại trừ theo layer. Mã nào cố ý thì Claude
+  gọi lại với `ignore: ["MÃ"]` và nói lý do; skill muốn tắt mã nào thì ghi câu dặn đó trong `SKILL.md`.
 - **Kết quả trả về gọn:** `{checked, issues:[{code, handles, message, fix, auto_fixable}], fixed:[…]}`, tối đa
   30 lỗi, phần thừa gộp "và N lỗi cùng loại".
 
@@ -63,12 +64,12 @@ Chỉ những mã **không cần chuẩn dạng dữ liệu** (lớp B). Bốn m
 | `plugin/ClaudeCAD.Plugin/Core/VerifyRules.cs` (mới) | Luật kiểm thuần hình học (không phụ thuộc AutoCAD): đầu vào là bản ghi đơn giản (loại, layer, đầu nét, đỉnh, cung, hộp bao chữ), đầu ra là danh sách lỗi. Test được trên Linux. |
 | `plugin/ClaudeCAD.Plugin/Drawing/VerifyTools.cs` (mới) | Tool `verify_drawing`: đọc entity theo handle + lân cận → bản ghi → `VerifyRules`; `auto_fix` trong cùng undo group của lượt. |
 | `plugin/ClaudeCAD.Plugin/Drawing/ToolDispatcher.cs` | Đăng ký tool; `verify_drawing` là đọc, thành ghi khi `auto_fix: true` (giống cách `batch_execute` xét `BatchWrites`); Chỉ xem thì từ chối `auto_fix`. |
-| `agent/src/tools/query.ts` (hoặc `verify.ts` mới) + `index.ts` | Schema tool cho Claude; tự điền `handles` của lượt; phát sự kiện `self_check` cho plugin. |
+| `agent/src/tools/verify.ts` (mới) + `index.ts`, `content.ts` | Schema tool cho Claude, tóm tắt kết quả cho danh sách bước. Không cần truyền `handles`: plugin tự biết đối tượng của lượt. |
 | `agent/src/agent/session.ts` | `hooks.Stop` trong `buildOptions`; theo dõi "ghi sau lần verify cuối", số vòng, kết quả verify cuối (mở rộng `noteResult`). |
 | `agent/src/agent/selfCheck.ts` (mới) | Logic quyết định của hook (hàm thuần, dễ test): chặn / cho qua, nội dung nhắc Claude. |
 | `agent/src/agent/systemPrompt.ts` | Quy tắc: khai `expect` trước khi vẽ, kiểm bằng `verify_drawing` rồi mới `capture_view`, còn lỗi phải liệt kê. |
-| `agent/src/ipc/protocol.ts` + `plugin/.../Ipc` | Tin `self_check` (agent → plugin). |
-| `plugin/ClaudeCAD.Plugin/ChatController.cs` | Giữ `self_check` cuối của lượt, hiện thẻ ở `turn_end`. |
+| `plugin/ClaudeCAD.Plugin/ChatController.cs` | `TurnChanges()` (đối tượng lượt đã thêm / sửa, từ bảng Thay đổi), giữ kết quả kiểm cuối của lượt, gắn vào câu trả lời khi lượt xong. Không cần tin IPC mới. |
+| `plugin/ClaudeCAD.Plugin/Core/ChatStore.cs` | Lưu thẻ Tự kiểm vào lịch sử chat (`self_check`) và file Xuất. |
 | `plugin/ClaudeCAD.Plugin/UI/ChatControl.cs` | `AddSelfCheckCard` (✓ xanh / ✗ đỏ, danh sách rút gọn, nút "Chọn đối tượng lỗi" dùng lại cơ chế chọn handle của thẻ xác nhận). |
 | `docs/checklist-thu-that.md`, `docs/tong-quan-du-an.md`, `bo-cai/README.md`, `docs/spec.md` | Tài liệu đi kèm. |
 
@@ -117,7 +118,7 @@ một lúc). Không cần tác vụ con.
 Chi phí cho người dùng mỗi lượt vẽ: thêm 1 lần gọi `verify_drawing` (kết quả gọn, vài trăm token), lượt có lỗi
 thêm 1–2 vòng sửa. Lượt chỉ đọc không tốn thêm.
 
-## 7. Việc cần chủ dự án quyết
+## 7. Việc cần chủ dự án quyết (đã trả lời)
 
 1. Hook **bắt AI tự sửa** (chặn kết thúc tối đa 2 vòng) hay **chỉ bắt kiểm và báo lỗi** (chặn 1 lần để chạy
    `verify_drawing`, không ép sửa).
@@ -131,3 +132,34 @@ thêm 1–2 vòng sửa. Lượt chỉ đọc không tốn thêm.
 2. Ngưỡng khe hở **10 mm**.
 3. **Cho `auto_fix`** các lỗi an toàn, chỉ trên đối tượng của lượt, cùng một lần U.
 4. Thẻ "Tự kiểm" **do thread này làm**.
+
+## 8. Đã làm (22/11/2026)
+
+- **Plugin:**
+  - `Core/VerifyRules.cs`: 10 mã lỗi, chọn cách sửa không chồng nhau, `SelfCheckSummary` cho thẻ.
+  - `Drawing/VerifyTools.cs`: tool `verify_drawing`.
+    - Đọc LINE, LWPOLYLINE (cả đoạn cong), ARC, CIRCLE, TEXT / MTEXT (hộp xoay theo chữ), DIMENSION (hộp chữ ước
+      tính).
+    - So với đối tượng lân cận trong vùng nới thêm 2 × ngưỡng, quét tối đa 3 giây trên bản vẽ lớn.
+    - `auto_fix` chỉ sửa đối tượng của lượt, không bao giờ sửa đối tượng có sẵn của người dùng. Chạy trong undo group
+      của lượt.
+    - Chỉ xem: vẫn kiểm, không sửa. Không chạy trong `batch_execute`, không ghi vào macro.
+- **Trợ lý:**
+  - `agent/selfCheck.ts`: theo dõi lượt có ghi hay không và đã kiểm sau lần ghi cuối chưa.
+  - Hook `Stop` trong `session.ts`: chặn tối đa 2 lần khi chưa kiểm, 2 vòng khi còn lỗi. Không chặn khi bấm Dừng
+    hoặc khi `verify_drawing` báo lỗi tool.
+  - System prompt: khai `expect` trước khi vẽ, kiểm trước khi báo xong, hết vòng thì liệt kê lỗi còn lại.
+- **Khung chat:**
+  - Thẻ "Tự kiểm" dưới câu trả lời, ✓ hoặc ✗ kèm tối đa 6 dòng lỗi. Bấm từng dòng để zoom tới.
+  - Nút "Chọn đối tượng lỗi". Thẻ ghi "có sửa sau lần kiểm" nếu bản vẽ còn bị sửa sau lần kiểm cuối.
+- **Khác bản kế hoạch ban đầu:**
+  - Không có tin IPC `self_check`: tool chạy trong plugin nên plugin tự giữ kết quả.
+  - Bỏ loại trừ theo layer cửa, vì ngưỡng 10 mm đã nhỏ hơn lỗ cửa.
+  - Tắt mã lỗi bằng tham số `ignore`, không đọc dòng `verify:` trong `SKILL.md`.
+- **Test:** lõi 199/199 (thêm 35), trợ lý 156/156 (thêm 20), build net48 / net8 / net10 đạt trên Linux. UI test thẻ
+  (`SelfCheckCardShowsCleanAndOpenIssues`) chạy trên CI Windows.
+- **Còn lại (ngoài đợt này):**
+  - 4 mã cần chuẩn dạng dữ liệu (lớp B).
+  - Hộp chữ của dim mới là ước tính.
+  - Block (INSERT) và hatch chưa được kiểm hình học, chỉ được đếm (`COUNT`) và xét lạc (`STRAY`).
+  - Chưa có nút tắt tự kiểm trong ⚙.

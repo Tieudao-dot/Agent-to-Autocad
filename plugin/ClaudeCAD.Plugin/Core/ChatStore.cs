@@ -31,6 +31,8 @@ namespace ClaudeCAD.Plugin.Core
         public int SelectionCount;
         /// <summary>Net drawing changes of the turn (assistant entries; null = none).</summary>
         public ChangeSummary Changes;
+        /// <summary>Last self-check (verify_drawing) of the turn (assistant entries; null = none).</summary>
+        public SelfCheckSummary SelfCheck;
         /// <summary>Layers the user chose for this request (user entries).</summary>
         public List<string> Layers = new List<string>();
     }
@@ -98,6 +100,7 @@ namespace ClaudeCAD.Plugin.Core
                     ["selection"] = e.SelectionCount,
                     ["handles"] = e.Handles.Cast<object>().ToList(),
                     ["changes"] = e.Changes?.ToDict(),
+                    ["self_check"] = e.SelfCheck?.ToDict(),
                     ["layers"] = e.Layers.Count > 0 ? e.Layers.Cast<object>().ToList() : null,
                     ["tools"] = e.Tools.Select(t => (object)new Dictionary<string, object>
                     {
@@ -136,6 +139,7 @@ namespace ClaudeCAD.Plugin.Core
                     if (DateTime.TryParse(S(o, "time"), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var tm)) e.Time = tm;
                     if (o.TryGetValue("handles", out var hv) && hv is List<object> hl) e.Handles = hl.OfType<string>().ToList();
                     if (o.TryGetValue("changes", out var cv) && cv is Dictionary<string, object> cd) e.Changes = ChangeSummary.FromDict(cd);
+                    if (o.TryGetValue("self_check", out var scv) && scv is Dictionary<string, object> scd) e.SelfCheck = SelfCheckSummary.FromDict(scd);
                     if (o.TryGetValue("layers", out var lv) && lv is List<object> ll) e.Layers = ll.OfType<string>().ToList();
                     if (o.TryGetValue("tools", out var tv) && tv is List<object> tl)
                         foreach (var to in tl.OfType<Dictionary<string, object>>())
@@ -166,6 +170,11 @@ namespace ClaudeCAD.Plugin.Core
                 if (e.Changes != null && !e.Changes.IsEmpty)
                 {
                     sb.AppendLine("_" + e.Changes.Headline + "_ — " + string.Join(", ", e.Changes.Rows.Select(r => $"{ChangeSummary.KindLabel(r.Kind)} {r.Count} trên {r.Layer}")));
+                    sb.AppendLine();
+                }
+                if (e.SelfCheck != null)
+                {
+                    sb.AppendLine("_" + e.SelfCheck.Headline + "_" + (e.SelfCheck.Items.Count > 0 ? " — " + string.Join("; ", e.SelfCheck.Items.Select(i => i.Message)) : ""));
                     sb.AppendLine();
                 }
                 if (e.Tools.Count > 0)
