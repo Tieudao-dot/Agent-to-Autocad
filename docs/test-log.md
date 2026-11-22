@@ -187,6 +187,7 @@ Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, 
 | I-3 | Bấm **Đăng nhập Claude** → cửa sổ đen + trình duyệt đăng nhập Pro/Max → "✓ Đã đăng nhập Claude", gửi tin nhắn được ngay | ⬜ chưa chạy | |
 | I-4 | Chưa đăng nhập mà gửi tin → thẻ lỗi có nút **Đăng nhập Claude** (không còn hướng dẫn terminal) | ⬜ chưa chạy | |
 | I-5 | Mở AutoCAD lần sau → thẻ Bắt đầu không tự hiện lại; ⚙ ▸ Hướng dẫn bắt đầu mở lại được | ⬜ chưa chạy | |
+| I-6 | Máy đã cài ClaudeCAD, **AutoCAD đang mở**: chạy `ClaudeCAD-Setup.exe` bản mới → hộp tiếng Việt "AutoCAD đang mở… bấm Retry"; chưa đóng mà bấm Retry → hộp hiện lại; đóng AutoCAD rồi Retry → cài xong, không có hộp tiếng Anh "unable to automatically close all applications". Bấm Cancel → bộ cài dừng với dòng "Hãy đóng AutoCAD rồi chạy lại". Node.js khác đang chạy trên máy không bị tắt | ⬜ chưa chạy | |
 | T-1 | Lưu macro / ghi chú / mẫu lệnh, đăng nhập, mất kết nối (kill node.exe) → toast hiện trên vùng chat rồi tự ẩn | ⬜ chưa chạy | |
 | T-2 | Dùng gần hết hạn mức → toast "Sắp hết hạn mức"; hết hạn mức → thẻ trong chat có giờ làm mới, **Tự gửi lại** gửi lại đúng yêu cầu sau khi làm mới | ⬜ chưa chạy | |
 | R-1 | ⚙ ▸ **Gửi báo cáo lỗi** → zip trên Desktop, Explorer mở; trong zip có thong-tin.txt, log, tự kiểm tra, log cài đặt; không có API key / chat | ⬜ chưa chạy | |
