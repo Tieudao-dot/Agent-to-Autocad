@@ -157,7 +157,7 @@ thêm 1–2 vòng sửa. Lượt chỉ đọc không tốn thêm.
   - Bỏ loại trừ theo layer cửa, vì ngưỡng 10 mm đã nhỏ hơn lỗ cửa.
   - Tắt mã lỗi bằng tham số `ignore`, không đọc dòng `verify:` trong `SKILL.md`.
 - **Test:** lõi 199/199 (thêm 35), trợ lý 156/156 (thêm 20), build net48 / net8 / net10 đạt trên Linux. UI test thẻ
-  (`SelfCheckCardShowsCleanAndOpenIssues`) chạy trên CI Windows.
+  (`SelfCheckCardShowsCleanAndOpenIssues`) đạt trên CI Windows, run 45002618380 (`release: false`).
 - **Còn lại (ngoài đợt này):**
   - 4 mã cần chuẩn dạng dữ liệu (lớp B).
   - Hộp chữ của dim mới là ước tính.
