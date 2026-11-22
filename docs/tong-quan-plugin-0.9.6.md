@@ -1,6 +1,6 @@
 # Tổng quan plugin ClaudeCAD 0.9.6
 
-*Soạn ngày 22/11/2026, theo nhánh `claude/release-0.9.5` @ 23e8ed6 (tên nhánh cũ, nội dung là 0.9.6).
+*Soạn ngày 22/11/2026, theo nhánh `claude/release-0.9.5` @ 5fe6adc (tên nhánh cũ, nội dung là 0.9.6).
 Viết cho chủ plugin, không cần biết lập trình.*
 
 ## 1. Tóm tắt
@@ -163,7 +163,7 @@ Skill là file `.md` mô tả chuẩn vẽ: bảng layer, chiều cao chữ, quy
 | --- | --- |
 | **Admin** | Cậu gửi tới máy đó qua Google Sheet |
 | **Default** | 3 skill mẫu đi kèm plugin |
-| **You** | Khách tự thêm. Skill Admin mà khách sửa cũng thành **You** |
+| **You** | Khách tự thêm. Khách bấm Sửa skill Default / Admin thì plugin chép sang `<tên>-sua` (nhãn **You**), bản gốc giữ nguyên và vẫn nhận cập nhật. Khách sửa thẳng file gốc ngoài plugin cũng được tách sang `<tên>-sua` như vậy |
 
 ### 4.3 Đẩy skill theo máy (mới ở 0.9.6)
 
@@ -303,12 +303,12 @@ Việc chuyển từ 1 file sang 2 file và cập nhật cho 0.9.6 **đã làm x
 
 | | |
 | --- | --- |
-| Nguồn | Nhánh `claude/release-0.9.5` @ 23e8ed6 |
-| CI | Run [45011984540](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/45011984540), `release: false`, xanh |
+| Nguồn | Nhánh `claude/release-0.9.5` @ 5fe6adc (bộ cài thử lần 2, thay run 45011984540) |
+| CI | Run [45019784560](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/45019784560), `release: false`, xanh |
 | File tải | Artifact **ClaudeCAD-0.9.6** trên trang CI, cần đăng nhập GitHub, hết hạn **20/02/2027** |
-| `Setup.exe` | 141.426.439 byte |
-| SHA-256 | `26C532D45014B429EA7EEDE7112410EBC2606CCEC86175E67193C1528090E4DD` |
-| Test tự động | Lõi 257, trợ lý 186, build net48 / net8 / net10 đều đạt |
+| `Setup.exe` | 141.419.468 byte |
+| SHA-256 | `2EE2E290DB5E8D7E39D4FF7D4A2809E7674B736A95B4C247351C0FE66BDBB4D6` |
+| Test tự động | Lõi 264, trợ lý 186, build net48 / net8 / net10 đều đạt |
 | Trạng thái | Chưa gộp `main`, chưa phát hành |
 
 Kiểm file tải về: mở PowerShell trong thư mục chứa file, chạy `Get-FileHash .\<tên file>.exe`, so với mã trên.
@@ -320,7 +320,8 @@ Kiểm file tải về: mở PowerShell trong thư mục chứa file, chạy `Ge
 | Đẩy skill theo máy (6 bước: Thêm → thấy nhãn Admin; tăng phiên bản → nhận bản mới; Ẩn / Thêm lại; Xóa; khách sửa → You; máy không được gán thì không nhận) | `docs/ke-hoach-day-skill.md` mục 6 |
 | Tự kiểm, bắt điểm, áp chuẩn (I10–I13; cả phần I là I1–I13, ~4 phút) | `docs/checklist-thu-that.md` phần I |
 | Nhãn Admin / Default / You trong danh sách Skill | Mở ✦ Skill sau khi đẩy skill |
-| Skill mẫu tự cập nhật trên máy đang cài 0.9.5 | `docs/test-log.md` mục S-6, S-7 |
+| Skill mẫu tự cập nhật trên máy đang cài 0.9.5 (máy đã sửa thẳng skill mẫu: phần sửa sang `<tên>-sua`, skill mẫu về bản mới) | `docs/test-log.md` mục S-6, S-7 |
+| Bấm Sửa skill Default → ra `<tên>-sua` (You), bản gốc còn nguyên | `docs/test-log.md` mục S-8 |
 | Lượt thử thật đầy đủ (~20 phút): cài + kích hoạt, đăng nhập, vẽ, xác nhận, hoàn tác, giao diện, skill / macro, AutoCAD 2026 / 2027 | `docs/checklist-thu-that.md` phần A–H |
 
 Ước tính thời gian cậu thử: khoảng 30–45 phút. Thử xong và cậu đồng ý thì thread gộp nhánh & phát hành mới merge `main`
