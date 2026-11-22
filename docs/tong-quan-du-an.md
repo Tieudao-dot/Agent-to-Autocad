@@ -127,7 +127,8 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 | Phiên bản | Nội dung | Trạng thái |
 | --- | --- | --- |
 | 0.4 – 0.9.3 | Khung chat 20+ tính năng, skill, macro, phiên bản 30 phút, ghi nhận sửa tay, chọn layer, báo cáo lỗi, tài khoản AI, đăng nhập trong bộ cài | Đã phát hành (v0.9.3 ngày 09/11) |
-| 0.9.5 (bản thử, gồm phần từng ghi 0.9.4) | • Khóa key theo máy + quản lý thiết bị.<br>• ~30 bản sửa sau rà soát, rồi 3 đợt sửa tiếp.<br>• Skill theo đoạn chat.<br>• Giao diện kiểu AutoCAD.<br>• AutoCAD 2026 / 2027.<br>• Checklist thử thật + tự kiểm tra mở rộng | Đã gộp, CI xanh, chờ thử trên AutoCAD thật. csproj vẫn ghi 0.9.4 tới khi chốt tên |
+| 0.9.5 | • Khóa key theo máy + quản lý thiết bị.<br>• ~30 bản sửa sau rà soát, rồi 3 đợt sửa tiếp.<br>• Skill theo đoạn chat.<br>• Giao diện kiểu AutoCAD.<br>• AutoCAD 2026 / 2027.<br>• Checklist thử thật + tự kiểm tra mở rộng | Đã phát hành 18/11 |
+| 0.9.6 | • Đẩy skill theo máy, nhãn Admin / Default / You.<br>• Tự kiểm bản vẽ 14 mã, bắt điểm theo đối tượng, áp chuẩn lúc vẽ.<br>• 3 skill mẫu viết lại + tự cập nhật. Chi tiết: [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md) | Bộ cài thử 22/11 (run 45011984540, `claude/release-0.9.5` @23e8ed6), chờ cậu thử |
 
 ## 7. Tài liệu khác
 
@@ -147,6 +148,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Bộ cài thử 0.9.6 xong (run 45011984540, CI xanh; lõi 257, trợ lý 186), đã ghi vào sổ lưu trữ bộ cài. Có báo cáo [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md). Chờ cậu thử |
 | 22/11 | Cậu duyệt gộp cả 3 nhóm (đẩy skill, tự kiểm, skill mẫu tự cập nhật) vào 0.9.6. Đã giao thread gộp nhánh tạo `claude/release-0.9.6` và bộ cài thử; chưa merge `main`. Nội dung: [`ban-0.9.6.md`](ban-0.9.6.md) |
 | 22/11 | Cậu cập nhật máy chủ Google cho đẩy skill: tách BiMat, dán Code.gs mới, chạy `kiemTra`, tạo Phiên bản mới cùng link. `ping` trả `ready:true`. Bản 0.9.5 vẫn chạy bình thường |
 | 22/11 | Tự kiểm đợt 2 xong (@1eacfe3, CI xanh run 45009114005; lõi 236, trợ lý 172). Chờ cậu thử thật phần I và quyết gộp |
