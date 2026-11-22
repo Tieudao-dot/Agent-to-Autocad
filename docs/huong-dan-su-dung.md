@@ -358,7 +358,7 @@ việc**: mức càng cao thì Claude cân nhắc càng kỹ, nhưng chậm hơn
 - Khung chat tự kiểm tra bản mới mỗi ngày và báo trong chat.
 - Gõ `CLAUDECHATUPDATE` để tải. Bản mới được cài khi bạn đóng AutoCAD. Hoặc tải lại `ClaudeCAD-Setup.exe` và chạy đè.
 - Skill bạn đã thêm / sửa, macro, mẫu lệnh, lịch sử chat đều được giữ nguyên. Không phải nhập lại key.
-- Ba skill mẫu đi kèm plugin: nếu bạn chưa sửa thì được thay bằng bản mẫu mới ở lần mở AutoCAD đầu tiên sau khi cập nhật; đã sửa thì giữ nguyên bản của bạn.
+- Ba skill mẫu đi kèm plugin: nếu bạn chưa sửa thì được thay bằng bản mẫu mới ở lần mở AutoCAD đầu tiên sau khi cập nhật; nếu bạn đã sửa thẳng skill mẫu thì phần sửa được giữ lại thành skill riêng `<tên>-sua` (nhãn You), còn skill mẫu trở về bản mới.
 
 **Gỡ cài đặt:** đóng AutoCAD, vào Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall**.
 

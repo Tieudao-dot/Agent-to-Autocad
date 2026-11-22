@@ -177,7 +177,8 @@ Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, 
 | S-4 | Hai bản vẽ, mỗi bản một bộ skill khác nhau → chuyển qua lại, danh sách đúng của từng bản vẽ | ⬜ chưa chạy | |
 | S-5 | Sửa SKILL.md rồi lưu → chỉ 1 toast "Skill đã thay đổi" | ⬜ chưa chạy | |
 | S-6 | Máy đang cài 0.9.5, **chưa sửa** skill mẫu: cài đè bản kế tiếp → mở AutoCAD → `Contents\skills\ve-kien-truc\SKILL.md` là bản mới (có mục chuẩn bị + tự kiểm); file `Contents\skills\.claudecad-mau.txt` xuất hiện | ⬜ chưa chạy | |
-| S-7 | Như S-6 nhưng trước khi cập nhật **đã sửa** `ve-mep\SKILL.md` (thêm 1 dòng) → sau cập nhật file đó giữ nguyên dòng của mình, hai skill mẫu còn lại thành bản mới; skill tự thêm không đổi | ⬜ chưa chạy | |
+| S-7 | Như S-6 nhưng trước khi cập nhật **đã sửa thẳng** `ve-mep\SKILL.md` (thêm 1 dòng) → sau cập nhật: thư viện có thêm `ve-mep-sua` (nhãn You) chứa đúng dòng của mình, `ve-mep` (Default) là bản mẫu mới; đoạn chat đang dùng `ve-mep` chuyển sang `ve-mep-sua` và có ghi chú; skill tự thêm không đổi | ⬜ chưa chạy | |
+| S-8 | Bấm **Sửa** trên một skill Default → plugin báo đã chép thành `<tên>-sua`, Notepad mở bản chép; lưu → đoạn chat chuyển sang bản sửa, bản gốc trong thư viện còn nguyên. Mở Sửa rồi đóng không đổi gì → lần mở AutoCAD sau không còn `<tên>-sua` thừa | ⬜ chưa chạy | |
 | D-1 | Đổi tài khoản / lưu API key → trợ lý khởi động lại; Task Manager không còn sót tiến trình claude.exe cũ; khung chat không đứng, không hiện "Mất kết nối" | ⬜ chưa chạy | |
 | D-2 | `CLAUDECHATSELFTEST` đạt hết → thư mục `%TEMP%\ClaudeCAD-selftest-*` bị xóa, ảnh `selftest-*.png` nằm cạnh báo cáo; có mục ✗ → thư mục được giữ | ⬜ chưa chạy | |
 | D-3 | Mở ⚙ hai lần trong 30 giây → lần hai hiện tài khoản ngay | ⬜ chưa chạy | |

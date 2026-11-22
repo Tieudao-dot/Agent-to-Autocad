@@ -77,7 +77,7 @@ Cạnh tên mỗi skill trong danh sách có một nhãn:
 | Gói skill chủ plugin gửi lần gần nhất | `%LocalAppData%\ClaudeCAD\skill-pack.txt` (thời điểm + mã băm, để không tải lại) |
 | Skill của từng đoạn chat | lưu cùng lịch sử chat của bản vẽ (`%LocalAppData%\ClaudeCAD\chats`); skill của đoạn chat gần nhất trong `%AppData%\ClaudeCAD\settings.json` |
 
-Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill cậu đã thêm hay đã sửa, cũng không đụng `skills.json`. Riêng 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) và file README này: nếu cậu **chưa sửa** thì lần mở AutoCAD đầu tiên sau khi cập nhật plugin tự thay bằng bản mẫu mới; đã sửa dù chỉ một chữ thì giữ nguyên bản của cậu (bản mẫu mới nằm ở `Contents\skills-mau` để cậu so và chép tay nếu muốn).
+Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill cậu đã thêm hay đã sửa, cũng không đụng `skills.json`. Riêng 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) và file README này: nếu cậu **chưa sửa** thì lần mở AutoCAD đầu tiên sau khi cập nhật plugin tự thay bằng bản mẫu mới. Nếu cậu đã sửa thẳng file mẫu, phần sửa không mất: plugin chuyển nó sang `<tên>-sua` (nhãn You) như mô tả ở trên, rồi đưa bản mẫu mới về chỗ cũ (bản mẫu gốc nằm ở `Contents\skills-mau`).
 
 ## Skill mẫu có sẵn
 

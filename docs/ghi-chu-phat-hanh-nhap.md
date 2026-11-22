@@ -28,8 +28,10 @@
 
 - 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) viết lại: chuẩn bị trước khi vẽ, dựng hình bằng offset / trim,
   tự kiểm, lỗi hay gặp. Số liệu vẫn là số mẫu.
-- Máy đã cài nhận skill mẫu mới ở lần mở AutoCAD đầu tiên sau khi cập nhật, **nếu bạn chưa sửa** skill đó. Skill bạn
-  đã sửa hoặc tự thêm được giữ nguyên.
+- Máy đã cài nhận skill mẫu mới ở lần mở AutoCAD đầu tiên sau khi cập nhật. Skill bạn tự thêm được giữ nguyên.
+- **Sửa skill mẫu / skill chủ plugin gửi không làm mất bản gốc:** bấm **Sửa** thì plugin chép thành `<tên>-sua` (nhãn
+  You) cho bạn sửa; bản gốc giữ nguyên và vẫn nhận cập nhật. Nếu trước đây bạn đã sửa thẳng skill mẫu, phần sửa đó
+  được chuyển sang `<tên>-sua`, đoạn chat đang dùng tự chuyển theo.
 
 ### 4. Lưu ý khi nâng cấp từ v0.9.5
 
@@ -64,7 +66,8 @@ Nâng cấp từ 0.9.5 không phải kích hoạt lại; skill, macro, lịch s�
 
 1. Đẩy skill theo máy: các bước thử ở [`ke-hoach-day-skill.md`](ke-hoach-day-skill.md) mục 6.
 2. Tự kiểm: [`checklist-thu-that.md`](checklist-thu-that.md) phần I, bước I10–I13.
-3. Nhãn Admin / Default / You trong danh sách Skill.
+3. Nhãn Admin / Default / You trong danh sách Skill; bấm **Sửa** skill Default → ra `<tên>-sua`, bản gốc còn nguyên
+   (`test-log.md` S-8).
 4. Skill mẫu tự cập nhật trên máy đang cài 0.9.5: `test-log.md` mục S-6, S-7.
 
 ## Việc còn lại ở bước phát hành (thread gộp nhánh & phát hành)
