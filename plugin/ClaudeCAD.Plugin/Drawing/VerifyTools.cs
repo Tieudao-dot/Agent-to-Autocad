@@ -250,11 +250,19 @@ namespace ClaudeCAD.Plugin.Drawing
                     s.Type = "TEXT";
                     s.Text = t.TextString;
                     s.Box = TextBox(t, ext);
+                    s.Insert = P2(t.Justify == AttachmentPoint.BaseLeft ? t.Position : t.AlignmentPoint);
                     break;
                 case MText m:
                     s.Type = "TEXT";
                     s.Text = m.Text;
                     s.Box = MTextBox(m, ext);
+                    s.Insert = P2(m.Location);
+                    break;
+                case BlockReference br:
+                    s.Insert = P2(br.Position);
+                    break;
+                case DBPoint pt:
+                    s.Insert = P2(pt.Position);
                     break;
                 case Dimension d:
                     s.Type = "DIM";

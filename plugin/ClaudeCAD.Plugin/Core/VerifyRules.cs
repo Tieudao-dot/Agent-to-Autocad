@@ -34,6 +34,8 @@ namespace ClaudeCAD.Plugin.Core
         public double[] Min, Max;
         /// <summary>TEXT: content (duplicate check).</summary>
         public string Text;
+        /// <summary>Insertion point (text, block reference, point): the "ins" snap.</summary>
+        public double[] Insert;
     }
 
     /// <summary>A safe automatic repair of one issue (verify_drawing auto_fix).</summary>
@@ -181,7 +183,7 @@ namespace ClaudeCAD.Plugin.Core
 
         // ------------------------------------------------------------------ segments
 
-        private sealed class Seg
+        internal sealed class Seg
         {
             public VShape Shape;
             public int Index;
@@ -200,7 +202,7 @@ namespace ClaudeCAD.Plugin.Core
             public double[] Inner; // straight end segment: its other point (null for arcs)
         }
 
-        private static List<Seg> Segments(VShape s)
+        internal static List<Seg> Segments(VShape s)
         {
             var r = new List<Seg>();
             switch (s.Type)
@@ -252,15 +254,15 @@ namespace ClaudeCAD.Plugin.Core
             return new Seg { Shape = s, Index = i, A = a, B = b, IsArc = true, C = center, R = r, A0 = Math.Atan2(a[1] - center[1], a[0] - center[0]), Sweep = theta };
         }
 
-        private static double[] PointOn(double[] c, double r, double ang) => new[] { c[0] + r * Math.Cos(ang), c[1] + r * Math.Sin(ang) };
+        internal static double[] PointOn(double[] c, double r, double ang) => new[] { c[0] + r * Math.Cos(ang), c[1] + r * Math.Sin(ang) };
 
-        private static double Dist(double[] a, double[] b)
+        internal static double Dist(double[] a, double[] b)
         {
             double dx = b[0] - a[0], dy = b[1] - a[1];
             return Math.Sqrt(dx * dx + dy * dy);
         }
 
-        private static bool InSweep(Seg s, double ang)
+        internal static bool InSweep(Seg s, double ang)
         {
             if (Math.Abs(s.Sweep) >= 2 * Math.PI - 1e-12) return true;
             double t = s.Sweep >= 0 ? Geometry.NormalizeRad(ang - s.A0) : Geometry.NormalizeRad(s.A0 - ang);
@@ -268,7 +270,7 @@ namespace ClaudeCAD.Plugin.Core
         }
 
         /// <summary>Closest point of a segment to p.</summary>
-        private static double[] Closest(Seg s, double[] p)
+        internal static double[] Closest(Seg s, double[] p)
         {
             if (s.IsArc)
             {
@@ -284,10 +286,10 @@ namespace ClaudeCAD.Plugin.Core
             return new[] { s.A[0] + t * dx, s.A[1] + t * dy };
         }
 
-        private static double DistToSeg(Seg s, double[] p) => Dist(p, Closest(s, p));
+        internal static double DistToSeg(Seg s, double[] p) => Dist(p, Closest(s, p));
 
         /// <summary>Intersection of the infinite lines p1-p2 and q1-q2 (null when parallel).</summary>
-        private static double[] LineLine(double[] p1, double[] p2, double[] q1, double[] q2)
+        internal static double[] LineLine(double[] p1, double[] p2, double[] q1, double[] q2)
         {
             double d1x = p2[0] - p1[0], d1y = p2[1] - p1[1], d2x = q2[0] - q1[0], d2y = q2[1] - q1[1];
             double den = d1x * d2y - d1y * d2x;
@@ -873,7 +875,7 @@ namespace ClaudeCAD.Plugin.Core
             Handle = s.Handle, Type = s.Type, Layer = s.Layer, OfTurn = s.OfTurn, IsNew = s.IsNew,
             Pts = s.Pts.Select(p => (double[])p.Clone()).ToList(), Bulges = s.Bulges?.ToList(), Closed = s.Closed,
             Center = s.Center, Radius = s.Radius, StartAngle = s.StartAngle, EndAngle = s.EndAngle,
-            Box = s.Box, Min = s.Min, Max = s.Max, Text = s.Text,
+            Box = s.Box, Min = s.Min, Max = s.Max, Text = s.Text, Insert = s.Insert,
         };
 
         /// <summary>Short Vietnamese label of a code (the "Tự kiểm" card).</summary>

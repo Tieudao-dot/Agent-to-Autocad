@@ -28,6 +28,7 @@
     <Compile Include="..\ClaudeCAD.Plugin\Core\License.cs" Link="Core\License.cs" />
     <Compile Include="..\ClaudeCAD.Plugin\Core\SelfTestRules.cs" Link="Core\SelfTestRules.cs" />
     <Compile Include="..\ClaudeCAD.Plugin\Core\VerifyRules.cs" Link="Core\VerifyRules.cs" />
+    <Compile Include="..\ClaudeCAD.Plugin\Core\SnapRules.cs" Link="Core\SnapRules.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

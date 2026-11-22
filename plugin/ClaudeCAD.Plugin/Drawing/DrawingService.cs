@@ -66,6 +66,7 @@ namespace ClaudeCAD.Plugin.Drawing
             RegisterCapture(d);
             // self-check before a turn reports done (docs/ke-hoach-tu-kiem.md)
             RegisterVerify(d, host);
+            RegisterSnap(d);
         }
 
         private static void RegisterSystem(ToolDispatcher d, ITurnHost host)

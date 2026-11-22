@@ -209,6 +209,7 @@ namespace ClaudeCAD.Plugin.Drawing
             {
                 if (writes && !viewOnly) _host.Undo.EnsureStarted(doc);
                 var ctx0 = new ToolContext(doc, null, writes, this);
+                p.Snap = new SnapResolver(ctx0);
                 var r0 = def.Handler(ctx0, p);
                 if (MacroLogic.ShouldRecord(def.Name, writes)) _host.RecordCall(def.Name, p.Raw, r0);
                 return r0;
@@ -237,6 +238,7 @@ namespace ClaudeCAD.Plugin.Drawing
             using (var tr = tm.StartTransaction())
             {
                 var ctx = new ToolContext(doc, tr, writable, this);
+                p.Snap = new SnapResolver(ctx);
                 var result = def.Handler(ctx, p);
                 if (writable)
                 {
@@ -282,6 +284,7 @@ namespace ClaudeCAD.Plugin.Drawing
         {
             var results = new List<object>(calls.Count);
             ctx.InBatch = true;
+            ctx.BatchResults = results;
             try
             {
                 for (int i = 0; i < calls.Count; i++)
@@ -302,7 +305,7 @@ namespace ClaudeCAD.Plugin.Drawing
                         if (def.Writes && !ctx.Writable) ctx.RequireWritable(tool);
 
                         var pobj = call.TryGetValue("params", out var pv) ? pv as Dictionary<string, object> : null;
-                        var p = new Params(tool, pobj);
+                        var p = new Params(tool, pobj) { Snap = new SnapResolver(ctx) };
 
                         using (var nested = ctx.Doc.TransactionManager.StartTransaction())
                         {
@@ -343,6 +346,7 @@ namespace ClaudeCAD.Plugin.Drawing
             finally
             {
                 ctx.InBatch = false;
+                ctx.BatchResults = null;
             }
             return results;
         }

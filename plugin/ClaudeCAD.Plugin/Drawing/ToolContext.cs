@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
@@ -25,6 +26,9 @@ namespace ClaudeCAD.Plugin.Drawing
 
         /// <summary>True while executing inside batch_execute.</summary>
         public bool InBatch { get; internal set; }
+
+        /// <summary>Results of the batch calls run so far (snap references "@n"), null outside a batch.</summary>
+        public List<object> BatchResults { get; internal set; }
 
         private BlockTableRecord _modelSpace;
 
