@@ -36,7 +36,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 2. **AutoCAD 2027:** đã ghi là hỗ trợ nhưng chưa thử trên máy thật. Nên thử khi có máy hoặc bản dùng thử.
 3. **BiMat + ghi "Đã gỡ lúc":** triển khai khi cậu muốn. Cách làm: cập nhật máy chủ Google ở thread bảo mật, rồi gộp vào bản sau.
 4. **Đẩy skill theo máy (22/11):** code xong ở `claude/day-skill-theo-may` @874d2e4, rà bảo mật xong, không có lỗi chặn. Bước triển khai Apps Script chờ thread bảo mật tách `BiMat.gs`. Sau đó gộp vào 0.9.6 (thread gộp nhánh). Hai commit cuối chưa chạy CI.
-5. **Tự kiểm trước khi báo xong:** code xong ở `claude/tu-kiem-tra` @eecf3a9, CI xanh, để sau theo ý cậu.
+5. **Tự kiểm trước khi báo xong:** code xong ở `claude/tu-kiem-tra` @eecf3a9, CI xanh. Ngày 22/11 cậu giao thêm cho thread này gói "Công cụ vẽ & tự kiểm" do thread nghiên cứu Skill đề xuất: bắt điểm theo đối tượng, verify 12 mã, công cụ vẽ tự áp chuẩn. Thread sẽ báo kế hoạch và ước tính trước khi code.
 
 ## 3. Việc sau phát hành
 
@@ -147,6 +147,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Gói "Công cụ vẽ & tự kiểm" (thiết kế ở `claude/nghien-cuu-skill` @670dfb2) giao cho thread Tự kiểm làm tiếp trên `claude/tu-kiem-tra`, không mở thread mới |
 | 22/11 | Thread đẩy skill code xong (`claude/day-skill-theo-may` @874d2e4; CI xanh ở `08f4838`, run 45004919780). Rà bảo mật xong; cậu chọn tách `BiMat.gs`, việc này đã chuyển cho thread bảo mật. Triển khai Apps Script chờ commit đó, rồi gộp vào 0.9.6 |
 | 18/11 | **Phát hành v0.9.5**: cậu merge PR #5, CI tự phát hành (run 44319064734). Code giống hệt bộ cài 11/11 đã thử, chỉ khác số phiên bản. AutoCAD 2027 ghi là hỗ trợ (chưa thử thật). BiMat để sau |
 | 17/11 | Cậu đã thử bộ cài 11/11 (run 43000757496): làm việc ổn, sẽ cài cho client. BiMat + ghi "Đã gỡ lúc" để sau, giữ ở `claude/device-management`, đang gỡ khỏi nhánh phát hành. Phát hành chính thức và các quyết định để sau |
