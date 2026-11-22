@@ -35,6 +35,8 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
    - chép giấy phép sang máy khác và các mục còn lại: K-11 … K-16.
 2. **AutoCAD 2027:** đã ghi là hỗ trợ nhưng chưa thử trên máy thật. Nên thử khi có máy hoặc bản dùng thử.
 3. **BiMat + ghi "Đã gỡ lúc":** triển khai khi cậu muốn. Cách làm: cập nhật máy chủ Google ở thread bảo mật, rồi gộp vào bản sau.
+4. **Đẩy skill theo máy (22/11):** code xong ở `claude/day-skill-theo-may` @874d2e4, rà bảo mật xong, không có lỗi chặn. Bước triển khai Apps Script chờ thread bảo mật tách `BiMat.gs`. Sau đó gộp vào 0.9.6 (thread gộp nhánh). Hai commit cuối chưa chạy CI.
+5. **Tự kiểm trước khi báo xong:** code xong ở `claude/tu-kiem-tra` @eecf3a9, CI xanh, để sau theo ý cậu.
 
 ## 3. Việc sau phát hành
 
@@ -55,6 +57,9 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | [Kiểm thử](https://claude.ai/code/session_01D56HmG5SsqRGRPe9bHKUad) | Checklist thử thật, tự kiểm tra | `claude/test-checklist` (đã gộp) | Checklist ~20 phút, tự kiểm tra mở rộng | Đã lưu trữ (18/11) | ~$8 |
 | [AutoCAD 2026/2027](https://claude.ai/code/session_01D56HmFfmat4UZDMPVZar76) | Bản AutoCAD mới, build .NET 10 | `claude/acad-2026-2027` (đã gộp) | Hỗ trợ 2026 (R25.1) + 2027 (R26.0), sửa `install.ps1` | Đã lưu trữ (18/11). 2027 chưa thử trên máy thật | ~$7 |
 | [Dùng thử & Autodesk](https://claude.ai/code/session_01D56HmGdeNRHtH8Vob4cXGr) | Bản dùng thử AutoCAD, case Autodesk 26568211 | — | Bản dùng thử từ 10/11, khoảng 30 ngày | Rảnh, chờ email Autodesk | ~$1 |
+| [Nghiên cứu Skill](https://claude.ai/code/session_01D56HmG6vg6SvpZDrVxxKT7) | Nghiên cứu, đề xuất về Skill | `claude/nghien-cuu-skill` | `docs/nghien-cuu-skill.md` | Xong. Chờ chuẩn vẽ thật của công ty | — |
+| [Tự kiểm trước khi báo xong](https://claude.ai/code/session_01D56HmJy4Urvum4vU5EmdwS) | Plugin tự kiểm bản vẽ trước khi báo xong | `claude/tu-kiem-tra` | `verify_drawing`, hook trước khi kết thúc lượt, thẻ Tự kiểm (eecf3a9, CI xanh) | Để sau | — |
+| [Đẩy skill theo máy](https://claude.ai/code/session_01D56HmERgjnrwP5MTbkGKro) | Gán skill theo mã máy trong Sheet, gói ký số `CCP1` | `claude/day-skill-theo-may` | Code xong, rà bảo mật xong (874d2e4) | Chờ thread bảo mật tách `BiMat.gs`, rồi triển khai Apps Script | — |
 
 \* Số hệ thống ghi nhận cho từng thread, quy đổi theo giá API. Tổng cộng khoảng $572; luồng chính chiếm ~74% vì ngữ cảnh dài.
 Việc mới nên làm ở thread ngắn.
@@ -142,6 +147,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Thread đẩy skill code xong (`claude/day-skill-theo-may` @874d2e4; CI xanh ở `08f4838`, run 45004919780). Rà bảo mật xong; cậu chọn tách `BiMat.gs`, việc này đã chuyển cho thread bảo mật. Triển khai Apps Script chờ commit đó, rồi gộp vào 0.9.6 |
 | 18/11 | **Phát hành v0.9.5**: cậu merge PR #5, CI tự phát hành (run 44319064734). Code giống hệt bộ cài 11/11 đã thử, chỉ khác số phiên bản. AutoCAD 2027 ghi là hỗ trợ (chưa thử thật). BiMat để sau |
 | 17/11 | Cậu đã thử bộ cài 11/11 (run 43000757496): làm việc ổn, sẽ cài cho client. BiMat + ghi "Đã gỡ lúc" để sau, giữ ở `claude/device-management`, đang gỡ khỏi nhánh phát hành. Phát hành chính thức và các quyết định để sau |
 | 15/11 | Thread bảo mật làm tính năng ghi "Đã gỡ lúc" và tách bí mật máy chủ (`53bb1bf`). Thread gộp nhánh đã gộp vào `claude/release-0.9.5` (`76f1cce`) và build bộ cài thử mới, run 43665981360. Chờ cậu cập nhật máy chủ Google rồi thử theo checklist A, H, I |
