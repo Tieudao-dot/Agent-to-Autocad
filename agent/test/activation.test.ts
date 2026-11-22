@@ -60,11 +60,13 @@ class FakeSheet {
   }
 }
 
-function loadService() {
+function loadService(opts: { noSecrets?: boolean } = {}) {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   const pem = (privateKey.export({ format: 'pem', type: 'pkcs8' }) as string).trim() + '\n';
   const js = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '\\n');
-  const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8')
+  // the Apps Script project: BiMat.gs (the owner's secrets, filled by make-apps-script) + Code.gs (no secret)
+  const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8');
+  const secrets = fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8')
     .replace('{{EMAIL}}', 'owner@example.com')
     .replace('{{SECRET}}', 'test-secret')
     .replace('{{PRIVATE_KEY}}', js(pem));
@@ -116,6 +118,7 @@ function loadService() {
     Logger: { log: () => {} },
   };
   vm.createContext(sandbox);
+  if (!opts.noSecrets) vm.runInContext(secrets, sandbox);
   vm.runInContext(code, sandbox);
   const get = (params: Record<string, string>) =>
     JSON.parse(((sandbox.doGet as (e: unknown) => { content: string })({ parameter: params })).content);
@@ -329,10 +332,25 @@ describe('activation service (Apps Script)', () => {
   it('keys depend on the secret: another owner\'s service makes other keys', () => {
     const a = loadService();
     const keyA = (a.sandbox.makeKey as (m: string) => string)(machine);
+    const secrets = fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8');
+    assert.ok(secrets.includes("var SECRET = '{{SECRET}}'"), 'the template must not carry a real secret');
+    assert.ok(secrets.includes("var PRIVATE_KEY = '{{PRIVATE_KEY}}'"), 'the template must not carry a real private key');
     const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8');
-    assert.ok(code.includes("var SECRET = '{{SECRET}}'"), 'the template must not carry a real secret');
-    assert.ok(code.includes("var PRIVATE_KEY = '{{PRIVATE_KEY}}'"), 'the template must not carry a real private key');
+    assert.doesNotMatch(code, /var (EMAIL|SECRET|PRIVATE_KEY)\s*=/, 'Code.gs must hold no secret (they live in BiMat.gs)');
+    assert.doesNotMatch(code, /BEGIN PRIVATE KEY|@gmail\.com/);
     assert.match(keyA, /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/);
+  });
+
+  it('without BiMat.gs the service says so instead of failing (ping still answers)', () => {
+    const s = loadService({ noSecrets: true });
+    assert.deepEqual(s.get({ action: 'ping' }), { ok: true, service: 'ClaudeCAD activation', ready: false });
+    for (const action of ['request', 'activate', 'status']) {
+      const r = s.get({ action, machine, key: 'AAAA-BBBB-CCCC-DDDD' });
+      assert.equal(r.ok, false);
+      assert.match(r.error, /BiMat\.gs/);
+    }
+    assert.throws(() => (s.sandbox.kiemTra as () => void)(), /BiMat\.gs/);
+    assert.equal(loadService().get({ action: 'ping' }).ready, true);
   });
 
   it('the manual function emails the key, the offline code and the no-network pass', () => {
