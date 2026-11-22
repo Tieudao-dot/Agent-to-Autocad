@@ -1417,7 +1417,7 @@ namespace ClaudeCAD.Plugin.UI
         /// <summary>The library (every skill added so far) and the skills the current chat uses.</summary>
         public void SetSkills(List<SkillInfo> library, IEnumerable<string> chatSkills) => Ui(() =>
         {
-            _skills = library ?? new List<SkillInfo>();
+            _skills = (library ?? new List<SkillInfo>()).Where(k => !k.Hidden).ToList(); // "Ẩn" by the owner: not listed
             _chatSkills = new HashSet<string>(chatSkills ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
             int used = _skills.Count(k => k.Error == null && _chatSkills.Contains(k.Name));
             MarkIcon(_skillsBtn, used > 0 ? $"đang dùng {used}" : null,
@@ -1453,6 +1453,22 @@ namespace ClaudeCAD.Plugin.UI
             }
         }
 
+        /// <summary>Admin (pushed by the owner) · Default (shipped sample) · You (the user's own) — v0.9.6.</summary>
+        private static Border SkillLabel(string label)
+        {
+            var t = new TextBlock { Text = label, FontSize = 9, FontWeight = FontWeights.SemiBold };
+            Theme.Ref(t, TextBlock.ForegroundProperty, Theme.MutedFg);
+            var b = new Border
+            {
+                Child = t, CornerRadius = Theme.Corner, Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = label == "Admin" ? "Chủ plugin gửi tới máy này. Cậu sửa file thì skill thành của cậu (nhãn You) và không nhận cập nhật nữa."
+                    : label == "Default" ? "Skill mẫu đi kèm plugin" : "Skill cậu tự thêm (hoặc đã sửa)",
+            };
+            Theme.Ref(b, Border.BackgroundProperty, Theme.ChipBg);
+            return b;
+        }
+
         private static TextBlock SectionTitle(string text)
         {
             var t = MutedText(text);
@@ -1468,7 +1484,9 @@ namespace ClaudeCAD.Plugin.UI
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
             var name = k.Name;
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
-            var edit = SmallButton("Sửa", "Mở SKILL.md để sửa; lưu file là Claude dùng bản mới từ tin nhắn tiếp theo");
+            var edit = SmallButton("Sửa", k.Builtin || k.Admin
+                ? "Chép thành bản của cậu (" + k.DisplayName + "-sua, nhãn You) rồi mở để sửa; bản gốc giữ nguyên"
+                : "Mở SKILL.md để sửa; lưu file là Claude dùng bản mới từ tin nhắn tiếp theo");
             edit.Click += (s, e) => SkillEditRequested?.Invoke(name);
             buttons.Children.Add(edit);
             var toggle = SmallButton(inUse ? "−" : "+", inUse
@@ -1484,13 +1502,24 @@ namespace ClaudeCAD.Plugin.UI
             row.Children.Add(buttons);
 
             var info = new StackPanel();
-            var title = new TextBlock { Text = (inUse ? "✓ " : "") + k.Name + (k.Title != null && k.Title != k.Name ? "  ·  " + k.Title : ""), FontWeight = inUse ? FontWeights.SemiBold : FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis };
+            var shown = k.DisplayName;
+            var title = new TextBlock { Text = (inUse ? "✓ " : "") + shown + (k.Title != null && k.Title != shown && k.Title != k.Name ? "  ·  " + k.Title : ""), FontWeight = inUse ? FontWeights.SemiBold : FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
             Theme.Ref(title, TextBlock.ForegroundProperty, Theme.Fg);
-            info.Children.Add(title);
+            var head = new DockPanel();
+            var label = SkillLabel(k.Label);
+            DockPanel.SetDock(label, Dock.Left);
+            head.Children.Add(label);
+            head.Children.Add(title);
+            info.Children.Add(head);
+            var when = k.Added.HasValue ? " " + k.Added.Value.ToString("dd/MM/yyyy") : "";
             string status = k.Error != null ? "⚠ " + k.Error
-                : k.Builtin ? "Skill mẫu đi kèm plugin" : "Đã thêm" + (k.Added.HasValue ? " " + k.Added.Value.ToString("dd/MM/yyyy") : "");
+                : k.Warning != null ? "⚠ Bảng chuẩn chưa đọc được (chưa tự áp chuẩn): " + k.Warning
+                : k.Admin ? "Chủ plugin gửi tới máy này" + when + (k.Name != shown ? " (thư mục " + k.Name + ", vì cậu đã có skill " + shown + ")" : "")
+                : k.Builtin ? "Skill mẫu đi kèm plugin"
+                : k.EditOf != null ? "Bản cậu sửa từ " + k.EditOf + when
+                : "Đã thêm" + when;
             var st = new TextBlock { Text = status, FontSize = 11, TextWrapping = TextWrapping.Wrap };
-            Theme.Ref(st, TextBlock.ForegroundProperty, k.Error != null ? Theme.ErrorFg : Theme.MutedFg);
+            Theme.Ref(st, TextBlock.ForegroundProperty, k.Error != null ? Theme.ErrorFg : k.Warning != null ? Theme.WarnFg : Theme.MutedFg);
             info.Children.Add(st);
             if (!string.IsNullOrEmpty(k.Description))
             {
@@ -3305,6 +3334,7 @@ namespace ClaudeCAD.Plugin.UI
                 Flush();
                 _actions.Children.Clear();
                 ShowChanges(e.Changes);
+                ShowSelfCheck(e.SelfCheck);
                 if (e.Handles.Count > 0)
                 {
                     var view = SmallButton($"Xem kết quả ({e.Handles.Count})", "Zoom tới và tô sáng các đối tượng vừa vẽ / sửa");
@@ -3366,6 +3396,60 @@ namespace ClaudeCAD.Plugin.UI
                 var b = new Border { Child = box, BorderThickness = new Thickness(1), CornerRadius = Theme.Corner, Padding = new Thickness(8, 3, 8, 4), Margin = new Thickness(0, 4, 0, 0) };
                 Theme.Ref(b, Border.BackgroundProperty, Theme.CardBg);
                 Theme.Ref(b, Border.BorderBrushProperty, Theme.Border);
+                _changes.Children.Add(b);
+            }
+
+            /// <summary>
+            /// "Tự kiểm" card (docs/ke-hoach-tu-kiem.md): the last verify_drawing of the turn — ✓ clean or ✗ with the
+            /// issues still open, each clickable, and one button that selects every object with an issue.
+            /// </summary>
+            private void ShowSelfCheck(SelfCheckSummary c)
+            {
+                if (c == null) return;
+                var box = new StackPanel();
+                var headRow = new StackPanel { Orientation = Orientation.Horizontal };
+                var mark = new TextBlock { Text = c.Ok ? "✓" : "✗", FontWeight = FontWeights.Bold, FontSize = 12, Margin = new Thickness(0, 0, 5, 0) };
+                Theme.Ref(mark, TextBlock.ForegroundProperty, c.Ok ? Theme.OkFg : Theme.ErrorFg);
+                headRow.Children.Add(mark);
+                var head = new TextBlock { Text = c.Headline, FontWeight = FontWeights.SemiBold, FontSize = 11, TextWrapping = TextWrapping.Wrap };
+                Theme.Ref(head, TextBlock.ForegroundProperty, Theme.Fg);
+                headRow.Children.Add(head);
+                box.Children.Add(headRow);
+                foreach (var i in c.Items.Take(6))
+                {
+                    var row = new TextBlock { Text = "• " + i.Message, FontSize = 11, Margin = new Thickness(6, 1, 0, 0), TextWrapping = TextWrapping.Wrap };
+                    if (i.Handles.Count > 0)
+                    {
+                        Theme.Ref(row, TextBlock.ForegroundProperty, Theme.LinkFg);
+                        row.Cursor = Cursors.Hand;
+                        row.ToolTip = $"{VerifyRules.Label(i.Code)} ({i.Code}) — bấm để xem trên bản vẽ";
+                        var hs = i.Handles;
+                        row.MouseLeftButtonUp += (s, a) => _owner.ZoomRequested?.Invoke(hs);
+                    }
+                    else Theme.Ref(row, TextBlock.ForegroundProperty, Theme.MutedFg);
+                    box.Children.Add(row);
+                }
+                int rest = c.Remaining - Math.Min(6, c.Items.Count);
+                if (rest > 0)
+                {
+                    var more = MutedText($"… và {rest} lỗi nữa");
+                    more.FontSize = 11;
+                    more.Margin = new Thickness(6, 1, 0, 0);
+                    box.Children.Add(more);
+                }
+                var all = c.AllHandles();
+                if (!c.Ok && all.Count > 0)
+                {
+                    var pick = SmallButton($"Chọn đối tượng lỗi ({all.Count})", "Zoom tới và chọn sẵn mọi đối tượng còn lỗi trong bản vẽ (Esc để bỏ chọn)");
+                    pick.Margin = new Thickness(0, 4, 0, 0);
+                    pick.HorizontalAlignment = HorizontalAlignment.Left;
+                    pick.Click += (s, a) => _owner.ZoomRequested?.Invoke(all);
+                    box.Children.Add(pick);
+                }
+                var b = new Border { Child = box, BorderThickness = new Thickness(1), CornerRadius = Theme.Corner, Padding = new Thickness(8, 3, 8, 4), Margin = new Thickness(0, 4, 0, 0) };
+                Theme.Ref(b, Border.BackgroundProperty, Theme.CardBg);
+                Theme.Ref(b, Border.BorderBrushProperty, c.Ok ? Theme.Border : Theme.ErrorFg);
+                b.Tag = "selfcheck";
                 _changes.Children.Add(b);
             }
 

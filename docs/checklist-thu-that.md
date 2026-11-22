@@ -123,6 +123,27 @@ Làm trên máy có AutoCAD 2026 và / hoặc 2027. Phần A–G chỉ cần là
 | H4 | ★ | Lặp lại F2 (đổi `COLORTHEME`) và nhìn icon thanh trạng thái | Khung chat đổi theo; icon **C** hiện, có chấm xanh khi Claude làm | ☐ | ☐ | 2026, 2027 (dòng theme) |
 | H5 | ○ | (2027) Kéo một file ảnh vào ô chat; bấm icon **Chụp** | Ảnh đính kèm được, không báo lỗi; ảnh chụp bản vẽ rõ nét | ☐ | ☐ | 2027 (dòng vẽ thử) |
 
+## I. Tự kiểm trước khi báo xong (~4 phút)
+
+Cần bản cài có nhánh `claude/tu-kiem-tra`. Hỏng thì ghi lại, không chặn phát hành. Thiết kế:
+[`docs/ke-hoach-tu-kiem.md`](ke-hoach-tu-kiem.md).
+
+| # | | Làm gì | Kết quả mong đợi | Đạt | Lỗi | Mã gốc |
+| --- | --- | --- | --- | --- | --- | --- |
+| I1 | ★ | Bản vẽ trống, gõ "vẽ phòng 4x3m tường 200" | Trong danh sách bước có **Tự kiểm bản vẽ** trước khi lượt xong; dưới câu trả lời có thẻ **Tự kiểm: … · không lỗi ✓** | ☐ | ☐ | TK-1 |
+| I2 | ★ | Tự vẽ tay 2 line gần chạm nhau (hở góc vài mm, gõ `LINE` và nhập tọa độ), rồi nhờ "nối dài đường này tới đường kia" (chọn 2 line) | Claude gọi Tự kiểm; thẻ ✓ (khe đã nối, có thể ghi "đã tự sửa"); đo lại bằng `DIST` thấy hai đầu trùng nhau | ☐ | ☐ | TK-2 |
+| I3 | ★ | Gõ "vẽ 3 đoạn thẳng bất kỳ trên layer 0" | Claude sửa sang layer khác hoặc báo lỗi; nếu còn lỗi thì thẻ ✗ "sai layer", bấm **Chọn đối tượng lỗi** → 3 line được chọn trong bản vẽ | ☐ | ☐ | TK-3 |
+| I4 | ○ | Hỏi "bản vẽ có bao nhiêu layer?" | Trả lời bình thường, **không** có thẻ Tự kiểm, lượt không dài thêm | ☐ | ☐ | TK-4 |
+| I5 | ○ | Bật 🔒 Chỉ xem rồi nhờ vẽ 1 hình tròn | Claude báo đang Chỉ xem; không có vòng kiểm, không thẻ | ☐ | ☐ | TK-5 |
+| I6 | ○ | Nhờ vẽ cả mặt bằng nhiều phòng, bấm **Dừng** giữa chừng | Lượt dừng ngay, không bị kéo lại để kiểm | ☐ | ☐ | TK-6 |
+| I7 | ○ | Nhờ vẽ phòng có 1 cửa đi 900 | Không báo khe hở ở lỗ cửa; cung cửa chạm cánh và mép lỗ (nếu không chạm thì thẻ ✗ "cung không chạm") | ☐ | ☐ | TK-7 |
+| I8 | ○ | Sau lượt có "đã tự sửa", gõ `U` một lần | Mất cả phần vẽ lẫn phần tự sửa của lượt đó | ☐ | ☐ | TK-8 |
+| I9 | ○ | Đóng rồi mở lại khung chat / AutoCAD, xem lại đoạn chat của I3 | Thẻ Tự kiểm vẫn còn dưới câu trả lời | ☐ | ☐ | TK-9 |
+| I10 | ★ | Skill `ve-kien-truc` đang dùng, tỷ lệ 1:100: "vẽ phòng 4x6m tường 220 có 1 cửa đi 900" | Cánh cửa và cung cửa chạm đúng mép lỗ (đo `DIST` = 0); danh sách bước có thể có lỗi "LAYER_NOT_IN_STANDARD" rồi Claude tự chuyển layer; layer `A-*` tự có đúng màu bảng mục 2; chữ tên phòng cao 350, diện tích 250; thẻ Tự kiểm ✓ | ☐ | ☐ | TK-10 |
+| I11 | ★ | Cùng skill: "vẽ 1 hình tròn bán kính 500 trên layer XYZ-TAM" | Được vẽ trên `XYZ-TAM` (cậu đã nêu tên), thẻ không báo layer ngoài chuẩn. Gõ tiếp "vẽ thêm 1 hình tròn" (không nêu layer) → không lên `XYZ-TAM` / `0` | ☐ | ☐ | TK-11 |
+| I12 | ○ | Đổi tỷ lệ trên thanh ngữ cảnh sang 1:50, nhờ "ghi chữ GHI CHÚ ở giữa phòng" (không nói chiều cao) | Chữ cao 125 (2.5 mm × 50) | ☐ | ☐ | TK-12 |
+| I13 | ○ | **+ Add skill** một file `.md` có "Bảng layer chuẩn" nhưng tên layer không nằm trong dấu \` \` | Thẻ báo "plugin không đọc được bảng chuẩn" + dòng sai; danh sách Skill ghi ⚠ dưới skill đó; skill vẫn dùng được | ☐ | ☐ | TK-13 |
+
 ## Gửi lại gì khi lỗi
 
 1. **Mã bước** bị lỗi (ví dụ `D2`) + một dòng: đã làm gì, thấy gì khác với "kết quả mong đợi".

@@ -24,6 +24,12 @@ namespace ClaudeCAD.Plugin.Core
 
         public Dictionary<string, object> Raw => _d;
 
+        /// <summary>
+        /// Resolves point references ({"snap": "end", "of": handle, ...}) when the dispatcher runs the call;
+        /// null = only numeric points (outside a drawing call).
+        /// </summary>
+        public ISnapResolver Snap { get; set; }
+
         public bool Has(string name) => _d.TryGetValue(name, out var v) && v != null;
 
         public object Get(string name) => _d.TryGetValue(name, out var v) ? v : null;
@@ -135,7 +141,19 @@ namespace ClaudeCAD.Plugin.Core
         {
             var v = Get(name);
             if (TryPoint(v, out var pt)) return pt;
-            throw Bad(name, "a point [x, y] or [x, y, z] in mm", v);
+            if (v is Dictionary<string, object> d && SnapRules.IsReference(d))
+            {
+                pt = ResolveSnap(d, name);
+                _d[name] = ToJsonPoint(pt); // recorded (macros) and echoed as plain coordinates
+                return pt;
+            }
+            throw Bad(name, "a point [x, y] or [x, y, z] in mm, or a snap reference {\"snap\": \"end\", \"of\": handle}", v);
+        }
+
+        private double[] ResolveSnap(Dictionary<string, object> d, string name)
+        {
+            if (Snap == null) throw ToolException.Invalid($"{Tool}: parameter '{name}': snap references are not available here; give [x, y].");
+            return Snap.Resolve(d, this, name);
         }
 
         public double[] PointOpt(string name) => Has(name) ? Point(name) : null;
@@ -149,7 +167,13 @@ namespace ClaudeCAD.Plugin.Core
             var r = new List<double[]>(list.Count);
             for (int i = 0; i < list.Count; i++)
             {
-                if (!TryPoint(list[i], out var pt)) throw Bad($"{name}[{i}]", "a point [x, y] or [x, y, z]", list[i]);
+                if (!TryPoint(list[i], out var pt))
+                {
+                    if (!(list[i] is Dictionary<string, object> d && SnapRules.IsReference(d)))
+                        throw Bad($"{name}[{i}]", "a point [x, y] or [x, y, z], or a snap reference", list[i]);
+                    pt = ResolveSnap(d, $"{name}[{i}]");
+                    list[i] = ToJsonPoint(pt);
+                }
                 r.Add(pt);
             }
             return r;
@@ -222,7 +246,7 @@ namespace ClaudeCAD.Plugin.Core
         public Params Obj(string name)
         {
             var v = Get(name);
-            if (v is Dictionary<string, object> d) return new Params(Tool, d);
+            if (v is Dictionary<string, object> d) return new Params(Tool, d) { Snap = Snap };
             throw Bad(name, "an object", v);
         }
 

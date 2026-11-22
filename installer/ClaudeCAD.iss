@@ -1,9 +1,9 @@
 ﻿; Inno Setup script: builds ClaudeCAD-Setup-<version>.exe from bundle\out\ClaudeCAD.bundle.
-; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.5 installer\ClaudeCAD.iss
+; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.6 installer\ClaudeCAD.iss
 ; (CI does this in .github/workflows/build.yml.)
 
 #ifndef AppVersion
-  #define AppVersion "0.9.5"
+  #define AppVersion "0.9.6"
 #endif
 #define BundleDir "..\bundle\out\ClaudeCAD.bundle"
 ; one installer for AutoCAD 2022-2027: refuse to build it without all three plugin builds
@@ -56,7 +56,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 ; program files are replaced on upgrade
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Excludes: "Contents\skills\*"; Flags: recursesubdirs createallsubdirs ignoreversion
-; skills: never overwrite files the user may have edited
+; skills: never overwrite files the user may have edited. Newer sample skills reach an existing install through
+; Contents\skills-mau (a program file, copied by the line above): the plugin replaces a sample the user never edited.
 Source: "{#BundleDir}\Contents\skills\*"; DestDir: "{app}\Contents\skills"; Flags: recursesubdirs createallsubdirs onlyifdoesntexist uninsneveruninstall
 
 #define ClaudeExe "{app}\Contents\agent\node_modules\@anthropic-ai\claude-agent-sdk-win32-x64\claude.exe"

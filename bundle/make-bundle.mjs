@@ -107,6 +107,9 @@ fs.writeFileSync(path.join(outRoot, 'activation.iss'),
 
 // skills (only folders with SKILL.md + the README) and the "/" quick prompts
 fs.cpSync(path.join(repo, 'skills'), path.join(contents, 'skills'), { recursive: true });
+// pristine copy of the samples: installers never overwrite Contents\skills, so the plugin compares against this
+// one and replaces a sample the user has not edited (plugin/ClaudeCAD.Plugin/Core/SampleSkills.cs)
+fs.cpSync(path.join(repo, 'skills'), path.join(contents, 'skills-mau'), { recursive: true });
 fs.cpSync(path.join(repo, 'templates'), path.join(contents, 'templates'), { recursive: true });
 
 // agent: compiled JS + manifest + production dependencies

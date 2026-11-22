@@ -72,14 +72,24 @@ export function cadTool<Shape extends z.ZodRawShape>(
 
 // ------------------------------------------------------------------ shared schemas
 
-export const point = z
-  .array(z.number())
-  .min(2)
-  .max(3)
-  .describe('Point [x, y] or [x, y, z] in millimetres, WCS. Missing z = 0. Example: [4000, 3600]');
+/** Plain coordinates [x, y] / [x, y, z]. */
+export const xy = z.array(z.number()).min(2).max(3);
+
+/** Kinds of object snap a point reference can use (VerifyRules / SnapRules.Kinds in the plugin). */
+export const SNAP_KINDS = ['end', 'mid', 'cen', 'int', 'per', 'nea', 'ins'] as const;
+
+/**
+ * A point given by reference to objects (docs/ke-hoach-tu-kiem.md §9): the plugin computes it like AutoCAD's
+ * object snaps, so coordinates are never added up by hand. Only "snap" is declared here (every point parameter
+ * repeats this schema, so it stays tiny); the plugin validates "of", "near", "offset" and "from" with clear
+ * errors, and the system prompt explains the format once ("# Snapping").
+ */
+export const snapRef = z.looseObject({ snap: z.string() });
+
+export const point = z.union([xy, snapRef]).describe('Point [x, y] in mm (WCS), or a snap reference {"snap", "of", ...}.');
 
 export const points = (min: number, what = 'points') =>
-  z.array(point).min(min).describe(`Array of ${what} [[x, y], ...] in mm (at least ${min}).`);
+  z.array(point).min(min).describe(`Array of ${what} [[x, y], ...] in mm (at least ${min}); each may also be a snap reference.`);
 
 export const handle = z
   .string()

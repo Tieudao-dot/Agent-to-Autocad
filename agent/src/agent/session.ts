@@ -1,5 +1,6 @@
 import {
   query as sdkQuery,
+  type HookJSONOutput,
   type Options,
   type Query,
   type SDKMessage,
@@ -12,6 +13,7 @@ import type { ToolBridge } from '../tools/common.js';
 import { MCP_SERVER_NAME, createCadServer } from '../tools/index.js';
 import { InputQueue } from './inputQueue.js';
 import { SKILLS_PLUGIN_NAME, enabledSkills, librarySkills, prepareSkillsPlugin } from './skills.js';
+import { SelfCheckTracker } from './selfCheck.js';
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 
 export type QueryFn = typeof sdkQuery;
@@ -87,6 +89,8 @@ export class AgentSession {
   /** Existing objects this turn changed / removed, and objects it created (distinct handles). */
   private touchedThisTurn = new Set<string>();
   private createdThisTurn = new Set<string>();
+  /** Self-check before the turn reports done: changes vs. verify_drawing of this turn (selfCheck.ts). */
+  private readonly selfCheck = new SelfCheckTracker();
   /** The turn produced text (a turn without any, e.g. one that hit the usage limit, answered nothing). */
   private turnHadText = false;
   private lastPlan?: 'approved';
@@ -144,8 +148,23 @@ export class AgentSession {
 
   /** After a tool call: objects it created in this turn are the user's request itself, never "existing" ones. */
   noteResult(tool: string, params: Record<string, unknown>, resp: { ok: boolean; result?: unknown }): void {
+    this.selfCheck.note(tool, params, resp);
     if (!resp.ok) return;
     for (const h of createdHandles(tool, params, resp.result)) this.createdThisTurn.add(h);
+  }
+
+  /**
+   * Stop hook: Claude wants to end the turn. A turn that changed the drawing must run verify_drawing after its
+   * last change and fix what it reports (at most MAX_FIX_ROUNDS rounds) before it may report "xong".
+   */
+  onStop(): HookJSONOutput {
+    const d = this.selfCheck.stopDecision(this.cancelRequested || !this.turnActive);
+    if (!d.block) {
+      if (this.selfCheck.endsWithIssues) this.cfg.log(`self-check: turn ends with ${this.selfCheck.issues} issue(s) left`);
+      return {};
+    }
+    this.cfg.log(`self-check: turn held back (${this.selfCheck.verifiedAt < this.selfCheck.writes ? 'not verified' : `${this.selfCheck.issues} issue(s)`})`);
+    return { decision: 'block', reason: d.reason };
   }
 
   /** Options handed to query(); exported for tests and documentation. */
@@ -182,6 +201,8 @@ export class AgentSession {
       // Only the ClaudeCAD skills — not whatever else is installed for Claude Code on this machine.
       skills: plugin ? plugin.skills.map((s) => `${SKILLS_PLUGIN_NAME}:${s}`) : [],
       includePartialMessages: true,
+      // self-check before reporting done (docs/ke-hoach-tu-kiem.md)
+      hooks: { Stop: [{ hooks: [async () => this.onStop()] }] },
       // predicted next prompt after each turn → a next-step button (nearly free: rides the prompt cache)
       promptSuggestions: true,
       persistSession: true,
@@ -261,6 +282,7 @@ export class AgentSession {
     this.turnHadText = false;
     this.touchedThisTurn = new Set();
     this.createdThisTurn = new Set();
+    this.selfCheck.reset();
     this.lastPlan = msg.plan;
     this.turnErrorCode = undefined;
     this.toolSuggested = false;

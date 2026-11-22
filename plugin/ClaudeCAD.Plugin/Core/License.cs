@@ -173,7 +173,7 @@ namespace ClaudeCAD.Plugin.Core
             return r;
         }
 
-        private static bool VerifyRsa(byte[] data, byte[] sig, string modulusB64, string exponentB64)
+        internal static bool VerifyRsa(byte[] data, byte[] sig, string modulusB64, string exponentB64)
         {
             try
             {

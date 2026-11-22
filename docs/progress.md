@@ -231,3 +231,13 @@ Cần test: D-1 … D-3.
 Cần test trên AutoCAD thật: K-8 … K-16 (cùng K-1 … K-7, R-1 … R-6).
 
 **Đã đổi cặp khóa kích hoạt (11/11/2026, chủ plugin chọn đổi trước khi thử bộ cài):** cặp mới tạo bằng lệnh kín, không lọt vào nhật ký phiên; `LicenseLogic.PublicModulus` + fixture test đã cập nhật; máy chủ Google đã chạy khóa mới (thử thật OK). Bộ cài thử cuối phải build từ commit có khóa mới.
+
+### Sau v0.9.5 — skill mẫu viết lại + tự cập nhật skill mẫu ✅ code xong (nhánh `claude/release-0.9.5`, chưa phát hành)
+
+- Gộp `claude/nghien-cuu-skill` @ `6313359`: 3 skill mẫu có danh sách chuẩn bị, dựng hình bằng offset / trim, tự kiểm bắt buộc.
+- **Vấn đề:** Setup.exe, `install.ps1` và bộ tự cập nhật đều chỉ chép `Contents\skills` khi file chưa có, nên máy đã cài không nhận skill mẫu mới.
+- **Cách làm (chủ dự án chọn "đè nếu chưa sửa"):** bundle kèm bản mẫu gốc ở `Contents\skills-mau` (file chương trình, luôn được thay). Khi khởi động, `SampleSkills.Refresh` so từng file mẫu trong `Contents\skills`: nội dung trùng một bản mẫu đã phát hành tới 0.9.5 (danh sách hash trong code) hoặc trùng bản đã ghi ở `.claudecad-mau.txt` thì thay bằng bản mới; khác thì coi là người dùng đã sửa và giữ nguyên. Hash bỏ BOM và CR nên không lệch giữa LF / CRLF. Skill người dùng đã xóa không được thêm lại ở bước này.
+- Một chỗ dùng chung cho cả ba đường cập nhật; không đổi logic bộ cài.
+- Test: core 173 (9 bài `SampleSkillsTests`), agent 136; build net48 + net8 + net10.
+
+Cần test trên AutoCAD thật: S-6, S-7.

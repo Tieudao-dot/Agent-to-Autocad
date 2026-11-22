@@ -1,118 +1,78 @@
-# Ghi chú phát hành ClaudeCAD 0.9.5
+# Ghi chú phát hành ClaudeCAD 0.9.6
 
-*Soạn 15/11/2026, chốt 18/11: tên phiên bản 0.9.5, AutoCAD 2027 ghi "hỗ trợ" (chủ dự án chọn; 2027 chưa được thử
-trên AutoCAD thật). Phần C dán lên GitHub Releases sau khi CI tạo bản phát hành (mục "Dùng ở đâu" cuối file).*
-
----
-
-## A. Điểm mới so với v0.9.3 (viết cho người dùng)
-
-### 1. Kích hoạt và bảo mật
-
-- **Mỗi máy cần được kích hoạt.** Bộ cài hiện **mã máy** (`CC-…`) và tự gửi yêu cầu cho chủ plugin. Có hai cách:
-  chờ chủ plugin duyệt (cài tiếp không cần key, được duyệt là mở AutoCAD dùng được), hoặc nhập key nhận qua Zalo.
-- **Key gắn với máy**, dùng vĩnh viễn trên máy đó; cài đè hay cập nhật không hỏi lại. Chép thư mục plugin sang máy
-  khác thì máy đó vẫn phải kích hoạt.
-- **Chủ plugin duyệt / khóa từng máy** trong bảng thiết bị. Máy bị khóa hiện thẻ 🔒 trong khung chat; được mở lại
-  thì bấm **Kiểm tra lại** là dùng tiếp, không cần key mới.
-- Plugin kiểm tra trạng thái mỗi lần mở AutoCAD và khoảng 6 giờ một lần. **Mất mạng vẫn dùng được tối đa 7 ngày.**
-
-### 2. Giao diện kiểu AutoCAD
-
-- Khung chat lấy **màu và font từ theme của AutoCAD** (giống Properties, Layer); đổi Color theme là khung chat đổi theo.
-- Thanh công cụ và hàng nút dưới ô nhập thành **icon có tooltip**; ⚙ gọn lại thành các nhóm thu gọn.
-- **Gửi thêm ý khi Claude đang làm:** gõ rồi Enter, tin tự gửi khi lượt xong. **Esc** trong ô nhập để dừng lượt.
-- **Thu gọn khung chat (nút ⌄):** chỉ còn ô nhập; lượt xong hiện một dòng báo, bấm để mở lại nguyên đoạn chat.
-- **Icon ClaudeCAD trên thanh trạng thái AutoCAD:** chấm xanh khi Claude đang làm, chấm vàng khi cần cậu xem.
-- **Thẻ "Bắt đầu" 3 bước** (Kích hoạt → Đăng nhập Claude → Thử một yêu cầu mẫu).
-- **Thấy Claude đang làm bước nào:** danh sách bước ✓ / ● ngay trên câu trả lời; với kế hoạch đã duyệt thì hiện
-  "Bước 3/7: …".
-- Thẻ xác nhận trước khi xóa / sửa nhiều đối tượng in to số lượng, có nút **Xem trên bản vẽ**.
-
-### 3. AutoCAD 2026 / 2027
-
-Vẫn **một bộ cài chung**. AutoCAD 2026 dùng chung bản plugin với 2025.
-
-- Hỗ trợ **AutoCAD 2022 – 2027** (bản đầy đủ, không phải LT). AutoCAD 2027 có bản plugin riêng (.NET 10).
-
-### 4. Sửa lỗi và ổn định
-
-- **`install.ps1` (cài không dùng Setup.exe) của v0.9.3 bị lỗi cú pháp, không chạy được — đã sửa.**
-- Khoảng 30 bản sửa sau đợt rà soát toàn dự án, đáng chú ý:
-  - Xóa / sửa hàng loạt luôn hỏi xác nhận trước.
-  - Tự gửi lại khi hết hạn mức không gửi nhầm sang bản vẽ khác.
-  - Lệnh nặng không bị vẽ trùng; cuộc chat dài mở nhanh hơn.
-  - Lỗi của plugin không làm AutoCAD đóng đột ngột; khởi động lại trợ lý không để sót tiến trình.
-  - Bộ cài không treo ở trang cuối; báo cáo lỗi không kèm nội dung chat.
-- **Skill theo từng đoạn chat:** thêm nhiều file skill một lúc, danh sách chia *Đang dùng* / *Thư viện*.
-- **Tự kiểm tra mở rộng** (`CLAUDECHATSELFTEST`): kiểm thêm bản plugin có đúng đời AutoCAD không, theme, icon thanh
-  trạng thái, thu gọn / mở lại, hàng chờ gửi.
-
-### 5. Lưu ý khi nâng cấp từ v0.9.3
-
-- **Phải kích hoạt máy sau khi cập nhật.** Bản 0.9.3 chưa khóa theo máy, nên lần đầu chạy bản mới máy sẽ hỏi kích
-  hoạt: chờ chủ plugin duyệt hoặc nhập key (liên hệ Zalo chủ plugin, số hiện ngay trong bộ cài và thẻ 🔒).
-- Chưa kích hoạt thì khung chat khóa, **AutoCAD và bản vẽ không bị ảnh hưởng**.
-- Lịch sử chat, macro, mẫu lệnh, skill và đăng nhập Claude được giữ nguyên.
-- Cần mạng ở lần kích hoạt đầu; sau đó mất mạng vẫn dùng được tối đa 7 ngày.
+*Soạn 22/11/2026 trên nhánh gộp. Phát hành 22/11/2026 theo quyết định của chủ dự án, chưa qua bước thử trên AutoCAD thật. Nội dung đầy đủ từng nhóm:
+[`ban-0.9.6.md`](ban-0.9.6.md) (nếu có trên nhánh), kế hoạch đẩy skill: [`ke-hoach-day-skill.md`](ke-hoach-day-skill.md).*
 
 ---
 
-## B. Dòng cho bảng "Lịch sử phiên bản" trong `bo-cai/README.md`
+## A. Điểm mới so với v0.9.5 (viết cho người dùng)
 
-Thay dòng `0.9.5 *(bản thử, chưa phát hành; …)*` hiện có bằng dòng dưới (giữ nội dung chi tiết cũ nếu muốn, hoặc
-dùng bản gọn này). Đồng thời xóa ghi chú "Bộ cài thử 0.9.5: …" ngay dưới tiêu đề mục.
+### 1. Chủ plugin gửi skill tới từng máy
 
-```markdown
-| **0.9.5** | **Kích hoạt theo máy + quản lý thiết bị:** bộ cài hiện mã máy, chủ plugin duyệt / khóa từng máy trong bảng thiết bị (key qua Zalo vẫn dùng được), mất mạng dùng tối đa 7 ngày. **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, thẻ "Bắt đầu" 3 bước, tiến độ từng bước. **AutoCAD 2026 / 2027:** hỗ trợ 2022–2027. **Sửa lỗi:** `install.ps1` của 0.9.3, ~30 bản sửa sau rà soát, skill theo từng đoạn chat, tự kiểm tra mở rộng. **Nâng cấp từ 0.9.3 phải kích hoạt máy.** |
-```
+- Chủ plugin chọn skill cho từng máy; plugin tự nhận khi mở AutoCAD và khoảng 6 giờ một lần, không phải chép file tay.
+- Danh sách Skill có nhãn: **Admin** (chủ plugin gửi), **Default** (skill mẫu có sẵn), **You** (skill bạn tự thêm
+  hoặc đã sửa).
+- Skill mới được gửi tới **không tự bật**: bấm **+** trong danh sách Skill để dùng cho đoạn chat.
+- Trùng tên với skill bạn đang có thì giữ cả hai; bản của chủ plugin có đuôi `-admin`.
+
+### 2. Claude tự kiểm bản vẽ trước khi báo xong
+
+- Vẽ / sửa xong, Claude đo lại bản vẽ thật và sửa lỗi (tối đa 2 vòng) trước khi báo xong; còn lỗi thì liệt kê rõ.
+  Thẻ **Tự kiểm** hiện trong khung chat.
+- Claude bắt điểm theo đối tượng thật (đầu mút, trung điểm, tâm, giao điểm…) thay vì tự tính tọa độ, nên cửa, tường,
+  kích thước khớp nhau hơn.
+- Khi đang dùng skill có bảng chuẩn: không vẽ vào layer 0 hay layer ngoài chuẩn (trừ khi bạn nêu tên layer), tự tạo
+  layer chuẩn còn thiếu, chiều cao chữ lấy theo bảng × tỷ lệ in.
+
+### 3. Skill mẫu mới, tự cập nhật
+
+- 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) viết lại: chuẩn bị trước khi vẽ, dựng hình bằng offset / trim,
+  tự kiểm, lỗi hay gặp. Số liệu vẫn là số mẫu.
+- Máy đã cài nhận skill mẫu mới ở lần mở AutoCAD đầu tiên sau khi cập nhật. Skill bạn tự thêm được giữ nguyên.
+- **Sửa skill mẫu / skill chủ plugin gửi không làm mất bản gốc:** bấm **Sửa** thì plugin chép thành `<tên>-sua` (nhãn
+  You) cho bạn sửa; bản gốc giữ nguyên và vẫn nhận cập nhật. Nếu trước đây bạn đã sửa thẳng skill mẫu, phần sửa đó
+  được chuyển sang `<tên>-sua`, đoạn chat đang dùng tự chuyển theo.
+
+### 4. Lưu ý khi nâng cấp từ v0.9.5
+
+- Cập nhật như thường (tự cập nhật hoặc chạy đè `ClaudeCAD-Setup.exe`); **không phải kích hoạt lại**.
+- Lịch sử chat, macro, mẫu lệnh, skill của bạn được giữ nguyên.
+- Mỗi lượt Claude dùng thêm một ít hạn mức do danh sách lệnh dài hơn (khoảng 9 %).
+
+---
+
+## B. Dòng "Lịch sử phiên bản" trong `bo-cai/README.md`
+
+Dòng `**0.9.6**` đã có trong bảng.
 
 ---
 
 ## C. Mô tả bản phát hành trên GitHub Releases
 
-CI tự tạo phần mô tả ngắn (link hướng dẫn cài + kích thước và SHA-256 của `ClaudeCAD-Setup.exe`). Phần dưới **dán
-thêm lên trên** phần đó sau khi bản phát hành được tạo (sửa mô tả trên trang Releases). Không cần đổi CI.
+CI tự sinh phần đầu (link tải trực tiếp, hướng dẫn cài, kích thước, SHA-256). Dán thêm phần dưới nếu muốn:
 
 ```markdown
-## ClaudeCAD 0.9.5
-
-**Quan trọng khi nâng cấp từ 0.9.3:** bản này khóa theo máy. Sau khi cập nhật, máy sẽ hỏi kích hoạt — chờ chủ plugin duyệt hoặc nhập key (liên hệ Zalo chủ plugin, số hiện trong bộ cài). Lịch sử chat, macro, skill được giữ nguyên.
-
 ### Điểm mới
-- **Kích hoạt theo máy:** bộ cài hiện mã máy; chủ plugin duyệt / khóa từng máy; mất mạng dùng tối đa 7 ngày.
-- **Giao diện kiểu AutoCAD:** màu + font theo theme AutoCAD, nút icon có tooltip, gửi thêm ý khi Claude đang làm, Esc để dừng, thu gọn khung chat, icon trên thanh trạng thái, tiến độ từng bước.
-- **AutoCAD 2026 / 2027:** một bộ cài cho AutoCAD 2022–2027.
-- **Sửa lỗi:** `install.ps1` của 0.9.3 không chạy được; ~30 bản sửa về xác nhận trước khi xóa, tự gửi lại, độ ổn định.
+- **Chủ plugin gửi skill tới từng máy**; danh sách Skill có nhãn Admin / Default / You.
+- **Claude tự kiểm bản vẽ trước khi báo xong**: bắt điểm theo đối tượng, kiểm layer / chữ / kích thước, tự sửa lỗi.
+- **3 skill mẫu viết lại** và tự cập nhật trên máy đã cài nếu bạn chưa sửa.
 
-### Cài đặt
-Tải `ClaudeCAD-Setup.exe` bên dưới, chạy và làm theo hướng dẫn: https://github.com/Tieudao-dot/Agent-to-Autocad/tree/main/bo-cai
-Yêu cầu: Windows, AutoCAD bản đầy đủ (không phải LT), tài khoản Claude Pro / Max hoặc API key Anthropic.
+Nâng cấp từ 0.9.5 không phải kích hoạt lại; skill, macro, lịch sử chat được giữ nguyên.
 ```
 
 ---
 
-## Dùng ở đâu khi phát hành
+## Thử thật trước khi phát hành (bộ cài thử)
 
-| Phần | Chép vào | Lúc nào |
-| --- | --- | --- |
-| A | Tin báo cho người dùng (Zalo / email), và làm nguồn cho hướng dẫn người dùng sau phát hành | Khi phát hành |
-| B | `bo-cai/README.md`, bảng "Lịch sử phiên bản" | Cùng commit nâng phiên bản |
-| C | Mô tả bản phát hành trên GitHub Releases | Sau khi CI tạo bản phát hành |
+1. Đẩy skill theo máy: các bước thử ở [`ke-hoach-day-skill.md`](ke-hoach-day-skill.md) mục 6.
+2. Tự kiểm: [`checklist-thu-that.md`](checklist-thu-that.md) phần I, bước I10–I13.
+3. Nhãn Admin / Default / You trong danh sách Skill; bấm **Sửa** skill Default → ra `<tên>-sua`, bản gốc còn nguyên
+   (`test-log.md` S-8).
+4. Skill mẫu tự cập nhật trên máy đang cài 0.9.5: `test-log.md` mục S-6, S-7.
 
-## Việc còn lại ở bước phát hành (ghi cho thread gộp nhánh & phát hành)
+## Việc còn lại ở bước phát hành (thread gộp nhánh & phát hành)
 
-1. Hỏi chủ dự án tên phiên bản, rồi phương án cho AutoCAD 2027 (mỗi lần một câu).
-2. Nâng phiên bản ở mọi nơi (có test kiểm phiên bản thống nhất); thay `0.9.5`; chép phần B.
-3. Gộp `claude/wizardly-heisenberg-ugup5c` vào `claude/release-0.9.5` để `main` có tài liệu mới (nhánh đó chỉ hơn
-   phần tài liệu: tổng quan gộp một file, `CLAUDE.md`, xóa `docs/plugin-tong-quan.md` và
-   `docs/ke-hoach-gop-nhanh.md`; thêm hướng dẫn người dùng `docs/huong-dan-su-dung.md`). Sau khi gộp, cho phần A
-   và phần C trỏ tới file hướng dẫn đó.
-   Sửa dòng 20 của `bo-cai/README.md` (đang ghi AutoCAD 2026 / 2027 "đang làm, chưa phát hành") cho khớp phương án
-   2027 đã chốt.
-4. CI `release: "false"` xanh trên commit cuối.
-5. Chỉ khi chủ dự án đồng ý rõ: tạo PR / merge `main` (CI tự phát hành), rồi dán phần C lên Releases.
-6. Gộp thêm nhánh `claude/luu-tru-bo-cai` (sổ `bo-cai/luu-tru-bo-cai.md`) cùng bước gộp tài liệu ở mục 3.
-7. Mỗi lần build bộ cài thử mới hoặc phát hành: gửi thread "ClaudeCAD — lưu trữ bộ cài" một tin (ngày, phiên bản,
-   nhánh + commit, run id, artifact id / link Releases, nội dung chính, bản nào bị thay) để thread đó ghi sổ.
-8. Xóa file nháp này sau khi phát hành.
+1. Chủ dự án thử xong và đồng ý rõ → hỏi lại trước khi tạo PR / merge `main`.
+2. Đổi nhãn dòng lịch sử (phần B), CI `release: "false"` xanh trên commit cuối.
+3. Merge `main` (CI tự phát hành), gộp thêm tài liệu của luồng chính và `claude/luu-tru-bo-cai` nếu có commit mới.
+4. Gửi thread lưu trữ bộ cài: link tải trực tiếp + kích thước + SHA-256.

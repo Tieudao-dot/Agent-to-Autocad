@@ -159,12 +159,20 @@ Dưới mỗi câu trả lời có:
 
 - **Xem kết quả (N)**: zoom tới và tô sáng phần vừa vẽ / sửa. Link tên đối tượng trong câu trả lời cũng bấm được.
 - **Thay đổi: Thêm · Sửa · Xóa**: tách theo layer; bấm một dòng để zoom và tô sáng.
+- **Tự kiểm ✓ / ✗**: kết quả Claude đo lại bản vẽ trước khi báo xong (khe hở ở đầu nét, polyline chưa đóng, đối tượng
+  trùng, cung cửa không chạm, sai layer / thuộc tính / chiều cao chữ theo skill, chữ đè, thiếu / thừa…). Lỗi an toàn đã
+  tự sửa; còn lỗi thì thẻ ghi ✗, bấm **Chọn đối tượng lỗi** để xem trong bản vẽ. Một lần U vẫn hoàn tác cả lượt.
 - **Thao tác (N)**: từng thao tác Claude đã làm, thời gian, lỗi nếu có.
 - Nút gợi ý bước tiếp theo (ví dụ "Ghi kích thước các phòng"): bấm là gửi; chuột phải để sửa trước khi gửi.
 
 Claude biết phần bạn sửa tay giữa các lượt: khung chat hiện dòng *"✎ Bản vẽ đã được sửa ngoài khung chat…"* và Claude đọc
 lại các đối tượng đó trước khi làm tiếp. Sau việc vẽ lớn, Claude có thể tự chụp vùng vừa vẽ để soát lỗi (chữ đè, ký hiệu
 lệch) rồi sửa. Tắt: ⚙ ▸ **Tự kiểm tra bằng ảnh**.
+
+Khi đoạn chat dùng skill có **bảng layer chuẩn**, công cụ vẽ chỉ cho vẽ trên các layer của bảng. Layer `0` và layer
+ngoài bảng bị từ chối, trừ khi bạn tự nêu tên layer đó trong tin nhắn hoặc chọn nó bằng nút **Layer**. Layer chuẩn chưa
+có thì plugin tự tạo đúng màu / nét / lineweight. Chữ không ghi chiều cao lấy theo bảng chữ của skill × tỷ lệ in trên
+thanh ngữ cảnh.
 
 ### 5.2 Chọn đối tượng và lấy điểm
 
@@ -210,7 +218,10 @@ Skill là file `.md` mô tả chuẩn vẽ: bảng layer, chiều cao chữ, quy
 
 - Có sẵn 3 skill mẫu: `ve-kien-truc` (mặt bằng kiến trúc), `ve-mep` (điện, cấp thoát nước), `ve-ha-tang` (đường, lý trình,
   cao độ, cống, bảng tọa độ). Skill mẫu nằm trong thư viện nhưng **không tự dùng**: bấm + khi cần.
-- ✦ **Skill (N)**: phần *Đang dùng* (nút **−** để bỏ) và *Thư viện* (nút **+** để dùng); **Sửa** để mở file skill.
+- ✦ **Skill (N)**: phần *Đang dùng* (nút **−** để bỏ) và *Thư viện* (nút **+** để dùng). Cạnh tên mỗi skill có nhãn
+  **Admin** (chủ plugin gửi) / **Default** (mẫu kèm plugin) / **You** (của cậu). **Sửa** mở file skill:
+  - Với skill Default / Admin, plugin chép thành bản của cậu `<tên>-sua` rồi mới mở. Bản gốc giữ nguyên.
+  - Lưu xong thì đoạn chat này chuyển sang bản cậu sửa.
 - Mỗi đoạn chat có bộ skill riêng. Đoạn chat mới dùng skill của đoạn chat gần nhất.
 - ＋ **Add skill**: chọn một hoặc nhiều file `.md` (giữ Ctrl / Shift). Skill vào thư viện và được dùng luôn ở đoạn chat này.
 
@@ -231,7 +242,9 @@ description: Chuẩn vẽ kết cấu của công ty - layer S-*, dầm, cột, 
 - `name`: chữ thường không dấu, số, gạch nối. Bỏ trống thì plugin lấy theo tên file.
 - `description` (bắt buộc, 20–1024 ký tự): ghi rõ **khi nào dùng** skill và các từ khóa. Claude dựa vào dòng này để chọn.
 - Phần thân: bảng layer, chiều cao chữ, quy cách. Nên có mục *"Quy trình chuẩn bị"*: xem thông tin bản vẽ và danh sách
-  layer trước, tạo layer / style còn thiếu theo chuẩn, rồi mới vẽ. Mở skill mẫu `ve-kien-truc` để tham khảo.
+  layer trước, tạo layer / style còn thiếu theo chuẩn, rồi mới vẽ. Để Claude ít lỗi vặt, thêm các mục *"Danh mục trước
+  khi vẽ"*, *"Kiểm tra trước khi báo xong"* (lệnh đo cụ thể cho layer, điểm khớp, chữ, thiếu / thừa) và *"Lỗi hay gặp"*.
+  Danh sách mục đầy đủ ở `skills/README.md`; mở skill mẫu `ve-kien-truc` để tham khảo.
 - Chia sẻ file cho đồng nghiệp; mỗi người thêm bằng ＋ Add skill. Trùng tên skill đã có thì plugin hỏi có thay không.
 - Gõ *"tạo skill từ cuộc chat này"*: Claude soạn bản nháp, có nút **Xem / sửa** và **Thêm vào plugin**.
 - Bỏ hẳn một skill khỏi thư viện: xóa thư mục mang tên skill đó trong
@@ -345,11 +358,12 @@ việc**: mức càng cao thì Claude cân nhắc càng kỹ, nhưng chậm hơn
 - Khung chat tự kiểm tra bản mới mỗi ngày và báo trong chat.
 - Gõ `CLAUDECHATUPDATE` để tải. Bản mới được cài khi bạn đóng AutoCAD. Hoặc tải lại `ClaudeCAD-Setup.exe` và chạy đè.
 - Skill bạn đã thêm / sửa, macro, mẫu lệnh, lịch sử chat đều được giữ nguyên. Không phải nhập lại key.
+- Ba skill mẫu đi kèm plugin: nếu bạn chưa sửa thì được thay bằng bản mẫu mới ở lần mở AutoCAD đầu tiên sau khi cập nhật; nếu bạn đã sửa thẳng skill mẫu thì phần sửa được giữ lại thành skill riêng `<tên>-sua` (nhãn You), còn skill mẫu trở về bản mới.
 
 **Gỡ cài đặt:** đóng AutoCAD, vào Windows **Settings → Apps → ClaudeCAD for AutoCAD → Uninstall**.
 
-- Nếu máy có mạng lúc gỡ, chủ plugin thấy máy đã gỡ và giờ gỡ. Việc này chỉ để ghi chú, không khóa máy; cài lại thì máy
-  dùng tiếp như trước. Máy không có mạng vẫn gỡ bình thường.
+- Gỡ không cần mạng và không báo gì về cho chủ plugin (việc ghi lại giờ gỡ chưa có trong bản này). Cài lại thì máy
+  dùng tiếp như trước, không phải kích hoạt lại.
 - Dữ liệu của bạn (lịch sử chat, macro, mẫu lệnh) vẫn nằm trong `%LocalAppData%\ClaudeCAD` và `%AppData%\ClaudeCAD`. Xóa
   tay nếu không cần nữa.
 
@@ -414,7 +428,7 @@ vẽ** (mặc định tắt), plugin lưu thêm thư mục ẩn `.claudecad` c�
 Chế độ Chỉ xem chỉ ngăn sửa bản vẽ; Claude vẫn đọc dữ liệu bản vẽ để trả lời.
 
 **Chủ plugin thấy gì.** Để quản lý giấy phép, chủ plugin thấy: tên máy, tên người dùng Windows, mã máy, lần cuối dùng,
-phiên bản plugin, và giờ gỡ cài đặt nếu có.
+phiên bản plugin.
 
 ## 11. Bảng lệnh tóm tắt
 

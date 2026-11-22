@@ -49,6 +49,16 @@ namespace ClaudeCAD.Plugin.Drawing
         void RecordCall(string tool, Dictionary<string, object> parameters, object result);
         /// <summary>Right before the first change of the turn (version history copy).</summary>
         void BeforeWrite(Document doc);
+        /// <summary>Entities of the turn's drawing the turn added / changed so far: handle → "added" | "modified".</summary>
+        IReadOnlyDictionary<string, string> TurnChanges();
+        /// <summary>Result of verify_drawing, for the "Tự kiểm" card of the turn.</summary>
+        void RecordSelfCheck(SelfCheckSummary summary);
+        /// <summary>Standard of the skills of the turn's chat (layer table, text heights, gap); null = none.</summary>
+        DrawingStandard Standard { get; }
+        /// <summary>Print scale denominator chosen in the palette (100 for 1:100); null = not chosen.</summary>
+        double? PrintScale { get; }
+        /// <summary>The user asked for this layer by name in the turn's message, or picked it with the Layer button.</summary>
+        bool UserAllowsLayer(string layer);
     }
 
     /// <summary>
@@ -82,6 +92,9 @@ namespace ClaudeCAD.Plugin.Drawing
             _tools[name] = new ToolDef(name, writes, handler);
 
         public void Register(ToolDef def) => _tools[def.Name] = def;
+
+        /// <summary>The chat turn the calls belong to (standard of its skills, print scale...).</summary>
+        internal ITurnHost Host => _host;
 
         public bool TryGet(string name, out ToolDef def) => _tools.TryGetValue(name, out def);
 
@@ -188,7 +201,7 @@ namespace ClaudeCAD.Plugin.Drawing
         {
             if (def.NoDocument) return def.Handler(null, p);
             var doc = _host.ResolveDocument();
-            bool writes = def.Writes || (def.Name == "batch_execute" && BatchWrites(p));
+            bool writes = def.Writes || (def.Name == "batch_execute" && BatchWrites(p)) || (def.Name == DrawingService.VerifyTool && DrawingService.VerifyWrites(p, _host));
             // undo_last_turn is registered as a read (it only queues U) but it changes the drawing
             // save_drawing writes the DWG on disk (with a path it also renames the drawing): a change too, even
             // without a path — it would store the user's unsaved manual edits while "Chỉ xem" is on
@@ -205,6 +218,7 @@ namespace ClaudeCAD.Plugin.Drawing
             {
                 if (writes && !viewOnly) _host.Undo.EnsureStarted(doc);
                 var ctx0 = new ToolContext(doc, null, writes, this);
+                p.Snap = new SnapResolver(ctx0);
                 var r0 = def.Handler(ctx0, p);
                 if (MacroLogic.ShouldRecord(def.Name, writes)) _host.RecordCall(def.Name, p.Raw, r0);
                 return r0;
@@ -233,6 +247,7 @@ namespace ClaudeCAD.Plugin.Drawing
             using (var tr = tm.StartTransaction())
             {
                 var ctx = new ToolContext(doc, tr, writable, this);
+                p.Snap = new SnapResolver(ctx);
                 var result = def.Handler(ctx, p);
                 if (writable)
                 {
@@ -278,6 +293,7 @@ namespace ClaudeCAD.Plugin.Drawing
         {
             var results = new List<object>(calls.Count);
             ctx.InBatch = true;
+            ctx.BatchResults = results;
             try
             {
                 for (int i = 0; i < calls.Count; i++)
@@ -298,7 +314,7 @@ namespace ClaudeCAD.Plugin.Drawing
                         if (def.Writes && !ctx.Writable) ctx.RequireWritable(tool);
 
                         var pobj = call.TryGetValue("params", out var pv) ? pv as Dictionary<string, object> : null;
-                        var p = new Params(tool, pobj);
+                        var p = new Params(tool, pobj) { Snap = new SnapResolver(ctx) };
 
                         using (var nested = ctx.Doc.TransactionManager.StartTransaction())
                         {
@@ -339,6 +355,7 @@ namespace ClaudeCAD.Plugin.Drawing
             finally
             {
                 ctx.InBatch = false;
+                ctx.BatchResults = null;
             }
             return results;
         }

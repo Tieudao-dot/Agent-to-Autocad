@@ -73,6 +73,11 @@ namespace ClaudeCAD.Plugin
         // v0.6: macros, change summary, suggestions, plans
         private readonly MacroRecorder _recorder = new MacroRecorder();
         private readonly ChangeTracker _changes = new ChangeTracker();
+        /// <summary>Last verify_drawing of the running turn ("Tự kiểm" card), null = none.</summary>
+        private SelfCheckSummary _selfCheck;
+        /// <summary>Standard of the chat's skills for the running turn, and the layers the user chose for it.</summary>
+        private DrawingStandard _turnStandard;
+        private List<string> _turnLayers = new List<string>();
         private readonly System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>> _turnMacros =
             new System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>>();
         private MacroStore _macroStore;
@@ -363,7 +368,26 @@ namespace ClaudeCAD.Plugin
         private void InitSkills()
         {
             _skillStore = new SkillStore(SkillsRoot);
+            try
+            {
+                // after an update: newer sample skills replace the installed ones the user never edited
+                string pristine = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(SkillsRoot)) ?? "", SampleSkills.PristineFolderName);
+                var samples = _skillStore.RefreshSamples(pristine);
+                _skillStore.PristineDir = pristine; // an edited Default skill is put back from here (its edit moves to <name>-sua)
+                var untouched = _skillStore.DiscardUntouchedCopies(); // "Sửa" opened and closed without a change
+                if (untouched.Count > 0) Logger.Info("untouched skill copies removed: " + string.Join(", ", untouched));
+                if (samples.Updated.Count > 0) Logger.Info("sample skills updated: " + string.Join(", ", samples.Updated));
+                if (samples.Kept.Count > 0) Logger.Info("sample skills kept (edited by the user): " + string.Join(", ", samples.Kept));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("sample skills not refreshed: " + ex.Message);
+            }
             RefreshSkills();
+            // v0.9.6: skills the owner assigns to this machine in the Google Sheet arrive with the status check
+            Activation.Skills = _skillStore;
+            Activation.SkillsPushed -= OnSkillsPushed;
+            Activation.SkillsPushed += OnSkillsPushed;
             try
             {
                 Directory.CreateDirectory(_skillStore.Root);
@@ -383,6 +407,23 @@ namespace ClaudeCAD.Plugin
         }
 
         private readonly object _skillDebounceLock = new object();
+        private DateTime _quietSkillReloadUntil; // a pushed pack shows its own toast, not "Skill đã thay đổi"
+
+        private void OnSkillsPushed(List<PackChange> changes)
+        {
+            if (changes.Count == 0) return;
+            _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10);
+            var msg = SkillPackLogic.Summary(changes);
+            Ui.Enqueue(() =>
+            {
+                if (_disposed) return;
+                RefreshSkills();
+                ReloadSkillsInAgent();
+                if (msg == null) return;
+                Ui.AddNote(msg);
+                Ui.ShowToast(msg, ChatControl.ToastKind.Info, 10);
+            });
+        }
 
         /// <summary>
         /// File watcher events come on several threads at once: one timer, pushed back 1.5 s by every event,
@@ -400,7 +441,8 @@ namespace ClaudeCAD.Plugin
                     {
                         RefreshSkills();
                         ReloadSkillsInAgent();
-                        Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
+                        if (DateTime.UtcNow >= _quietSkillReloadUntil)
+                            Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
                     }), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
                 try { _skillDebounce.Change(1500, System.Threading.Timeout.Infinite); }
                 catch (ObjectDisposedException) { }
@@ -413,8 +455,32 @@ namespace ClaudeCAD.Plugin
         private List<SkillInfo> RefreshSkills()
         {
             _library = _skillStore?.Scan() ?? new List<SkillInfo>();
+            SwitchChatToEditedCopies();
             Ui.SetSkills(_library, ChatSkills());
             return _library;
+        }
+
+        /// <summary>
+        /// A Default / Admin skill the user edited lives on as a You copy (&lt;name&gt;-sua): the current chat moves from
+        /// the original to the copy (never both — two standards that disagree). Other chats keep what they use.
+        /// </summary>
+        private void SwitchChatToEditedCopies()
+        {
+            var switches = _skillStore?.TakeSwitches();
+            if (switches == null || switches.Count == 0 || _transcript == null) return;
+            var list = ChatSkillChoice();
+            var moved = new List<string>();
+            foreach (var (copy, original) in switches)
+            {
+                if (!list.Contains(original)) continue;
+                list = SkillSelection.Toggle(SkillSelection.Toggle(list, original, false), copy, true);
+                moved.Add($"{original} → {copy}");
+            }
+            if (moved.Count == 0) return;
+            RememberChatSkills(list);
+            SaveTranscript();
+            ReloadSkillsInAgent();
+            Ui.AddNote("Đoạn chat này chuyển sang bản cậu sửa: " + string.Join(", ", moved) + " (bản gốc vẫn giữ nguyên trong thư viện).");
         }
 
         /// <summary>
@@ -495,6 +561,8 @@ namespace ClaudeCAD.Plugin
                         default:
                             added.Add(r.Name);
                             Ui.AddNote("✓ " + r.Message + " Đã dùng trong đoạn chat này; Claude áp dụng từ tin nhắn tiếp theo (vẫn nhớ cuộc chat).");
+                            if (r.Warning != null)
+                                Ui.AddErrorCard($"Skill \"{r.Name}\": plugin không đọc được bảng chuẩn, nên chưa tự áp chuẩn và tự kiểm theo bảng này. {r.Warning}\n\nSửa bằng nút Sửa trong danh sách Skill (định dạng bảng: xem skill mẫu ve-kien-truc).", false);
                             break;
                     }
                 }
@@ -529,11 +597,18 @@ namespace ClaudeCAD.Plugin
 
         private void EditSkill(string name)
         {
-            var file = _skillStore?.SkillFile(name);
-            if (file == null || !File.Exists(file)) return;
+            if (_skillStore == null) return;
+            // Default / Admin: copied to <name>-sua first, the original is never written (v0.9.6)
+            var (open, copied) = _skillStore.PrepareEdit(name);
+            if (copied) { _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10); RefreshSkills(); }
+            var file = _skillStore.SkillFile(open);
+            if (!File.Exists(file)) return;
             try { Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); }
             catch { Process.Start("notepad.exe", "\"" + file + "\""); } // no .md editor associated
-            Ui.SetToolStatus($"Đang mở {name}\\SKILL.md — lưu file là xong, plugin tự nạp lại.");
+            Ui.SetToolStatus(open == name
+                ? $"Đang mở {name}\\SKILL.md — lưu file là xong, plugin tự nạp lại."
+                : (copied ? $"Đã chép {name} thành {open} (nhãn You) để cậu sửa; bản gốc giữ nguyên. " : $"Mở bản cậu sửa {open}; bản gốc {name} giữ nguyên. ")
+                  + "Lưu file là đoạn chat này chuyển sang bản sửa.");
         }
 
         // ================================================================= per-drawing history (17)
@@ -832,6 +907,9 @@ namespace ClaudeCAD.Plugin
             }
             _recorder.Clear();
             _changes.Clear();
+            _selfCheck = null;
+            _turnLayers = userEntry?.Layers?.ToList() ?? new List<string>();
+            _turnStandard = LoadStandard(ChatSkills());
             // a slow (Wblock) version copy is prepared now, before any tool call can time out waiting for it
             if (_settings.Versions && doc != null)
             {
@@ -951,10 +1029,13 @@ namespace ClaudeCAD.Plugin
             Autodesk.AutoCAD.DatabaseServices.Database turnDb;
             Document turnStartDoc;
             List<string> suggestions;
+            SelfCheckSummary selfCheck;
             lock (_gate)
             {
                 if (!_busy) return;
                 _busy = false;
+                selfCheck = _selfCheck;
+                _selfCheck = null;
                 turnDb = _turnDb;
                 _turnDb = null;
                 turnStartDoc = _turnStartDoc;
@@ -1010,6 +1091,7 @@ namespace ClaudeCAD.Plugin
                 if (!empty)
                 {
                     assistant.Changes = changes;
+                    assistant.SelfCheck = selfCheck;
                     bool canMacro = macroCalls != null;
                     if (canMacro) { _turnMacros.Remove(assistant); _turnMacros.Add(assistant, macroCalls); }
                     _transcript?.Entries.Add(assistant);
@@ -2162,9 +2244,48 @@ namespace ClaudeCAD.Plugin
 
         public void RecordCall(string tool, Dictionary<string, object> parameters, object result) => _recorder.Record(tool, parameters, result);
 
+        public IReadOnlyDictionary<string, string> TurnChanges()
+        {
+            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (kind, h) in _changes.Snapshot())
+                if (kind != "erased") d[h] = kind;
+            return d;
+        }
+
+        public void RecordSelfCheck(SelfCheckSummary summary) => _selfCheck = summary;
+
+        /// <summary>A macro replays what the user saved: no standard is enforced on it.</summary>
+        public DrawingStandard Standard => _macroRunning ? null : _turnStandard;
+
+        public double? PrintScale => DrawingStandard.ScaleDenominator(_settings.Scale);
+
+        public bool UserAllowsLayer(string layer) =>
+            !string.IsNullOrEmpty(layer) &&
+            (_turnLayers.Any(l => string.Equals(l, layer, StringComparison.OrdinalIgnoreCase)) || DrawingStandard.TextNamesLayer(_turnLabel, layer));
+
+        /// <summary>The machine-readable tables of the chat's skills (layer B); a broken file only loses its standard.</summary>
+        private DrawingStandard LoadStandard(List<string> skills)
+        {
+            if (_skillStore == null || skills == null || skills.Count == 0) return null;
+            var list = new List<DrawingStandard>();
+            foreach (var name in skills)
+            {
+                try
+                {
+                    var file = _skillStore.SkillFile(name);
+                    if (System.IO.File.Exists(file)) list.Add(DrawingStandard.Parse(System.IO.File.ReadAllText(file, Encoding.UTF8), name));
+                }
+                catch (Exception ex) { Logger.Warn($"standard of skill {name} not read: {ex.Message}"); }
+            }
+            var std = DrawingStandard.Merge(list);
+            return std.IsEmpty ? null : std;
+        }
+
         /// <summary>First change of a chat turn: keep a copy of the drawing as it was (every 30 min max).</summary>
         public void BeforeWrite(Document doc)
         {
+            var check = _selfCheck;
+            if (check != null) check.Stale = true; // changed again after the last self-check (a new check replaces it)
             if (_versionChecked || !_settings.Versions || doc == null) return;
             _versionChecked = true;
             try
@@ -2618,6 +2739,7 @@ namespace ClaudeCAD.Plugin
                 DrawingHistory.Instance.ObjectChanged -= OnDbChanged;
                 Notifier.Dispose();
                 _skillWatcher?.Dispose();
+                Activation.SkillsPushed -= OnSkillsPushed;
                 lock (_skillDebounceLock)
                 {
                     _disposed = true;
