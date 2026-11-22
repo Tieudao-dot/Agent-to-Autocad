@@ -120,8 +120,13 @@ namespace ClaudeCAD.Core.Tests
             Assert.Equal(SkillPackLogic.Digest(new[] { a, b }), SkillPackLogic.Digest(new[] { b, a }));
             Assert.Equal(SkillPackLogic.Digest(new[] { a, b }), SkillPackLogic.Digest(new[] { a, new PackSkill { Name = "b", Act = "delete", Rev = "2" } }));
             Assert.NotEqual(SkillPackLogic.Digest(new[] { a }), SkillPackLogic.Digest(new[] { new PackSkill { Name = "a", Act = "hide", Rev = "1", Sha256 = "x" } }));
-            // fixed vector: activation/apps-script/Code.gs.template must compute the same (activation/test-skill-pack.mjs)
+            // fixed vector: activation/apps-script/Code.gs.template must compute the same (agent/test/activation.test.ts)
             Assert.Equal("47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU", SkillPackLogic.Digest(new PackSkill[0]));
+            Assert.Equal("WTqycN8fUlMedhP9nVCTcvC6bt2w0vb44eR7weJPb-w", SkillPackLogic.Digest(new[]
+            {
+                new PackSkill { Name = "b", Act = "delete", Rev = "2", Sha256 = "ignored" },
+                new PackSkill { Name = "a", Act = "add", Rev = "1", Sha256 = SkillPackLogic.Sha256("x") },
+            }));
         }
 
         // ------------------------------------------------------------------ SkillStore.ApplyPack
