@@ -259,3 +259,40 @@ Chi phí cho người dùng: bắt điểm không thêm lần gọi nào; `get_s
 
 1. Vẽ lên layer ngoài bảng chuẩn của skill: từ chối hẳn, hay cho khi người dùng tự nêu tên layer đó? **Đã chốt
    (22/11):** cho khi người dùng tự nêu tên, hoặc đã chọn layer đó bằng nút Layer.
+
+## 10. Đã làm đợt 2 (22/11/2026)
+
+- **A. Bắt điểm.**
+  - Lõi `Core/SnapRules.cs`: 7 kiểu bắt điểm (`end` `mid` `cen` `int` `per` `nea` `ins`). Có `near`, `offset`, và `from`
+    là điểm hoặc tên tham số khác của cùng lệnh. Báo lỗi rõ khi điểm mơ hồ hoặc không có giao điểm.
+  - `Params.Point` / `Points` tự giải tham chiếu, rồi ghi lại `[x, y]` vào tham số, nên macro không đổi.
+  - Plugin: `Drawing/SnapTools.cs` (`SnapResolver`, `@n` / `@n:k` trong batch) và tool `get_snap_points`.
+  - Trợ lý: schema điểm thành `[x, y]` hoặc `{"snap", ...}`.
+    - Schema chỉ khai `snap`, vì schema điểm lặp lại ở mọi tham số điểm. Bản khai đủ làm danh sách tool to gấp đôi
+      (+100 nghìn ký tự mỗi lượt); bản gọn chỉ thêm khoảng 9 %.
+    - Định dạng giải thích một lần trong mục "# Snapping" của system prompt.
+- **C. 14 mã.**
+  - Lõi `Core/DrawingStandard.cs` đọc "Bảng layer chuẩn", "Chữ và kích thước theo tỷ lệ in" và "Ngưỡng khe hở".
+  - Thêm `LAYER_UNKNOWN`, `PROP_OVERRIDE` (trừ hatch), `TEXT_HEIGHT` (sai số 1 %), `DIM_STYLE` (`DIMSCALE` và
+    `DIMTXT`).
+  - Bỏ `ignore`. Ngưỡng khe hở lấy từ skill.
+  - Layer người dùng nêu tên hoặc chọn bằng nút Layer thì không bị báo, kể cả layer `0` khi người dùng gõ
+    "layer 0".
+- **B. Áp chuẩn lúc vẽ.**
+  - `Acad.Add` từ chối layer `0` / `Defpoints` / layer ngoài bảng (`LAYER_NOT_IN_STANDARD`) khi layer do Claude chọn
+    hoặc là layer hiện hành. Bản sao giữ layer gốc.
+  - `set_entity_props` sang layer ngoài bảng cũng bị từ chối.
+  - Layer chuẩn còn thiếu được tạo đúng màu / nét / lineweight. Chữ không ghi chiều cao lấy dòng "ghi chú" × tỷ lệ.
+  - Macro không bị áp chuẩn.
+  - Thêm skill có bảng sai định dạng thì có thẻ báo ngay, và danh sách Skill ghi ⚠ (`SkillInfo.Warning`).
+- **Skill:**
+  - Đã gộp `claude/nghien-cuu-skill` @6313359.
+  - Mục kiểm tra của 3 skill thay bằng `verify_drawing` + `expect` + bảng cách sửa từng mã + phần máy không đo được.
+  - Ví dụ cửa của `ve-kien-truc` bắt điểm vào mép lỗ. `skills/README.md` cập nhật theo.
+- **Test:**
+  - Lõi 236/236: thêm `SnapRulesTests` 15 và `DrawingStandardTests` 22. Các test này đọc thẳng 3 skill mẫu.
+  - Trợ lý 172/172: thêm `snap.test.ts`; `skills.test.ts` kiểm thêm bắt điểm, mục kiểm tra, định dạng bảng layer.
+  - Build net48 / net8 / net10 đạt trên Linux.
+- **Còn lại:**
+  - Bảng chữ chỉ có ở skill kiến trúc, nên `TEXT_HEIGHT` / `DIM_STYLE` chưa chạy với MEP / hạ tầng.
+  - Số liệu chuẩn công ty: chờ chủ dự án gửi.

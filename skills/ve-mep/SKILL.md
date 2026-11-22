@@ -15,8 +15,7 @@ Quy ước: mm, WCS, tỷ lệ in mặc định 1:100. Bản vẽ MEP thường 
 2. Tạo trong **một `batch_execute`** các layer còn thiếu theo bảng mục 2.
 3. Nếu thiếu block ký hiệu cần dùng (mục 4), vẽ và `define_block` một lần rồi mới chèn.
 4. Đọc vị trí tường cần bám tuyến bằng `list_entities` (`layers: ["A-WALL"]`) trước khi tính tọa độ tuyến.
-5. Ghi nhớ `count_entities` với `layers: ["0"]` để lúc kiểm tra so trước / sau.
-6. **Danh mục trước khi vẽ:** ghi ngắn số thiết bị và tuyến dự kiến theo layer, ví dụ "E-LIGHT: 4 đèn + 1 tuyến dây, E-SWITCH: 1, E-TEXT: 1 mleader". Lúc kiểm tra so lại đúng danh mục này.
+5. **Danh mục trước khi vẽ:** ghi ngắn số thiết bị và tuyến dự kiến theo layer, ví dụ "E-LIGHT: 4 đèn + 1 tuyến dây, E-SWITCH: 1, E-TEXT: 1 mleader". Lúc kiểm tra truyền đúng danh mục này làm `expect` của `verify_drawing`.
 
 ## 2. Bảng layer chuẩn
 
@@ -78,21 +77,38 @@ Rồi nối dây bằng một `batch_execute` các `draw_polyline` trên `E-LIGH
 
 Ngưỡng khe hở: 10 mm
 
-Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Ghi lại mục nào ✓ / ✗:
+Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Plugin bắt buộc bước này: lượt có vẽ / sửa mà chưa
+`verify_drawing` thì chưa được báo xong.
 
-1. **Layer:** `count_entities` với `layers: ["0"]` không tăng so với lúc chuẩn bị. Mọi layer trong `by_layer` của vùng vừa vẽ có trong bảng mục 2. Không có đối tượng mới nào trên layer `A-*` (không sửa nền kiến trúc).
-2. **Thuộc tính:** `list_entities` các handle vừa vẽ: linetype và màu theo layer (ống thoát `DASHED`, thông hơi `HIDDEN`), không gán riêng.
-3. **Điểm khớp:** `get_entity` các tuyến: đỉnh đầu / cuối trùng đúng điểm chèn thiết bị hoặc nằm đúng trên tuyến chính. Cách nhau từ 0 tới ngưỡng khe hở là **lỗi hở**: sửa bằng `edit_polyline` với tọa độ đọc được.
-4. **Hình học:** khoảng cách tuyến tới mặt trong tường đúng mục 3 (`measure_distance`); hai tuyến song song cách nhau ≥ 100; không có tuyến trùng nhau hoặc dài 0; ống thoát có ghi độ dốc.
-5. **Chữ và ghi chú:** chiều cao chữ, mleader đúng mục 5 theo tỷ lệ; mũi tên mleader chạm tuyến; `get_bounding_box` các chữ gần nhau không chồng lên nhau và không đè ký hiệu thiết bị.
-6. **Thiếu / thừa:** `count_entities` với `types: ["INSERT"]` theo layer, so với danh mục; số trong bảng thiết bị (nếu có) khớp số đếm.
-7. **Nhìn lại:** `capture_view` với các handle vừa vẽ.
+1. **`verify_drawing`** (không cần `handles`), truyền danh mục ở mục 1 làm `expect`, ví dụ
+   `{"expect": {"E-LIGHT": 5, "E-SWITCH": 1, "E-TEXT": 1}}`. Công cụ đo đối tượng của lượt, lỗi an toàn tự sửa (nối khe hở ≤ ngưỡng, đóng polyline,
+   xóa bản trùng / dài 0). Ngưỡng khe hở lấy từ dòng trên.
+2. **Sửa mọi lỗi còn lại** rồi gọi lại `verify_drawing`:
 
-Gặp lỗi: sửa ngay rồi kiểm lại mục đó. Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để người dùng quyết.
+| Mã | Sửa thế nào |
+| --- | --- |
+| `GAP` / `OVERSHOOT` | đầu nét hở hoặc thừa: `extend_entities` / `trim_entities`, hoặc vẽ lại đầu nét bằng bắt điểm `{"snap": "end", "of": ...}` |
+| `OPEN_POLY` | `edit_polyline` với `closed: true` |
+| `ARC_MISMATCH` | vẽ lại cung với tâm / đầu cung bắt `end` vào đúng đối tượng |
+| `LAYER_0` / `LAYER_UNKNOWN` | `set_entity_props` sang layer đúng của bảng mục 2 |
+| `PROP_OVERRIDE` | `set_entity_props` với `color` / `linetype` / `lineweight` = `"bylayer"` |
+| `TEXT_HEIGHT` | `edit_text` về chiều cao theo bảng chữ × tỷ lệ in |
+| `TEXT_OVERLAP` | `move_entities` chữ / dim cho khỏi chồng |
+| `STRAY` / `COUNT` | xem lại tọa độ / danh mục: vẽ thêm phần thiếu, xóa phần thừa |
+
+3. **Kiểm thêm phần máy không đo được:**
+   - Khoảng cách tuyến tới mặt trong tường đúng mục 3 (`measure_distance`); hai tuyến song song cách nhau ≥ 100; ống
+     thoát có ghi độ dốc.
+   - Không có đối tượng mới nào trên layer `A-*` (không sửa nền kiến trúc); số trong bảng thiết bị (nếu có) khớp
+     `count_entities` với `types: ["INSERT"]`.
+4. **Nhìn lại:** `capture_view` với các handle vừa vẽ.
+
+Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để
+người dùng quyết.
 
 ## 8. Lỗi hay gặp (tránh từ đầu)
 
-- Dây / ống dừng cách thiết bị vài mm vì tọa độ ước lượng → lấy đúng điểm chèn block.
+- Dây / ống dừng cách thiết bị vài mm vì tọa độ ước lượng → đầu tuyến bắt điểm chèn block `{"snap": "ins", "of": <handle block>}`.
 - Tuyến tự tính tọa độ không song song tường → `offset_entity` từ nét tường.
 - Chèn block thiết bị lên layer `0` hoặc layer của block → luôn ghi `layer` khi `insert_block`.
 - Vẽ đè hoặc sửa nhầm đối tượng kiến trúc `A-*` → chỉ đọc nền kiến trúc.

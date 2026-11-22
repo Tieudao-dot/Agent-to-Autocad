@@ -15,8 +15,7 @@ Quy ước hệ thống vẫn là **mm**; tọa độ thực tính bằng **mét
 2. Tạo trong **một `batch_execute`** các layer còn thiếu theo bảng mục 2.
 3. **Gốc tọa độ**: tọa độ VN-2000 cỡ hàng trăm nghìn – hàng triệu mét (×1000 thành 10⁸–10⁹ mm). Nếu bản vẽ trắng, hỏi người dùng một câu: vẽ theo tọa độ thực hay trừ một điểm gốc (ví dụ gốc = điểm đầu tuyến)? Nếu dùng gốc cục bộ, ghi một dòng `add_text` ở góc bản vẽ: "Gốc tọa độ: X = …, Y = … (VN-2000)".
 4. **Đổi trục**: trong VN-2000, X là hướng Bắc, Y là hướng Đông. Trong AutoCAD: x_cad = Y × 1000, y_cad = X × 1000 (trừ gốc nếu có). Luôn nhắc lại quy ước này trong câu trả lời đầu tiên khi nhận bảng tọa độ.
-5. Ghi nhớ `count_entities` với `layers: ["0"]` để lúc kiểm tra so trước / sau.
-6. **Danh mục trước khi vẽ:** ghi ngắn số đối tượng dự kiến theo layer, ví dụ "C-ROAD-CL: 1 tim tuyến, C-ROAD-EDGE: 2, C-STATION: 9 vạch + 9 chữ, C-COORD: 5 mốc + 1 bảng". Lúc kiểm tra so lại đúng danh mục này.
+5. **Danh mục trước khi vẽ:** ghi ngắn số đối tượng dự kiến theo layer, ví dụ "C-ROAD-CL: 1 tim tuyến, C-ROAD-EDGE: 2, C-STATION: 9 vạch + 9 chữ, C-COORD: 5 mốc + 1 bảng". Lúc kiểm tra truyền đúng danh mục này làm `expect` của `verify_drawing`.
 
 ## 2. Bảng layer chuẩn
 
@@ -69,21 +68,40 @@ Ví dụ (gốc cục bộ X0 = 1 234 000, Y0 = 567 000; điểm M1 X = 1 234 01
 
 Ngưỡng khe hở: 10 mm
 
-Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Ghi lại mục nào ✓ / ✗:
+Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Plugin bắt buộc bước này: lượt có vẽ / sửa mà chưa
+`verify_drawing` thì chưa được báo xong.
 
-1. **Layer:** `count_entities` với `layers: ["0"]` không tăng so với lúc chuẩn bị. Mọi layer trong `by_layer` của vùng vừa vẽ có trong bảng mục 2.
-2. **Tọa độ:** `get_entity` vài mốc (đầu, cuối, một điểm giữa): tâm vòng mốc đúng tọa độ đã đổi trục, ×1000, trừ gốc. `measure_distance` giữa hai mốc = khoảng cách tính từ tọa độ gốc (sai lệch < 1 mm). Giá trị trong bảng tọa độ là giá trị VN-2000 gốc, không đổi trục.
-3. **Điểm khớp:** tim tuyến là **một** polyline liền (không đứt đoạn); các đoạn mép đường, bó vỉa nối nhau không hở; cống nối đúng tâm hố ga. Cách nhau từ 0 tới ngưỡng khe hở là **lỗi hở**: nối bằng `join_entities` hoặc `edit_polyline`.
-4. **Hình học:** `measure_distance` từ tim tới mép đường = nửa bề rộng mặt cắt; vạch lý trình vuông góc tim tuyến, trung điểm nằm trên tim; chiều dài tim tuyến (`list_entities` trả `length`) khớp lý trình cuối.
-5. **Chữ:** chiều cao chữ đúng tỷ lệ (1250 cho 1:500); định dạng `Km0+125.50` và `+12.350` đúng số chữ số; `get_bounding_box` chữ lý trình / cao độ không chồng lên nhau.
-6. **Thiếu / thừa:** `count_entities` theo layer so với danh mục; số mốc trên bản vẽ = số dòng trong bảng tọa độ; không có đối tượng nằm xa tuyến (dấu hiệu quên trừ gốc hoặc quên đổi trục).
-7. **Nhìn lại:** `capture_view` với các handle vừa vẽ.
+1. **`verify_drawing`** (không cần `handles`), truyền danh mục ở mục 1 làm `expect`, ví dụ
+   `{"expect": {"C-ROAD-CL": 1, "C-ROAD-EDGE": 2, "C-STATION": 18, "C-COORD": 11}}`. Công cụ đo đối tượng của lượt, lỗi an toàn tự sửa (nối khe hở ≤ ngưỡng, đóng polyline,
+   xóa bản trùng / dài 0). Ngưỡng khe hở lấy từ dòng trên.
+2. **Sửa mọi lỗi còn lại** rồi gọi lại `verify_drawing`:
 
-Gặp lỗi: sửa ngay rồi kiểm lại mục đó. Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để người dùng quyết.
+| Mã | Sửa thế nào |
+| --- | --- |
+| `GAP` / `OVERSHOOT` | đầu nét hở hoặc thừa: `extend_entities` / `trim_entities`, hoặc vẽ lại đầu nét bằng bắt điểm `{"snap": "end", "of": ...}` |
+| `OPEN_POLY` | `edit_polyline` với `closed: true` |
+| `ARC_MISMATCH` | vẽ lại cung với tâm / đầu cung bắt `end` vào đúng đối tượng |
+| `LAYER_0` / `LAYER_UNKNOWN` | `set_entity_props` sang layer đúng của bảng mục 2 |
+| `PROP_OVERRIDE` | `set_entity_props` với `color` / `linetype` / `lineweight` = `"bylayer"` |
+| `TEXT_HEIGHT` | `edit_text` về chiều cao theo bảng chữ × tỷ lệ in |
+| `TEXT_OVERLAP` | `move_entities` chữ / dim cho khỏi chồng |
+| `STRAY` / `COUNT` | xem lại tọa độ / danh mục: vẽ thêm phần thiếu, xóa phần thừa |
+
+3. **Kiểm thêm phần máy không đo được:**
+   - **Tọa độ:** `get_entity` vài mốc (đầu, cuối, một điểm giữa): tâm vòng mốc đúng tọa độ đã đổi trục, ×1000, trừ
+     gốc. `measure_distance` giữa hai mốc = khoảng cách tính từ tọa độ gốc (sai lệch < 1 mm). Giá trị trong bảng tọa
+     độ là giá trị VN-2000 gốc, không đổi trục.
+   - Tim tuyến là **một** polyline liền; `measure_distance` từ tim tới mép đường = nửa bề rộng mặt cắt; vạch lý trình
+     vuông góc tim tuyến; chiều dài tim tuyến khớp lý trình cuối; số mốc = số dòng bảng tọa độ.
+   - Định dạng `Km0+125.50` và `+12.350` đúng số chữ số.
+4. **Nhìn lại:** `capture_view` với các handle vừa vẽ.
+
+Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để
+người dùng quyết.
 
 ## 8. Lỗi hay gặp (tránh từ đầu)
 
-- Quên đổi trục X/Y hoặc quên ×1000 → tuyến xoay 90° hoặc nhỏ 1000 lần; kiểm bằng khoảng cách hai mốc (mục 7.2).
+- Quên đổi trục X/Y hoặc quên ×1000 → tuyến xoay 90° hoặc nhỏ 1000 lần; kiểm bằng khoảng cách hai mốc (mục 7, bước 3).
 - Quên trừ gốc cục bộ ở một vài điểm → điểm đó văng rất xa; kiểm bằng đối tượng nằm xa tuyến.
 - Tự tính tọa độ mép đường ở đoạn cong → mép không song song tim; luôn dùng `offset_entity`.
 - Vẽ tim tuyến thành nhiều đoạn rời → lý trình cộng dồn sai; vẽ một polyline, hoặc `join_entities`.

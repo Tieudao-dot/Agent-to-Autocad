@@ -208,11 +208,16 @@ Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, 
 | TK-7 | Phòng có cửa 900 → không báo khe hở ở lỗ cửa; cung cửa chạm (I7) | ⬜ chưa chạy | |
 | TK-8 | Một lần U hoàn tác cả phần vẽ lẫn phần tự sửa (I8) | ⬜ chưa chạy | |
 | TK-9 | Mở lại đoạn chat → thẻ Tự kiểm vẫn còn (I9) | ⬜ chưa chạy | |
+| TK-10 | Phòng có cửa theo skill kiến trúc: cánh / cung cửa bắt điểm chạm đúng mép lỗ, layer chuẩn tự tạo đúng màu, chữ 350 / 250 (I10) | ⬜ chưa chạy | |
+| TK-11 | Layer ngoài bảng chuẩn chỉ được dùng khi người dùng nêu tên (I11) | ⬜ chưa chạy | |
+| TK-12 | Chữ không ghi chiều cao lấy theo bảng chữ × tỷ lệ 1:50 (I12) | ⬜ chưa chạy | |
+| TK-13 | Thêm skill có bảng chuẩn sai định dạng → báo ngay, danh sách Skill có ⚠ (I13) | ⬜ chưa chạy | |
 
 ## Đã kiểm chứng tự động trên cloud (Linux)
 
 | Ngày | Hạng mục | Kết quả |
 | --- | --- | --- |
+| 2026-11-22 | Tự kiểm đợt 2 (nhánh `claude/tu-kiem-tra`): `dotnet test` lõi 236/236 (thêm `SnapRulesTests` 15: 7 kiểu bắt điểm, near / offset / from, điểm mơ hồ, không có giao điểm, ghi lại `[x, y]` cho macro; `DrawingStandardTests` 22: đọc bảng của 3 skill mẫu, bảng sai định dạng báo theo dòng, 4 mã mới, từ chối layer, "layer 0" khi người dùng nêu tên, cảnh báo skill); `npm test` 172/172 (thêm `snap.test.ts`; `skills.test.ts` kiểm bắt điểm, mục kiểm tra, định dạng bảng layer); build net48 + net8 + net10 ✅ | ✅ |
 | 2026-11-22 | Tự kiểm trước khi báo xong (nhánh `claude/tu-kiem-tra`): `dotnet test` lõi 199/199 (thêm `VerifyRulesTests` 35 test: khe hở góc / thân nét và tự nối, ngưỡng 10 mm, dung sai 0,01 mm, nét thừa, polyline chưa đóng và tự đóng, dài 0, trùng (đảo chiều, dời điểm đầu), cung cửa chạm / không chạm, layer 0, chữ đè (cả chữ xoay), đối tượng lạc, `expect`, bỏ qua mã, giới hạn 30 lỗi, sửa không chồng nhau, lưu thẻ vào lịch sử chat); `npm test` 156/156 (thêm `selfCheck.test.ts`: hook Stop chặn / cho qua, 2 vòng sửa, 2 lần nhắc, Dừng, schema tool, mã lỗi khớp C#); build net48 + net8 + net10 ✅; UI test `SelfCheckCardShowsCleanAndOpenIssues` đạt trên CI Windows (run 45002618380, `release: false`, bộ cài thử build được) | ✅ |
 | 2026-11-11 | Tự kiểm tra mở rộng (nhánh `claude/test-checklist`): luật ✓ / ✗ tách ra `Core/SelfTestRules.cs` — `dotnet test` lõi 160/160 (thêm nhóm `SelfTestRulesTests`: bản build theo đời AutoCAD R24.1–R26.0, DLL sai bản / sai thư mục, tương phản chữ, theme không đọc được, thu gọn mất tin, hàng chờ kẹt, skill hỏng, bản vẽ bị đổi handle / số đối tượng / DBMOD); build `-f net48` và `-f net8.0-windows` riêng, 0 warning; UI test mới `SelfTestProbeTests` (3 test) chỉ chạy trên Windows CI | ✅ |
 | 2026-11-05 | `npm run build` sidecar | ✅ |

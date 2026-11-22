@@ -139,6 +139,10 @@ Cần bản cài có nhánh `claude/tu-kiem-tra`. Hỏng thì ghi lại, không 
 | I7 | ○ | Nhờ vẽ phòng có 1 cửa đi 900 | Không báo khe hở ở lỗ cửa; cung cửa chạm cánh và mép lỗ (nếu không chạm thì thẻ ✗ "cung không chạm") | ☐ | ☐ | TK-7 |
 | I8 | ○ | Sau lượt có "đã tự sửa", gõ `U` một lần | Mất cả phần vẽ lẫn phần tự sửa của lượt đó | ☐ | ☐ | TK-8 |
 | I9 | ○ | Đóng rồi mở lại khung chat / AutoCAD, xem lại đoạn chat của I3 | Thẻ Tự kiểm vẫn còn dưới câu trả lời | ☐ | ☐ | TK-9 |
+| I10 | ★ | Skill `ve-kien-truc` đang dùng, tỷ lệ 1:100: "vẽ phòng 4x6m tường 220 có 1 cửa đi 900" | Cánh cửa và cung cửa chạm đúng mép lỗ (đo `DIST` = 0); danh sách bước có thể có lỗi "LAYER_NOT_IN_STANDARD" rồi Claude tự chuyển layer; layer `A-*` tự có đúng màu bảng mục 2; chữ tên phòng cao 350, diện tích 250; thẻ Tự kiểm ✓ | ☐ | ☐ | TK-10 |
+| I11 | ★ | Cùng skill: "vẽ 1 hình tròn bán kính 500 trên layer XYZ-TAM" | Được vẽ trên `XYZ-TAM` (cậu đã nêu tên), thẻ không báo layer ngoài chuẩn. Gõ tiếp "vẽ thêm 1 hình tròn" (không nêu layer) → không lên `XYZ-TAM` / `0` | ☐ | ☐ | TK-11 |
+| I12 | ○ | Đổi tỷ lệ trên thanh ngữ cảnh sang 1:50, nhờ "ghi chữ GHI CHÚ ở giữa phòng" (không nói chiều cao) | Chữ cao 125 (2.5 mm × 50) | ☐ | ☐ | TK-12 |
+| I13 | ○ | **+ Add skill** một file `.md` có "Bảng layer chuẩn" nhưng tên layer không nằm trong dấu \` \` | Thẻ báo "plugin không đọc được bảng chuẩn" + dòng sai; danh sách Skill ghi ⚠ dưới skill đó; skill vẫn dùng được | ☐ | ☐ | TK-13 |
 
 ## Gửi lại gì khi lỗi
 

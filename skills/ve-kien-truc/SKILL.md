@@ -11,11 +11,11 @@ Quy ước chung: đơn vị mm, WCS. Tỷ lệ in mặc định **1:100** (nế
 
 ## 1. Quy trình chuẩn bị (luôn làm trước khi vẽ)
 
-1. Gọi `get_drawing_info` và `list_layers` (thêm `list_styles` nếu sẽ ghi chữ/kích thước) để biết bản vẽ đang có gì. Ghi nhớ kết quả `count_entities` với `layers: ["0"]` để lúc kiểm tra so trước / sau.
+1. Gọi `get_drawing_info` và `list_layers` (thêm `list_styles` nếu sẽ ghi chữ/kích thước) để biết bản vẽ đang có gì.
 2. So với bảng layer ở mục 2: tạo **trong một `batch_execute`** mọi layer còn thiếu bằng `create_layer` đúng tên, màu, linetype, lineweight. Không đổi thuộc tính của layer đã có trừ khi người dùng yêu cầu.
 3. Nếu chưa có: tạo text style `KT-ARIAL` (`create_text_style` font "Arial", width_factor 0.85) và dim style `KT-100` theo mục 4 (`create_dim_style`), rồi `set_current_styles`.
 4. Xác định gốc vẽ: bản vẽ trắng → góc dưới-trái trục đầu tiên tại [0, 0]; bản vẽ đã có đối tượng → đặt bên phải extents hiện có, cách 5000, trừ khi người dùng chỉ vị trí.
-5. **Danh mục trước khi vẽ:** ghi ngắn trong câu trả lời số đối tượng dự kiến theo layer, ví dụ "A-WALL: 2 nét tường + 2 mép lỗ, A-DOOR: 1 cánh + 1 cung, A-DIM: 7, A-TEXT: 2". Lúc kiểm tra so lại đúng danh mục này.
+5. **Danh mục trước khi vẽ:** ghi ngắn trong câu trả lời số đối tượng dự kiến theo layer, ví dụ "A-WALL: 2 nét tường + 2 mép lỗ, A-DOOR: 1 cánh + 1 cung, A-DIM: 7, A-TEXT: 2". Lúc kiểm tra truyền đúng danh mục này làm `expect` của `verify_drawing`.
 6. Sau đó mới vẽ, mỗi nhóm đối tượng một `batch_execute`. Cần handle của bước trước (để `offset_entity`, `trim_entities`) thì lấy từ kết quả `handles` của batch trước, không đoán.
 
 ## 2. Bảng layer chuẩn
@@ -101,12 +101,13 @@ Trục tường là hình chữ nhật [0,0]–[4000,6000]; cạnh dài là cạ
 {"tool": "trim_entities", "params": {"handles": ["H1","H2"], "cutting_handles": ["M1","M2"], "pick_points": [[4110,3000],[3890,3000]]}}
 ```
 
-**Bước 4:** cửa, kích thước, chữ. Bản lề tại đầu mép lỗ [3890,2550]; cánh cửa và cung đều xuất phát từ đúng điểm đó.
+**Bước 4:** cửa, kích thước, chữ. Bản lề là đầu trong của mép lỗ M1 ([3890,2550]); cánh cửa và cung **bắt điểm** vào
+đúng đầu đó (`{"snap": "end", "of": "M1", "near": ...}`), không gõ lại tọa độ.
 
 ```json
 {"calls": [
-  {"tool": "draw_line", "params": {"layer": "A-DOOR", "start": [3890,2550], "end": [2990,2550]}},
-  {"tool": "draw_arc",  "params": {"layer": "A-DOOR", "center": [3890,2550], "radius": 900, "start_angle": 90, "end_angle": 180}},
+  {"tool": "draw_line", "params": {"layer": "A-DOOR", "start": {"snap": "end", "of": "M1", "near": [3890,2550]}, "end": {"snap": "end", "of": "M1", "near": [3890,2550], "offset": [-900,0]}}},
+  {"tool": "draw_arc",  "params": {"layer": "A-DOOR", "center": {"snap": "end", "of": "M1", "near": [3890,2550]}, "radius": 900, "start_angle": 90, "end_angle": 180}},
   {"tool": "add_dim_linear", "params": {"layer": "A-DIM", "p1": [-110,-110], "p2": [4110,-110], "dim_line_point": [2000,-910]}},
   {"tool": "add_dim_linear", "params": {"layer": "A-DIM", "p1": [-110,6110], "p2": [4110,6110], "dim_line_point": [2000,6910]}},
   {"tool": "add_dim_linear", "params": {"layer": "A-DIM", "p1": [-110,-110], "p2": [-110,6110], "dim_line_point": [-910,3000]}},
@@ -125,22 +126,38 @@ Diện tích lấy từ `measure_area` của nét tường trong **trước** b�
 
 Ngưỡng khe hở: 10 mm
 
-Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Làm lần lượt, ghi lại mục nào ✓ / ✗:
+Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Plugin bắt buộc bước này: lượt có vẽ / sửa mà chưa
+`verify_drawing` thì chưa được báo xong.
 
-1. **Layer:** `count_entities` với `layers: ["0"]` không tăng so với lúc chuẩn bị. `count_entities` theo vùng vừa vẽ (`window` bao công trình, `crossing: true`): mọi layer trong `by_layer` phải có trong bảng mục 2.
-2. **Thuộc tính:** `list_entities` các handle vừa vẽ: không có màu gán riêng (màu khác ByLayer) trừ hatch cột theo mục 3.
-3. **Điểm khớp:** `get_entity` các nét tường, mép lỗ, cánh cửa, cung cửa. Đầu mép lỗ phải **trùng đúng** đỉnh nét tường; đầu cánh cửa và hai đầu cung phải trùng bản lề / mép lỗ. Hai đầu cách nhau từ 0 tới ngưỡng khe hở là **lỗi hở**: sửa bằng `edit_polyline` hoặc vẽ lại nét đó từ đúng tọa độ đọc được, không đoán.
-4. **Hình học:** `measure_distance` giữa hai mép lỗ = bề rộng cửa; `measure_distance` giữa hai nét tường = 220 / 110. Không có đường dài 0, không có hai nét trùng nhau (cùng hai đầu).
-5. **Chữ và dim:** `list_entities` với `types: ["ANYTEXT"]` trong vùng vẽ: chiều cao khớp bảng mục 4 theo tỷ lệ đang dùng. `get_bounding_box` các chữ trong cùng phòng: hộp bao không chồng lên nhau. Đủ dim bốn phía theo mục 4.
-6. **Thiếu / thừa:** `count_entities` theo vùng vẽ, so `by_layer` với danh mục ở mục 1 bước 5. Không có đối tượng nằm xa cụm công trình.
-7. **Nhìn lại:** cuối cùng `capture_view` với các handle vừa vẽ, xem có gì sai mà số đo không bắt được (cửa sai tường, chữ đè ký hiệu).
+1. **`verify_drawing`** (không cần `handles`), truyền danh mục ở mục 1 làm `expect`, ví dụ
+   `{"expect": {"A-WALL": 4, "A-DOOR": 2, "A-DIM": 7, "A-TEXT": 2}}`. Công cụ đo đối tượng của lượt, lỗi an toàn tự sửa (nối khe hở ≤ ngưỡng, đóng polyline,
+   xóa bản trùng / dài 0). Ngưỡng khe hở lấy từ dòng trên.
+2. **Sửa mọi lỗi còn lại** rồi gọi lại `verify_drawing`:
 
-Gặp lỗi: sửa ngay rồi kiểm lại mục đó. Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để người dùng quyết.
+| Mã | Sửa thế nào |
+| --- | --- |
+| `GAP` / `OVERSHOOT` | đầu nét hở hoặc thừa: `extend_entities` / `trim_entities`, hoặc vẽ lại đầu nét bằng bắt điểm `{"snap": "end", "of": ...}` |
+| `OPEN_POLY` | `edit_polyline` với `closed: true` |
+| `ARC_MISMATCH` | vẽ lại cung với tâm / đầu cung bắt `end` vào đúng đối tượng |
+| `LAYER_0` / `LAYER_UNKNOWN` | `set_entity_props` sang layer đúng của bảng mục 2 |
+| `PROP_OVERRIDE` | `set_entity_props` với `color` / `linetype` / `lineweight` = `"bylayer"` |
+| `TEXT_HEIGHT` | `edit_text` về chiều cao theo bảng chữ × tỷ lệ in |
+| `TEXT_OVERLAP` | `move_entities` chữ / dim cho khỏi chồng |
+| `STRAY` / `COUNT` | xem lại tọa độ / danh mục: vẽ thêm phần thiếu, xóa phần thừa |
+| `DIM_STYLE` | dùng dim style `KT-<tỷ lệ>` của mục 4 (`create_dim_style` rồi `set_current_styles`), vẽ lại dim |
+
+3. **Kiểm thêm phần máy không đo được:**
+   - `measure_distance` giữa hai mép lỗ = bề rộng cửa; giữa hai nét tường = 220 / 110.
+   - Đủ dim bốn phía theo mục 4; cửa nằm đúng tường người dùng nói.
+4. **Nhìn lại:** `capture_view` với các handle vừa vẽ.
+
+Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để
+người dùng quyết.
 
 ## 9. Lỗi hay gặp (tránh từ đầu)
 
 - Tự tính tọa độ hai nét tường rồi lệch 1 nét ở góc → dùng `offset_entity` (mục 3).
-- Cung cửa vẽ theo tâm tính nhẩm, đầu cung không chạm mép lỗ → tâm cung **là** điểm bản lề, bán kính **bằng** bề rộng cửa.
+- Cung cửa vẽ theo tâm tính nhẩm, đầu cung không chạm mép lỗ → tâm cung **bắt `end`** vào điểm bản lề, bán kính **bằng** bề rộng cửa.
 - Mép lỗ vượt ra ngoài nét tường, hoặc ngắn hơn bề dày tường → mép lỗ đi đúng từ nét trong tới nét ngoài.
 - Vẽ lên layer `0` vì quên tham số `layer` → mọi lệnh vẽ đều ghi `layer` theo bảng mục 2.
 - Chữ cao theo tỷ lệ 1:100 trong khi người dùng chọn 1:50 → đọc tỷ lệ từ ngữ cảnh mỗi lần, tra bảng mục 4.
