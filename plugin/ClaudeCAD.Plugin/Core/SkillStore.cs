@@ -21,6 +21,24 @@ namespace ClaudeCAD.Plugin.Core
         public string Folder;
         public string File;
         public string Error;            // invalid SKILL.md (shown in the list, not loaded)
+        public bool Admin;              // pushed by the owner (Google Sheet "Gán skill"), not edited since
+        public string AdminName;        // its name on the sheet (the folder is "<name>-admin" when the name was taken)
+        public bool Hidden;             // the owner chose "Ẩn": kept on disk, not listed, never loaded
+        /// <summary>Label next to the name: Admin (pushed by the owner), Default (shipped sample), You (the user's own).</summary>
+        public string Label => Admin ? "Admin" : Builtin ? "Default" : "You";
+        /// <summary>Name to show: the sheet name for an owner skill stored as "&lt;name&gt;-admin".</summary>
+        public string DisplayName => Admin && !string.IsNullOrEmpty(AdminName) ? AdminName : Name;
+    }
+
+    public enum PackChangeKind { Added, Updated, Hidden, Shown, Deleted, Skipped }
+
+    /// <summary>What ApplyPack did to one skill (for the toast / note).</summary>
+    public sealed class PackChange
+    {
+        public PackChangeKind Kind;
+        public string Name;    // sheet name
+        public string Folder;  // library name (may end in -admin)
+        public string Note;
     }
 
     public enum SkillImportStatus { Added, Updated, AlreadyAdded, Conflict, Invalid }
@@ -42,13 +60,13 @@ namespace ClaudeCAD.Plugin.Core
         /// </summary>
         public static List<string> ForChat(List<string> chat, List<string> last, IEnumerable<SkillInfo> library)
         {
-            var names = new HashSet<string>((library ?? Enumerable.Empty<SkillInfo>()).Where(k => k.Error == null).Select(k => k.Name), StringComparer.Ordinal);
+            var names = new HashSet<string>((library ?? Enumerable.Empty<SkillInfo>()).Where(k => k.Error == null && !k.Hidden).Select(k => k.Name), StringComparer.Ordinal);
             return Choice(chat, last, library).Where(names.Contains).ToList();
         }
 
         /// <summary>The choice itself (chat ?? most recent ?? enabled own skills), not filtered by what exists now.</summary>
         public static List<string> Choice(List<string> chat, List<string> last, IEnumerable<SkillInfo> library) =>
-            Clean(chat ?? last ?? (library ?? Enumerable.Empty<SkillInfo>()).Where(k => k.Error == null && k.Enabled && !k.Builtin).Select(k => k.Name).ToList());
+            Clean(chat ?? last ?? (library ?? Enumerable.Empty<SkillInfo>()).Where(k => k.Error == null && k.Enabled && !k.Builtin && !k.Admin && !k.Hidden).Select(k => k.Name).ToList());
 
         /// <summary>"+" (use = true) / "−" (use = false) on one skill.</summary>
         public static List<string> Toggle(List<string> current, string name, bool use)
@@ -154,6 +172,12 @@ namespace ClaudeCAD.Plugin.Core
             public bool Enabled = true;
             public DateTime? Added;
             public string Source;
+            public string Origin;   // "admin" = pushed by the owner; null = the user's own (or a shipped sample)
+            public string AdminName;
+            public string Rev;
+            public string PackSha;  // sha256 of the skill as the owner sent it
+            public string FileSha;  // sha256 of the SKILL.md written: a different file means the user edited it
+            public bool Hidden;
         }
 
         private Dictionary<string, Entry> LoadRegistry()
@@ -171,6 +195,12 @@ namespace ClaudeCAD.Plugin.Core
                     if (o.TryGetValue("enabled", out var en) && en is bool b) e.Enabled = b;
                     if (o.TryGetValue("added", out var ad) && ad is string a && DateTime.TryParse(a, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var t)) e.Added = t;
                     if (o.TryGetValue("source", out var src)) e.Source = src as string;
+                    if (o.TryGetValue("origin", out var og)) e.Origin = og as string;
+                    if (o.TryGetValue("adminName", out var an)) e.AdminName = an as string;
+                    if (o.TryGetValue("rev", out var rv)) e.Rev = rv as string;
+                    if (o.TryGetValue("packSha", out var ps)) e.PackSha = ps as string;
+                    if (o.TryGetValue("fileSha", out var fs)) e.FileSha = fs as string;
+                    if (o.TryGetValue("hidden", out var hd) && hd is bool h) e.Hidden = h;
                     map[e.Name] = e;
                 }
             }
@@ -188,12 +218,25 @@ namespace ClaudeCAD.Plugin.Core
             {
                 ["version"] = 1,
                 ["note"] = "Danh sách skill của ClaudeCAD (quản lý bằng nút Skill / + Add skill trên khung chat).",
-                ["skills"] = entries.OrderBy(e => e.Name, StringComparer.Ordinal).Select(e => (object)new Dictionary<string, object>
+                ["skills"] = entries.OrderBy(e => e.Name, StringComparer.Ordinal).Select(e =>
                 {
-                    ["name"] = e.Name,
-                    ["enabled"] = e.Enabled,
-                    ["added"] = e.Added?.ToString("o", CultureInfo.InvariantCulture),
-                    ["source"] = e.Source,
+                    var o = new Dictionary<string, object>
+                    {
+                        ["name"] = e.Name,
+                        ["enabled"] = e.Enabled,
+                        ["added"] = e.Added?.ToString("o", CultureInfo.InvariantCulture),
+                        ["source"] = e.Source,
+                    };
+                    if (e.Origin != null)
+                    {
+                        o["origin"] = e.Origin;
+                        o["adminName"] = e.AdminName;
+                        o["rev"] = e.Rev;
+                        o["packSha"] = e.PackSha;
+                        o["fileSha"] = e.FileSha;
+                    }
+                    if (e.Hidden) o["hidden"] = true; // read by the sidecar too (agent/src/agent/skills.ts)
+                    return (object)o;
                 }).ToList(),
             };
             var tmp = RegistryPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -237,9 +280,19 @@ namespace ClaudeCAD.Plugin.Core
                     reg[folder] = e;
                     changed = true;
                 }
+                if (e.Origin == AdminOrigin && e.FileSha != null && FileSha(file) != e.FileSha)
+                {
+                    // the user edited an owner skill: from now on it is theirs (no more updates / hide / delete)
+                    Logger.Info($"skill {folder}: edited by the user, now a You skill");
+                    e.Origin = null; e.AdminName = null; e.Rev = null; e.PackSha = null; e.FileSha = null;
+                    changed = true;
+                }
                 info.Enabled = e.Enabled;
                 info.Added = e.Added;
                 info.Source = e.Source;
+                info.Admin = e.Origin == AdminOrigin;
+                info.AdminName = info.Admin ? e.AdminName : null;
+                info.Hidden = info.Admin && e.Hidden;
                 result.Add(info);
             }
             // forget registry entries whose folder is gone
@@ -372,5 +425,106 @@ namespace ClaudeCAD.Plugin.Core
         }
 
         public string SkillFile(string name) => Path.Combine(Root, name, "SKILL.md");
+
+        // ------------------------------------------------------------------ skills pushed by the owner (v0.9.6)
+
+        public const string AdminOrigin = "admin";
+
+        private static string FileSha(string file)
+        {
+            try { return SkillPackLogic.Sha256(System.IO.File.ReadAllBytes(file)); }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Applies a verified pack (docs/ke-hoach-day-skill.md §4.3). Only Admin skills are touched: a You or
+        /// Default skill of the same name is kept and the owner's copy goes to "&lt;name&gt;-admin". Skills missing
+        /// from the pack stay as they are. New skills are not put into any chat (the user presses +).
+        /// </summary>
+        public List<PackChange> ApplyPack(IEnumerable<PackSkill> skills)
+        {
+            var changes = new List<PackChange>();
+            Directory.CreateDirectory(Root);
+            Scan(); // registers new folders and turns edited Admin skills into You skills first
+            var reg = LoadRegistry();
+            foreach (var s in skills ?? Enumerable.Empty<PackSkill>())
+            {
+                var mine = reg.Values.FirstOrDefault(e => e.Origin == AdminOrigin && e.AdminName == s.Name
+                    && System.IO.File.Exists(SkillFile(e.Name)));
+                try
+                {
+                    if (s.Act == PackSkill.Delete)
+                    {
+                        if (mine == null) continue;
+                        var dir = Path.Combine(Root, mine.Name);
+                        if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                        reg.Remove(mine.Name);
+                        changes.Add(new PackChange { Kind = PackChangeKind.Deleted, Name = s.Name, Folder = mine.Name });
+                        continue;
+                    }
+                    bool hide = s.Act == PackSkill.Hide;
+                    if (mine != null)
+                    {
+                        if (mine.PackSha != s.Sha256 || mine.Rev != s.Rev)
+                        {
+                            mine.FileSha = WriteSkill(mine.Name, s.Md);
+                            mine.PackSha = s.Sha256;
+                            mine.Rev = s.Rev;
+                            if (!hide) changes.Add(new PackChange { Kind = PackChangeKind.Updated, Name = s.Name, Folder = mine.Name });
+                        }
+                        if (mine.Hidden != hide)
+                        {
+                            mine.Hidden = hide;
+                            changes.Add(new PackChange { Kind = hide ? PackChangeKind.Hidden : PackChangeKind.Shown, Name = s.Name, Folder = mine.Name });
+                        }
+                        continue;
+                    }
+                    var folder = s.Name;
+                    if (Directory.Exists(Path.Combine(Root, folder)) || reg.ContainsKey(folder))
+                    {
+                        folder = s.Name + SkillPackLogic.AdminSuffix; // keep both: the user's skill and the owner's
+                        if (Directory.Exists(Path.Combine(Root, folder)) || reg.ContainsKey(folder))
+                        {
+                            changes.Add(new PackChange { Kind = PackChangeKind.Skipped, Name = s.Name, Folder = folder, Note = $"tên \"{s.Name}\" và \"{folder}\" đều đã có skill của người dùng" });
+                            continue;
+                        }
+                    }
+                    var sha = WriteSkill(folder, s.Md);
+                    reg[folder] = new Entry
+                    {
+                        Name = folder, Enabled = true, Added = DateTime.Now, Source = "Chủ plugin (Admin)",
+                        Origin = AdminOrigin, AdminName = s.Name, Rev = s.Rev, PackSha = s.Sha256, FileSha = sha, Hidden = hide,
+                    };
+                    if (!hide) changes.Add(new PackChange { Kind = PackChangeKind.Added, Name = s.Name, Folder = folder });
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn($"pushed skill {s.Name}: {ex.Message}");
+                    changes.Add(new PackChange { Kind = PackChangeKind.Skipped, Name = s.Name, Folder = mine?.Name ?? s.Name, Note = ex.Message });
+                }
+            }
+            SaveRegistry(reg.Values);
+            return changes;
+        }
+
+        /// <summary>Writes &lt;folder&gt;\SKILL.md through a temp folder (no half-written skill). Returns the file's sha256.</summary>
+        private string WriteSkill(string folder, string md)
+        {
+            var content = EnsureName(md, folder);
+            var bytes = new UTF8Encoding(false).GetBytes(content);
+            var dir = Path.Combine(Root, folder);
+            var tmp = Path.Combine(Root, "_tmp-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tmp);
+            System.IO.File.WriteAllBytes(Path.Combine(tmp, "SKILL.md"), bytes);
+            if (Directory.Exists(dir))
+            {
+                var file = Path.Combine(dir, "SKILL.md");
+                if (System.IO.File.Exists(file)) System.IO.File.Replace(Path.Combine(tmp, "SKILL.md"), file, null, true);
+                else System.IO.File.Move(Path.Combine(tmp, "SKILL.md"), file);
+                Directory.Delete(tmp, true);
+            }
+            else Directory.Move(tmp, dir);
+            return SkillPackLogic.Sha256(bytes);
+        }
     }
 }
