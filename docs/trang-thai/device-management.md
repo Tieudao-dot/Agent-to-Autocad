@@ -1,6 +1,13 @@
 # Trạng thái nhánh `claude/device-management` (bảo mật, khóa key & quản lý thiết bị)
 
-san-sang-gop: 21b4655
+san-sang-gop: 9ea7e33
+
+
+## Mới nhất: tách bí mật Apps Script ra BiMat.gs (commit `9ea7e33`, dựa trên `release-0.9.5` @5b3cedb)
+
+- Chỉ tách bí mật, **không** kèm "báo gỡ cài đặt" (phần đó vẫn hoãn, nằm ở `53bb1bf`, đã revert trên `release-0.9.5`).
+- `Code.gs.template` giữ tên, bỏ 3 dòng bí mật, thêm `secretsMissing()`; `BiMat.gs.template` mới; `make-apps-script.mjs` sinh `BiMat.gs`; test VM 137/137; `activation/README.md` (cài 2 file + cách chuyển một lần).
+- Người dùng: thread đẩy skill (`claude/day-skill-theo-may`) gộp commit này trước, rồi viết hướng dẫn triển khai **một lần** cho chủ dự án (tạo `BiMat` + dán `Code.gs` mới). Gộp thử: code + test sạch, chỉ chồng `activation/README.md` đoạn "Cập nhật lên bản có đẩy skill" → lấy đoạn 2 file của nhánh này + giữ 2 ý của nhánh skill (`kiemTra` tạo trang Skill / Gán skill; làm máy chủ trước khi phát hành 0.9.6).
 
 ## Phần chênh so với lần gộp trước vào `claude/release-0.9.5`
 
