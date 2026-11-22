@@ -203,3 +203,17 @@ Còn chờ: tài liệu chuẩn công ty (câu 6).
 - `bo-cai/README.md` chưa sửa: thay đổi chưa vào phiên bản nào, dòng lịch sử phiên bản do thread phát hành ghi khi
   gộp.
 - Khi có chuẩn công ty: thay số trong các bảng mục 2, 4 (và mục ký hiệu) của từng skill, giữ nguyên định dạng bảng.
+
+## 8. Nhãn skill Admin / Default / You: khách sửa skill (22/11/2026)
+
+Nhãn có từ tính năng đẩy skill theo máy (`claude/day-skill-theo-may`, đã gộp vào `claude/release-0.9.5`, chưa vào
+`main`). Chủ dự án chốt cách xử lý khi khách sửa skill:
+
+1. Áp dụng cho **cả Default và Admin**: sửa thì sinh **một skill mới nhãn You**, bản gốc giữ nguyên và vẫn nhận cập
+   nhật / Ẩn / Xóa. Thay quy tắc cũ "sửa Admin thì thành You".
+2. Cách tạo: **chép trước rồi mở**. Bấm Sửa thì plugin chép sang `<tên>-sua` (nhãn You) rồi mở bản chép, bản gốc
+   không bị ghi.
+3. Đoạn chat hiện tại đang dùng bản gốc thì **tự đổi sang bản You**; đoạn chat khác giữ nguyên.
+4. Bản khách sửa **không báo về chủ plugin**. Hiện đã đúng, giữ nguyên.
+
+Đã chuyển cho thread "đẩy skill theo máy" (`session_01D56HmERgjnrwP5MTbkGKro`) làm.
