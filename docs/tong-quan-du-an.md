@@ -35,7 +35,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
    - chép giấy phép sang máy khác và các mục còn lại: K-11 … K-16.
 2. **AutoCAD 2027:** đã ghi là hỗ trợ nhưng chưa thử trên máy thật. Nên thử khi có máy hoặc bản dùng thử.
 3. **BiMat + ghi "Đã gỡ lúc":** triển khai khi cậu muốn. Cách làm: cập nhật máy chủ Google ở thread bảo mật, rồi gộp vào bản sau.
-4. **Đẩy skill theo máy (22/11):** code xong ở `claude/day-skill-theo-may` @874d2e4, rà bảo mật xong, không có lỗi chặn. Bước triển khai Apps Script chờ thread bảo mật tách `BiMat.gs`. Sau đó gộp vào 0.9.6 (thread gộp nhánh). Hai commit cuối chưa chạy CI.
+4. **Đẩy skill theo máy (22/11):** sẵn sàng gộp, `claude/day-skill-theo-may` @b712ea6, CI xanh (run 45006820369). Đã tách `BiMat.gs` (9ea7e33). **Chờ cậu làm 1 lần trên Google:** tách BiMat, dán đè Code.gs, chạy `kiemTra`, tạo Phiên bản mới. Hướng dẫn ở `activation/README.md`. Gộp vào 0.9.6 khi cậu đồng ý.
 5. **Tự kiểm trước khi báo xong:** code xong ở `claude/tu-kiem-tra` @eecf3a9, CI xanh. Ngày 22/11 cậu giao thêm cho thread này gói "Công cụ vẽ & tự kiểm" do thread nghiên cứu Skill đề xuất: bắt điểm theo đối tượng, verify 12 mã, công cụ vẽ tự áp chuẩn. Cậu đã duyệt kế hoạch (`docs/ke-hoach-tu-kiem.md` mục 9, @2207c47). Ước tính 4,5–5,5 ngày công, 14 mã lỗi, không thêm PostToolUse. Layer ngoài bảng chuẩn mặc định bị từ chối, trừ khi người dùng tự nêu tên hoặc chọn bằng nút Layer.
 
 ## 3. Việc sau phát hành
@@ -147,6 +147,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Đẩy skill sẵn sàng gộp (@b712ea6, CI xanh run 45006820369, đã tách `BiMat.gs`). Chờ cậu cập nhật máy chủ Google trước khi phát hành 0.9.6 |
 | 22/11 | Thread Tự kiểm: cậu duyệt kế hoạch đợt 2 (@2207c47, 4,5–5,5 ngày công). Thread này sẽ gộp `claude/nghien-cuu-skill` @6313359 vào nhánh của nó và sửa mục kiểm tra cùng ví dụ cửa của 3 skill mẫu; đã báo thread nghiên cứu tránh 2 chỗ đó |
 | 22/11 | Thread nghiên cứu Skill viết lại cấu trúc 3 skill mẫu (`claude/nghien-cuu-skill` @6313359, giữ số liệu cũ, chưa chạy CI). Đã chuyển cho thread gộp nhánh việc bộ cài không cập nhật skill mẫu trên máy đã cài. Chờ cậu gửi chuẩn công ty |
 | 22/11 | Gói "Công cụ vẽ & tự kiểm" (thiết kế ở `claude/nghien-cuu-skill` @670dfb2) giao cho thread Tự kiểm làm tiếp trên `claude/tu-kiem-tra`, không mở thread mới |
