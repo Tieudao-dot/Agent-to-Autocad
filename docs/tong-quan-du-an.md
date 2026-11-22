@@ -35,7 +35,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
    - chép giấy phép sang máy khác và các mục còn lại: K-11 … K-16.
 2. **AutoCAD 2027:** đã ghi là hỗ trợ nhưng chưa thử trên máy thật. Nên thử khi có máy hoặc bản dùng thử.
 3. **BiMat + ghi "Đã gỡ lúc":** triển khai khi cậu muốn. Cách làm: cập nhật máy chủ Google ở thread bảo mật, rồi gộp vào bản sau.
-4. **Đẩy skill theo máy (22/11):** sẵn sàng gộp, `claude/day-skill-theo-may` @b712ea6, CI xanh (run 45006820369). Đã tách `BiMat.gs` (9ea7e33). **Chờ cậu làm 1 lần trên Google:** tách BiMat, dán đè Code.gs, chạy `kiemTra`, tạo Phiên bản mới. Hướng dẫn ở `activation/README.md`. Gộp vào 0.9.6 khi cậu đồng ý.
+4. **Đẩy skill theo máy (22/11):** sẵn sàng gộp, `claude/day-skill-theo-may` @b712ea6, CI xanh (run 45006820369). **Máy chủ Google đã cập nhật** (đã tách BiMat, Code.gs mới, Phiên bản mới cùng link; `ping` trả `ready:true`). Còn chờ cậu quyết gộp vào 0.9.6.
 5. **Tự kiểm trước khi báo xong:** đợt 2 xong, `claude/tu-kiem-tra` @1eacfe3, CI xanh (run 45009114005). Gồm bắt điểm theo đối tượng + `get_snap_points`, `verify_drawing` 14 mã đọc bảng SKILL.md, tool vẽ tự áp chuẩn layer / chữ; đã gộp 3 skill mẫu mới. Lõi 236/236, trợ lý 172/172. Danh sách tool tăng ~2,5k token mỗi lượt (có cache). **Chờ cậu:** thử thật phần I checklist (I10–I13), rồi quyết gộp vào bản nào.
 
 ## 3. Việc sau phát hành
@@ -147,6 +147,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Cậu cập nhật máy chủ Google cho đẩy skill: tách BiMat, dán Code.gs mới, chạy `kiemTra`, tạo Phiên bản mới cùng link. `ping` trả `ready:true`. Bản 0.9.5 vẫn chạy bình thường |
 | 22/11 | Tự kiểm đợt 2 xong (@1eacfe3, CI xanh run 45009114005; lõi 236, trợ lý 172). Chờ cậu thử thật phần I và quyết gộp |
 | 22/11 | Đẩy skill sẵn sàng gộp (@b712ea6, CI xanh run 45006820369, đã tách `BiMat.gs`). Chờ cậu cập nhật máy chủ Google trước khi phát hành 0.9.6 |
 | 22/11 | Thread Tự kiểm: cậu duyệt kế hoạch đợt 2 (@2207c47, 4,5–5,5 ngày công). Thread này sẽ gộp `claude/nghien-cuu-skill` @6313359 vào nhánh của nó và sửa mục kiểm tra cùng ví dụ cửa của 3 skill mẫu; đã báo thread nghiên cứu tránh 2 chỗ đó |
