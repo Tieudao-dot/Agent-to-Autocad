@@ -1,7 +1,7 @@
 # Kế hoạch: tự kiểm trên bản vẽ trước khi báo xong
 
 Thread "ClaudeCAD — tự kiểm trước khi báo xong", nhánh `claude/tu-kiem-tra`, 22/11/2026. Dựa trên
-`docs/nghien-cuu-skill.md` (lớp C, D và thẻ "Tự kiểm"). **Chưa code**: chờ chủ dự án duyệt kế hoạch này.
+`docs/nghien-cuu-skill.md` (lớp C, D và thẻ "Tự kiểm"). Chủ dự án đã trả lời các câu ở mục 7; chờ duyệt kế hoạch rồi mới code.
 
 Phạm vi thread: lớp **kiểm** (`verify_drawing`), **hook** bắt buộc kiểm, **thẻ Tự kiểm**. Không thuộc thread này:
 bắt điểm `get_snap_points` (lớp A), áp chuẩn lúc vẽ / `standard.json` (lớp B), viết lại skill (lớp E).
@@ -50,7 +50,7 @@ Chỉ những mã **không cần chuẩn dạng dữ liệu** (lớp B). Bốn m
 | `STRAY` | Đối tượng của lượt nằm xa cụm chính > 3 lần kích thước cụm | Không |
 | `COUNT` | Số đối tượng theo layer khác `expect` Claude khai trước khi vẽ (chỉ khi có `expect`) | Không |
 
-- **Dung sai trùng điểm:** 0,01 mm (cố định). **Ngưỡng khe hở:** chờ cậu chọn (mục 7), đề xuất 50 mm.
+- **Dung sai trùng điểm:** 0,01 mm (cố định). **Ngưỡng khe hở:** 10 mm (cậu chọn 22/11).
 - **Loại trừ báo nhầm:** layer có chữ `DOOR` / `WIND` / `CUA` không tính `GAP` (lỗ cửa cố ý); skill tắt được
   từng mã bằng dòng `verify: off GAP,TEXT_OVERLAP` trong `SKILL.md` (đợt đầu chỉ đọc dòng này, chưa đọc bảng).
 - **Kết quả trả về gọn:** `{checked, issues:[{code, handles, message, fix, auto_fixable}], fixed:[…]}`, tối đa
@@ -125,4 +125,9 @@ thêm 1–2 vòng sửa. Lượt chỉ đọc không tốn thêm.
 3. Cho `auto_fix` các lỗi an toàn không (nối khe, đóng polyline, xóa trùng / dài 0).
 4. Thẻ "Tự kiểm" do thread này làm, hay chuyển thread Giao diện & UX.
 
-Quyết định ghi lại ở đây khi có.
+**Đã quyết (22/11/2026):**
+
+1. Hook **bắt tự sửa, tối đa 2 vòng**; hết vòng vẫn còn lỗi thì cho kết thúc và phải liệt kê lỗi còn lại.
+2. Ngưỡng khe hở **10 mm**.
+3. **Cho `auto_fix`** các lỗi an toàn, chỉ trên đối tượng của lượt, cùng một lần U.
+4. Thẻ "Tự kiểm" **do thread này làm**.
