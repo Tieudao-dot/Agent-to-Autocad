@@ -293,7 +293,7 @@ Chi phí cho người dùng: bắt điểm không thêm lần gọi nào; `get_s
   - Lõi 236/236: thêm `SnapRulesTests` 15 và `DrawingStandardTests` 23 (đọc thẳng 3 skill mẫu); bỏ 1 test của
     `ignore` vì tính năng đã gỡ.
   - Trợ lý 172/172: thêm `snap.test.ts`; `skills.test.ts` kiểm thêm bắt điểm, mục kiểm tra, định dạng bảng layer.
-  - Build net48 / net8 / net10 đạt trên Linux.
+  - Build net48 / net8 / net10 đạt trên Linux. CI Windows run 45009114005 (`release: false`) xanh.
 - **Còn lại:**
   - Bảng chữ chỉ có ở skill kiến trúc, nên `TEXT_HEIGHT` / `DIM_STYLE` chưa chạy với MEP / hạ tầng.
   - Số liệu chuẩn công ty: chờ chủ dự án gửi.
