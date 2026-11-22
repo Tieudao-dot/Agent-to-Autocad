@@ -57,7 +57,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | [Kiểm thử](https://claude.ai/code/session_01D56HmG5SsqRGRPe9bHKUad) | Checklist thử thật, tự kiểm tra | `claude/test-checklist` (đã gộp) | Checklist ~20 phút, tự kiểm tra mở rộng | Đã lưu trữ (18/11) | ~$8 |
 | [AutoCAD 2026/2027](https://claude.ai/code/session_01D56HmFfmat4UZDMPVZar76) | Bản AutoCAD mới, build .NET 10 | `claude/acad-2026-2027` (đã gộp) | Hỗ trợ 2026 (R25.1) + 2027 (R26.0), sửa `install.ps1` | Đã lưu trữ (18/11). 2027 chưa thử trên máy thật | ~$7 |
 | [Dùng thử & Autodesk](https://claude.ai/code/session_01D56HmGdeNRHtH8Vob4cXGr) | Bản dùng thử AutoCAD, case Autodesk 26568211 | — | Bản dùng thử từ 10/11, khoảng 30 ngày | Rảnh, chờ email Autodesk | ~$1 |
-| [Nghiên cứu Skill](https://claude.ai/code/session_01D56HmG6vg6SvpZDrVxxKT7) | Nghiên cứu, đề xuất về Skill | `claude/nghien-cuu-skill` | `docs/nghien-cuu-skill.md` | Xong. Chờ chuẩn vẽ thật của công ty | — |
+| [Nghiên cứu Skill](https://claude.ai/code/session_01D56HmG6vg6SvpZDrVxxKT7) | Nghiên cứu, đề xuất về Skill | `claude/nghien-cuu-skill` | `docs/nghien-cuu-skill.md`, viết lại 3 skill mẫu (6313359) | Xong. Chờ chuẩn vẽ thật của công ty | — |
 | [Tự kiểm trước khi báo xong](https://claude.ai/code/session_01D56HmJy4Urvum4vU5EmdwS) | Plugin tự kiểm bản vẽ trước khi báo xong | `claude/tu-kiem-tra` | `verify_drawing`, hook trước khi kết thúc lượt, thẻ Tự kiểm (eecf3a9, CI xanh) | Để sau | — |
 | [Đẩy skill theo máy](https://claude.ai/code/session_01D56HmERgjnrwP5MTbkGKro) | Gán skill theo mã máy trong Sheet, gói ký số `CCP1` | `claude/day-skill-theo-may` | Code xong, rà bảo mật xong (874d2e4) | Chờ thread bảo mật tách `BiMat.gs`, rồi triển khai Apps Script | — |
 
@@ -147,6 +147,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Thread nghiên cứu Skill viết lại cấu trúc 3 skill mẫu (`claude/nghien-cuu-skill` @6313359, giữ số liệu cũ, chưa chạy CI). Đã chuyển cho thread gộp nhánh việc bộ cài không cập nhật skill mẫu trên máy đã cài. Chờ cậu gửi chuẩn công ty |
 | 22/11 | Gói "Công cụ vẽ & tự kiểm" (thiết kế ở `claude/nghien-cuu-skill` @670dfb2) giao cho thread Tự kiểm làm tiếp trên `claude/tu-kiem-tra`, không mở thread mới |
 | 22/11 | Thread đẩy skill code xong (`claude/day-skill-theo-may` @874d2e4; CI xanh ở `08f4838`, run 45004919780). Rà bảo mật xong; cậu chọn tách `BiMat.gs`, việc này đã chuyển cho thread bảo mật. Triển khai Apps Script chờ commit đó, rồi gộp vào 0.9.6 |
 | 18/11 | **Phát hành v0.9.5**: cậu merge PR #5, CI tự phát hành (run 44319064734). Code giống hệt bộ cài 11/11 đã thử, chỉ khác số phiên bản. AutoCAD 2027 ghi là hỗ trợ (chưa thử thật). BiMat để sau |
