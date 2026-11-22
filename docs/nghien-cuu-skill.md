@@ -185,3 +185,20 @@ Còn chờ: tài liệu chuẩn công ty (câu 6).
 - Ngưỡng khe hở có thể ghi đè trong skill bằng dòng `Ngưỡng khe hở: <số> mm` ở mục "Kiểm tra trước khi báo xong".
 - Khi `verify_drawing` và bắt điểm có rồi, cập nhật lại mục kiểm tra của 3 skill (thay chuỗi lệnh đo thủ công bằng
   một lệnh `verify_drawing`) và test `agent/test/skills.test.ts` (chỉ cho nhắc tool có thật).
+
+## 7. Lớp E đã làm (22/11/2026)
+
+- 3 skill mẫu viết lại phần cấu trúc, **giữ nguyên số liệu cũ**: thêm "Danh mục trước khi vẽ", ghi nhớ số đối
+  tượng layer `0`, cách dựng hình bằng `offset_entity` / `trim_entities` / `extend_entities`, mục "Kiểm tra trước
+  khi báo xong" bằng lệnh đo có sẵn (dòng `Ngưỡng khe hở: 10 mm`, tối đa 2 vòng sửa), "Lỗi hay gặp", "Báo cáo
+  cuối lượt" có dòng "Tự kiểm". Ví dụ kiến trúc viết lại theo 4 bước: polyline kín → offset → trim lỗ cửa → cửa, dim,
+  chữ. Đầu mỗi skill ghi rõ "số liệu chưa được duyệt theo chuẩn công ty".
+- `skills/README.md` có mục "Viết skill để Claude vẽ đúng và tự kiểm lại"; `docs/huong-dan-su-dung.md` cập nhật theo.
+- Đã soát bằng script làm đúng các kiểm tra của `agent/test/skills.test.ts` (frontmatter, mục chuẩn bị, chỉ nhắc
+  tool có thật, JSON hợp lệ): cả 3 skill đạt. Chưa chạy `npm test` và chưa thử trên AutoCAD thật.
+- **Lưu ý phát hành:** bộ cài chép skill với cờ `onlyifdoesntexist` (`installer/*.iss`), nên máy đã cài sẽ **không
+  nhận** bản skill mẫu mới khi cập nhật, chỉ máy cài mới mới có. Việc này thuộc thread gộp nhánh & phát hành (đã
+  chuyển).
+- `bo-cai/README.md` chưa sửa: thay đổi chưa vào phiên bản nào, dòng lịch sử phiên bản do thread phát hành ghi khi
+  gộp.
+- Khi có chuẩn công ty: thay số trong các bảng mục 2, 4 (và mục ký hiệu) của từng skill, giữ nguyên định dạng bảng.
