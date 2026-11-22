@@ -1,6 +1,6 @@
-# Ghi chú phát hành ClaudeCAD 0.9.6 — BẢN NHÁP
+# Ghi chú phát hành ClaudeCAD 0.9.6
 
-*Soạn 22/11/2026 trên nhánh gộp. Bản 0.9.6 mới là bộ cài thử, chưa phát hành. Nội dung đầy đủ từng nhóm:
+*Soạn 22/11/2026 trên nhánh gộp. Phát hành 22/11/2026 theo quyết định của chủ dự án, chưa qua bước thử trên AutoCAD thật. Nội dung đầy đủ từng nhóm:
 [`ban-0.9.6.md`](ban-0.9.6.md) (nếu có trên nhánh), kế hoạch đẩy skill: [`ke-hoach-day-skill.md`](ke-hoach-day-skill.md).*
 
 ---
@@ -43,7 +43,7 @@
 
 ## B. Dòng "Lịch sử phiên bản" trong `bo-cai/README.md`
 
-Đã có sẵn dòng `0.9.6 (bản thử, chưa phát hành)`. Khi phát hành: đổi nhãn thành `**0.9.6**` và bỏ chữ "bản thử".
+Dòng `**0.9.6**` đã có trong bảng.
 
 ---
 
