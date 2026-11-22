@@ -28,10 +28,11 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Bộ cài | Phiên bản | Trạng thái | Nguồn | Hạn tải |
 | --- | --- | --- | --- | --- |
-| **Bản thử 0.9.6 (lần 2) — 22/11/2026** | 0.9.6 | 🧪 **bản thử, chưa phát hành** | `claude/release-0.9.5` @ `5fe6adc`, run 45019784560 | 20/02/2027 |
-| Bản thử 0.9.6 (lần 1) — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi bản thử 0.9.6 lần 2 | `23e8ed6`, run 45011984540 | 20/02/2027 |
+| **v0.9.6 — 22/11/2026** | 0.9.6 | ✅ **dùng được — bản đang dùng** | `main` @ `8e38ee5`, tag `v0.9.6`, run 45034681870 | không hết hạn |
+| Bản thử 0.9.6 (lần 2) — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.6 (cùng code) | `claude/release-0.9.5` @ `5fe6adc`, run 45019784560 | 20/02/2027 |
+| Bản thử 0.9.6 (lần 1) — 22/11/2026 | 0.9.6 | 🔁 thay thế (bởi bản thử lần 2, rồi v0.9.6) | `23e8ed6`, run 45011984540 | 20/02/2027 |
 | Bản thử 22/11/2026 (`5838cf1`) | 0.9.5 trong bộ cài (nội dung mới hơn v0.9.5) | 🔁 thay thế bởi bản thử 0.9.6 | `claude/release-0.9.5` @ `5838cf1`, run 45007148184 | theo CI (~90 ngày) |
-| **v0.9.5 — 18/11/2026** | 0.9.5 | ✅ **dùng được — bản đang dùng** | `main` @ `fc06894`, tag `v0.9.5`, run 44319064734 | không hết hạn |
+| v0.9.5 — 18/11/2026 | 0.9.5 | 🔁 thay thế bởi v0.9.6 (vẫn tải được) | `main` @ `fc06894`, tag `v0.9.5`, run 44319064734 | không hết hạn |
 | 11/11/2026 | 0.9.4 trong csproj, nội dung tích hợp 0.9.5 | 🔁 thay thế bởi v0.9.5 (cùng code), đã giao client | `claude/release-0.9.5` @ `7f1a278`, run 43000757496 | 09/02/2027 |
 | 15/11/2026 | như trên + BiMat | ⏸ tạm hoãn, không giao | `76f1cce`, run 43665981360 | (chưa ghi) |
 | Trước 11/11/2026 | thử 0.9.4 / 0.9.5 | ⛔ không dùng | run 42993287282 trở về trước | — |
@@ -39,11 +40,42 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 ---
 
-## Bản thử 0.9.6 (lần 2) — 22/11/2026 (bản thử, chưa phát hành)
+## v0.9.6 — 22/11/2026 (phát hành chính thức)
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | 🧪 **Bản thử, chưa phát hành** — không giao client. Bản cho người dùng vẫn là v0.9.5 |
+| Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Ngày phát hành | 22/11/2026 (14:56 UTC) |
+| Ngày thử | Cùng code với bộ cài thử 0.9.6 lần 2 (`5fe6adc`) |
+| Ngày giao | — |
+| Phiên bản | **0.9.6** |
+| Nguồn | `main` @ `8e38ee5` (PR #7 từ `claude/release-0.9.5` @ `6c32102`), tag `v0.9.6`. CI main run **45034681870** |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.6/ClaudeCAD-Setup.exe (tải trực tiếp, không cần đăng nhập). Link "bản mới nhất" `releases/latest/download/ClaudeCAD-Setup.exe` giờ tải bản này |
+| Kiểm tra tệp | 141 432 571 byte · SHA-256 `6D6D4F9AB81BCB2465FBBA404BE0BA1CF138472AF7CA100B76266840F60867DA` (khớp mã GitHub ghi cho tệp) |
+| Tệp khác (cho IT) | `ClaudeCAD-0.9.6.zip`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.6/ClaudeCAD-0.9.6.zip · `install.ps1`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.6/install.ps1 |
+| Hạn tải | Không hết hạn |
+| AutoCAD | 2022–2027 (2027 chưa thử trên máy thật) |
+| Thay bản nào | v0.9.5 và hai bộ cài thử 0.9.6 |
+
+**Gồm (so với v0.9.5):** chủ plugin đẩy skill theo máy (nhãn Admin / Default / You); Claude tự kiểm bản vẽ trước khi
+báo xong; 3 skill mẫu viết lại + tự cập nhật nếu người dùng chưa sửa; bấm Sửa trên skill Default / Admin thì chép
+sang `<tên>-sua`, bản gốc vẫn nhận cập nhật.
+
+**Cài đặt:** như [bản 11/11](#cài-đặt-bản-1111). Khác / lưu ý:
+
+- **Bắt buộc đóng AutoCAD trước.** AutoCAD còn mở thì bộ cài kẹt ở "Closing applications" với hộp lỗi tiếng Anh:
+  đóng AutoCAD rồi bấm **Try again**.
+- Chạy `ClaudeCAD-Setup.exe` đè lên bản đang cài (0.9.5 hoặc bản thử 0.9.6): không phải kích hoạt lại.
+- Máy mới hoặc nâng từ 0.9.3: làm trang Kích hoạt như bản 11/11.
+- Kiểm tệp: `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 ở bảng trên.
+
+---
+
+## Bản thử 0.9.6 (lần 2) — 22/11/2026 (thay thế)
+
+| Mục | Giá trị |
+| --- | --- |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.6 (cùng code). Chưa từng phát hành, không giao client |
 | Ngày build | 22/11/2026 |
 | Ngày thử / giao | — / — |
 | Phiên bản | **0.9.6** (⚙ ghi 0.9.6) |
@@ -126,7 +158,7 @@ nhập GitHub). Máy đã kích hoạt thì cài đè không hỏi lại key.
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.6 (22/11/2026); vẫn tải được |
 | Ngày phát hành | 18/11/2026 |
 | Ngày thử | Cùng code với bộ cài 11/11 đã thử ổn ngày 17/11 (chỉ khác số phiên bản) |
 | Ngày giao | — (client đang dùng bản 11/11; link "bản mới nhất" giờ tải bản này) |
