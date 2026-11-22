@@ -216,7 +216,9 @@ Luồng chính chuyển việc ngày 22/11/2026. Thiết kế gốc: `docs/nghie
 - Vẽ lên layer `0` / `Defpoints` thì bị từ chối, kèm gợi ý layer đúng.
 - Layer chuẩn chưa có thì tự tạo đúng màu / nét / lineweight.
 - Chữ không ghi chiều cao thì tự lấy dòng "ghi chú" × tỷ lệ.
-- Layer ngoài bảng: xử lý theo câu hỏi ở mục 9.4.
+- Layer ngoài bảng: mặc định từ chối và gợi ý layer chuẩn. Được vẽ nếu người dùng tự nêu tên layer đó trong tin
+  nhắn của lượt, hoặc đã chọn layer đó bằng nút Layer. Khi đó `verify_drawing` không báo `LAYER_UNKNOWN` cho layer
+  này (mục 9.4).
 - Thêm skill có bảng sai định dạng: plugin báo ngay trong danh sách Skill (dùng cơ chế báo lỗi skill có sẵn).
 
 **D và prompt**
@@ -255,4 +257,5 @@ Chi phí cho người dùng: bắt điểm không thêm lần gọi nào; `get_s
 
 ### 9.4. Câu hỏi cho chủ dự án
 
-1. Vẽ lên layer ngoài bảng chuẩn của skill: từ chối hẳn, hay cho khi người dùng tự nêu tên layer đó?
+1. Vẽ lên layer ngoài bảng chuẩn của skill: từ chối hẳn, hay cho khi người dùng tự nêu tên layer đó? **Đã chốt
+   (22/11):** cho khi người dùng tự nêu tên, hoặc đã chọn layer đó bằng nút Layer.
