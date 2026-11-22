@@ -28,7 +28,8 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Bộ cài | Phiên bản | Trạng thái | Nguồn | Hạn tải |
 | --- | --- | --- | --- | --- |
-| Bản thử 22/11/2026 | 0.9.5 trong bộ cài (nội dung mới hơn v0.9.5) | 🧪 thử nội bộ, chưa phát hành, không giao client | `claude/release-0.9.5` @ `5838cf1`, run 45007148184 | theo CI (~90 ngày) |
+| **Bản thử 0.9.6 — 22/11/2026** | 0.9.6 | 🧪 **bản thử, chưa phát hành** | `claude/release-0.9.5` @ `23e8ed6`, run 45011984540 | 20/02/2027 |
+| Bản thử 22/11/2026 (`5838cf1`) | 0.9.5 trong bộ cài (nội dung mới hơn v0.9.5) | 🔁 thay thế bởi bản thử 0.9.6 | `claude/release-0.9.5` @ `5838cf1`, run 45007148184 | theo CI (~90 ngày) |
 | **v0.9.5 — 18/11/2026** | 0.9.5 | ✅ **dùng được — bản đang dùng** | `main` @ `fc06894`, tag `v0.9.5`, run 44319064734 | không hết hạn |
 | 11/11/2026 | 0.9.4 trong csproj, nội dung tích hợp 0.9.5 | 🔁 thay thế bởi v0.9.5 (cùng code), đã giao client | `claude/release-0.9.5` @ `7f1a278`, run 43000757496 | 09/02/2027 |
 | 15/11/2026 | như trên + BiMat | ⏸ tạm hoãn, không giao | `76f1cce`, run 43665981360 | (chưa ghi) |
@@ -37,11 +38,44 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 ---
 
+## Bản thử 0.9.6 — 22/11/2026 (bản thử, chưa phát hành)
+
+| Mục | Giá trị |
+| --- | --- |
+| Trạng thái | 🧪 **Bản thử, chưa phát hành** — không giao client. Bản cho người dùng vẫn là v0.9.5 |
+| Ngày build | 22/11/2026 |
+| Ngày thử / giao | — / — |
+| Phiên bản | **0.9.6** (⚙ trong khung chat ghi 0.9.6) |
+| Nguồn | Nhánh `claude/release-0.9.5` @ `23e8ed6` (tên nhánh cũ, nội dung 0.9.6). CI `release: false` run **45011984540**, artifact `ClaudeCAD-0.9.6` id **14750885454** (339 741 644 byte cả gói: `ClaudeCAD-Setup.exe`, `ClaudeCAD-0.9.6.zip`, `install.ps1`, `latest.json`) |
+| Link tải | **Không có link tải trực tiếp** (bản thử trên CI, cần đăng nhập GitHub). Tra nội bộ bằng run / artifact id ở trên |
+| Kiểm tra tệp | `ClaudeCAD-Setup.exe`: 141 426 439 byte · SHA-256 `26C532D45014B429EA7EEDE7112410EBC2606CCEC86175E67193C1528090E4DD` (thread phát hành tải về tự tính) |
+| Hạn tải | **20/02/2027** |
+| Thay bản nào | Thay bản thử 22/11 (`5838cf1`, run 45007148184). Không thay v0.9.5 |
+
+**Gồm (so với v0.9.5):**
+
+- Chủ plugin đẩy skill theo máy (nhãn Admin / Default / You).
+- Claude tự kiểm bản vẽ trước khi báo xong (bắt điểm theo đối tượng, `verify_drawing`).
+- 3 skill mẫu viết lại + tự cập nhật trên máy đã cài nếu người dùng chưa sửa.
+
+**Cài đặt (bản thử 0.9.6):**
+
+1. Đăng nhập GitHub, tải gói artifact theo run / artifact id ở trên, giải nén ra ổ máy.
+2. Đóng AutoCAD.
+3. Chạy `ClaudeCAD-Setup.exe` đè lên bản 0.9.5 đang cài — máy đã kích hoạt không hỏi lại key. Máy mới: làm như
+   [bản 11/11](#cài-đặt-bản-1111) (trang Kích hoạt, đăng nhập Claude).
+4. Mở AutoCAD → khung chat tự mở; ⚙ ghi phiên bản 0.9.6.
+5. Kiểm tệp: `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 ở bảng trên.
+
+Cài ngầm và gỡ cài đặt: như bản 11/11.
+
+---
+
 ## Bản thử 22/11/2026 — skill mẫu mới (chưa phát hành)
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | 🧪 **Thử nội bộ** — chưa phát hành, không giao client; chờ chủ dự án quyết nâng phiên bản / phát hành |
+| Trạng thái | 🔁 **Thay thế** bởi bản thử 0.9.6 (22/11, `23e8ed6`). Chưa từng phát hành, không giao client |
 | Ngày build | 22/11/2026 |
 | Ngày thử / giao | — / — |
 | Phiên bản | Bộ cài ghi **0.9.5** (chưa nâng số) nhưng nội dung **khác** bản phát hành v0.9.5 |
