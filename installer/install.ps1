@@ -11,6 +11,7 @@
   - Bundle nguồn: thư mục ClaudeCAD.bundle cạnh script (khi giải nén từ file zip phát hành)
     hoặc bundle\out\ClaudeCAD.bundle (khi chạy trong repo sau `node bundle/make-bundle.mjs`).
   - Khi cài đè bản cũ, skill trong Contents\skills mà cậu đã sửa được GIỮ NGUYÊN; chỉ skill/tệp mới được thêm.
+    Skill mẫu cậu chưa sửa được plugin thay bằng bản mới ở lần mở AutoCAD kế tiếp (bản mẫu: Contents\skills-mau).
 #>
 [CmdletBinding()]
 param(

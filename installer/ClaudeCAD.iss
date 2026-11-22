@@ -56,7 +56,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 ; program files are replaced on upgrade
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Excludes: "Contents\skills\*"; Flags: recursesubdirs createallsubdirs ignoreversion
-; skills: never overwrite files the user may have edited
+; skills: never overwrite files the user may have edited. Newer sample skills reach an existing install through
+; Contents\skills-mau (a program file, copied by the line above): the plugin replaces a sample the user never edited.
 Source: "{#BundleDir}\Contents\skills\*"; DestDir: "{app}\Contents\skills"; Flags: recursesubdirs createallsubdirs onlyifdoesntexist uninsneveruninstall
 
 #define ClaudeExe "{app}\Contents\agent\node_modules\@anthropic-ai\claude-agent-sdk-win32-x64\claude.exe"

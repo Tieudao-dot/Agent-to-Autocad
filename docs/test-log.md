@@ -176,6 +176,8 @@ Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, 
 | S-3 | Chat mới / mở bản vẽ khác chưa có chat → dùng đúng các skill của đoạn chat gần nhất | ⬜ chưa chạy | |
 | S-4 | Hai bản vẽ, mỗi bản một bộ skill khác nhau → chuyển qua lại, danh sách đúng của từng bản vẽ | ⬜ chưa chạy | |
 | S-5 | Sửa SKILL.md rồi lưu → chỉ 1 toast "Skill đã thay đổi" | ⬜ chưa chạy | |
+| S-6 | Máy đang cài 0.9.5, **chưa sửa** skill mẫu: cài đè bản kế tiếp → mở AutoCAD → `Contents\skills\ve-kien-truc\SKILL.md` là bản mới (có mục chuẩn bị + tự kiểm); file `Contents\skills\.claudecad-mau.txt` xuất hiện | ⬜ chưa chạy | |
+| S-7 | Như S-6 nhưng trước khi cập nhật **đã sửa** `ve-mep\SKILL.md` (thêm 1 dòng) → sau cập nhật file đó giữ nguyên dòng của mình, hai skill mẫu còn lại thành bản mới; skill tự thêm không đổi | ⬜ chưa chạy | |
 | D-1 | Đổi tài khoản / lưu API key → trợ lý khởi động lại; Task Manager không còn sót tiến trình claude.exe cũ; khung chat không đứng, không hiện "Mất kết nối" | ⬜ chưa chạy | |
 | D-2 | `CLAUDECHATSELFTEST` đạt hết → thư mục `%TEMP%\ClaudeCAD-selftest-*` bị xóa, ảnh `selftest-*.png` nằm cạnh báo cáo; có mục ✗ → thư mục được giữ | ⬜ chưa chạy | |
 | D-3 | Mở ⚙ hai lần trong 30 giây → lần hai hiện tài khoản ngay | ⬜ chưa chạy | |

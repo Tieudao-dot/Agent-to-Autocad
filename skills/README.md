@@ -45,7 +45,7 @@ Muốn bỏ hẳn một skill khỏi thư viện: xóa thư mục `<tên skill>`
 | File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn |
 | Skill của từng đoạn chat | lưu cùng lịch sử chat của bản vẽ (`%LocalAppData%\ClaudeCAD\chats`); skill của đoạn chat gần nhất trong `%AppData%\ClaudeCAD\settings.json` |
 
-Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill và `skills.json` của cậu.
+Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill cậu đã thêm hay đã sửa, cũng không đụng `skills.json`. Riêng 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) và file README này: nếu cậu **chưa sửa** thì lần mở AutoCAD đầu tiên sau khi cập nhật plugin tự thay bằng bản mẫu mới; đã sửa dù chỉ một chữ thì giữ nguyên bản của cậu (bản mẫu mới nằm ở `Contents\skills-mau` để cậu so và chép tay nếu muốn).
 
 ## Skill mẫu có sẵn
 

@@ -363,6 +363,18 @@ namespace ClaudeCAD.Plugin
         private void InitSkills()
         {
             _skillStore = new SkillStore(SkillsRoot);
+            try
+            {
+                // after an update: newer sample skills replace the installed ones the user never edited
+                string pristine = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(SkillsRoot)) ?? "", SampleSkills.PristineFolderName);
+                var samples = SampleSkills.Refresh(pristine, SkillsRoot);
+                if (samples.Updated.Count > 0) Logger.Info("sample skills updated: " + string.Join(", ", samples.Updated));
+                if (samples.Kept.Count > 0) Logger.Info("sample skills kept (edited by the user): " + string.Join(", ", samples.Kept));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("sample skills not refreshed: " + ex.Message);
+            }
             RefreshSkills();
             try
             {
