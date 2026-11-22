@@ -118,6 +118,22 @@ namespace ClaudeCAD.Plugin.Core
             return result;
         }
 
+        /// <summary>
+        /// True when the installed sample <paramref name="rel"/> differs from the shipped one and is not a known
+        /// older sample (which Refresh updates): the user edited it.
+        /// </summary>
+        public static bool IsEdited(string pristineDir, string skillsDir, string rel, IEnumerable<string> legacy = null)
+        {
+            string source = Path.Combine(pristineDir ?? "", rel.Replace('/', Path.DirectorySeparatorChar));
+            string target = Path.Combine(skillsDir ?? "", rel.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(source) || !File.Exists(target)) return false;
+            string installed = Hash(File.ReadAllBytes(target));
+            if (installed == Hash(File.ReadAllBytes(source))) return false;
+            var known = new HashSet<string>(legacy ?? Legacy, StringComparer.OrdinalIgnoreCase);
+            foreach (string line in ReadRecord(Path.Combine(skillsDir, RecordName))) known.Add(line);
+            return !known.Contains(rel + "|" + installed);
+        }
+
         private static List<string> ReadRecord(string file)
         {
             var lines = new List<string>();

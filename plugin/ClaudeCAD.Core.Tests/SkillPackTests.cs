@@ -223,10 +223,13 @@ namespace ClaudeCAD.Core.Tests
         }
 
         [Fact]
-        public void AnAdminSkillEditedByTheUserBecomesTheirs()
+        public void AnAdminSkillEditedOutsideThePluginWithoutASavedOriginalBecomesTheirs()
         {
+            // normal case (original saved with the pack): split into cty-a-sua, see SkillEditTests.
+            // fallback when the saved original is missing: the edited file becomes a You skill
             var store = new SkillStore(Temp());
             store.ApplyPack(new[] { P("cty-a") });
+            Directory.Delete(Path.Combine(store.Root, SkillStore.OriginalsFolder), true);
             File.WriteAllText(store.SkillFile("cty-a"), Md("cty-a", "Khách sửa."));
             var s = store.Scan().Single();
             Assert.False(s.Admin);

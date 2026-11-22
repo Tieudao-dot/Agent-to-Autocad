@@ -26,6 +26,7 @@ namespace ClaudeCAD.Plugin.Core
         public bool Admin;              // pushed by the owner (Google Sheet "Gán skill"), not edited since
         public string AdminName;        // its name on the sheet (the folder is "<name>-admin" when the name was taken)
         public bool Hidden;             // the owner chose "Ẩn": kept on disk, not listed, never loaded
+        public string EditOf;           // a You copy made from this Default / Admin skill (button Sửa, or an edit outside the plugin)
         /// <summary>Label next to the name: Admin (pushed by the owner), Default (shipped sample), You (the user's own).</summary>
         public string Label => Admin ? "Admin" : Builtin ? "Default" : "You";
         /// <summary>Name to show: the sheet name for an owner skill stored as "&lt;name&gt;-admin".</summary>
@@ -185,6 +186,8 @@ namespace ClaudeCAD.Plugin.Core
             public string PackSha;  // sha256 of the skill as the owner sent it
             public string FileSha;  // sha256 of the SKILL.md written: a different file means the user edited it
             public bool Hidden;
+            public string EditOf;   // the Default / Admin skill this You copy was made from
+            public string EditSha;  // SampleSkills.Hash of the copy as made: same content = never edited (yet)
         }
 
         private Dictionary<string, Entry> LoadRegistry()
@@ -208,6 +211,8 @@ namespace ClaudeCAD.Plugin.Core
                     if (o.TryGetValue("packSha", out var ps)) e.PackSha = ps as string;
                     if (o.TryGetValue("fileSha", out var fs)) e.FileSha = fs as string;
                     if (o.TryGetValue("hidden", out var hd) && hd is bool h) e.Hidden = h;
+                    if (o.TryGetValue("editOf", out var eo)) e.EditOf = eo as string;
+                    if (o.TryGetValue("editSha", out var es)) e.EditSha = es as string;
                     map[e.Name] = e;
                 }
             }
@@ -243,6 +248,8 @@ namespace ClaudeCAD.Plugin.Core
                         o["fileSha"] = e.FileSha;
                     }
                     if (e.Hidden) o["hidden"] = true; // read by the sidecar too (agent/src/agent/skills.ts)
+                    if (e.EditOf != null) o["editOf"] = e.EditOf;
+                    if (e.EditSha != null) o["editSha"] = e.EditSha;
                     return (object)o;
                 }).ToList(),
             };
@@ -262,7 +269,7 @@ namespace ClaudeCAD.Plugin.Core
             var result = new List<SkillInfo>();
             if (string.IsNullOrEmpty(Root) || !Directory.Exists(Root)) return result;
             var reg = LoadRegistry();
-            bool changed = false;
+            bool changed = SplitOutsideEdits(reg);
             foreach (var dir in Directory.GetDirectories(Root).OrderBy(d => d, StringComparer.Ordinal))
             {
                 var folder = Path.GetFileName(dir);
@@ -292,8 +299,8 @@ namespace ClaudeCAD.Plugin.Core
                 }
                 if (e.Origin == AdminOrigin && e.FileSha != null && FileSha(file) != e.FileSha)
                 {
-                    // the user edited an owner skill: from now on it is theirs (no more updates / hide / delete)
-                    Logger.Info($"skill {folder}: edited by the user, now a You skill");
+                    // edited outside the plugin and no saved original to split from (SplitOutsideEdits): it is theirs now
+                    Logger.Info($"skill {folder}: edited by the user, no saved original, now a You skill");
                     e.Origin = null; e.AdminName = null; e.Rev = null; e.PackSha = null; e.FileSha = null;
                     changed = true;
                 }
@@ -303,6 +310,7 @@ namespace ClaudeCAD.Plugin.Core
                 info.Admin = e.Origin == AdminOrigin;
                 info.AdminName = info.Admin ? e.AdminName : null;
                 info.Hidden = info.Admin && e.Hidden;
+                info.EditOf = e.EditOf;
                 result.Add(info);
             }
             // forget registry entries whose folder is gone
@@ -496,6 +504,7 @@ namespace ClaudeCAD.Plugin.Core
                         if (mine == null) continue;
                         var dir = Path.Combine(Root, mine.Name);
                         if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                        try { System.IO.File.Delete(OriginalFile(mine.Name)); } catch { }
                         reg.Remove(mine.Name);
                         changes.Add(new PackChange { Kind = PackChangeKind.Deleted, Name = s.Name, Folder = mine.Name });
                         continue;
@@ -562,7 +571,170 @@ namespace ClaudeCAD.Plugin.Core
                 Directory.Delete(tmp, true);
             }
             else Directory.Move(tmp, dir);
+            // the owner's original, to put back when the user edits the file outside the plugin
+            Directory.CreateDirectory(Path.Combine(Root, OriginalsFolder));
+            System.IO.File.WriteAllBytes(OriginalFile(folder), bytes);
             return SkillPackLogic.Sha256(bytes);
+        }
+
+        // ------------------------------------------------------------------ editing a Default / Admin skill (v0.9.6)
+
+        /// <summary>Hidden folder (never a skill) with the owner's originals: "&lt;folder&gt;.md".</summary>
+        public const string OriginalsFolder = ".claudecad-admin";
+        public const string CopySuffix = "-sua";
+
+        private string OriginalFile(string folder) => Path.Combine(Root, OriginalsFolder, folder + ".md");
+
+        /// <summary>Contents\skills-mau (pristine samples) — where an edited Default skill is restored from.</summary>
+        public string PristineDir { get; set; }
+
+        private readonly List<(string copy, string original)> _pendingSwitches = new List<(string, string)>();
+
+        private static string TextHash(string file)
+        {
+            try { return SampleSkills.Hash(System.IO.File.ReadAllBytes(file)); }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// "Sửa": a You skill opens as it is; a Default or Admin skill is first copied to &lt;name&gt;-sua (label You,
+        /// frontmatter name changed) and the copy opens — the original is never written. An existing copy is reused.
+        /// Returns the skill to open and whether a copy was made now.
+        /// </summary>
+        public (string open, bool copied) PrepareEdit(string name) { lock (_gate) return PrepareEditCore(name); }
+
+        private (string open, bool copied) PrepareEditCore(string name)
+        {
+            if (!IsValidName(name) || !System.IO.File.Exists(SkillFile(name))) return (name, false);
+            var reg = LoadRegistry();
+            reg.TryGetValue(name, out var e);
+            bool admin = e != null && e.Origin == AdminOrigin;
+            if (!admin && !BuiltinNames.Contains(name)) return (name, false);
+            var baseName = admin && IsValidName(e.AdminName) ? e.AdminName : name;
+            var copy = baseName + CopySuffix;
+            if (System.IO.File.Exists(SkillFile(copy))) return (copy, false);
+            if (!IsValidName(copy) || Directory.Exists(Path.Combine(Root, copy))) return (name, false);
+            var hash = CopySkill(name, copy, System.IO.File.ReadAllText(SkillFile(name), Encoding.UTF8));
+            reg[copy] = new Entry { Name = copy, Enabled = true, Added = DateTime.Now, Source = "Bản sửa của " + baseName, EditOf = name, EditSha = hash };
+            SaveRegistry(reg.Values);
+            return (copy, true);
+        }
+
+        /// <summary>Copies the folder of <paramref name="from"/> to <paramref name="to"/> with the given SKILL.md text; returns its TextHash.</summary>
+        private string CopySkill(string from, string to, string md)
+        {
+            var src = Path.Combine(Root, from);
+            var tmp = Path.Combine(Root, "_tmp-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tmp);
+            foreach (var f in Directory.GetFiles(src))
+                if (!Path.GetFileName(f).Equals("SKILL.md", StringComparison.OrdinalIgnoreCase))
+                    System.IO.File.Copy(f, Path.Combine(tmp, Path.GetFileName(f)));
+            var bytes = new UTF8Encoding(false).GetBytes(EnsureName(md, to));
+            System.IO.File.WriteAllBytes(Path.Combine(tmp, "SKILL.md"), bytes);
+            Directory.Move(tmp, Path.Combine(Root, to));
+            return SampleSkills.Hash(bytes);
+        }
+
+        /// <summary>First free "&lt;base&gt;-sua", "&lt;base&gt;-sua-2" … (an edit outside the plugin never overwrites an earlier copy).</summary>
+        private string FreeCopyName(string baseName, Dictionary<string, Entry> reg)
+        {
+            for (int i = 1; i <= 9; i++)
+            {
+                var n = baseName + CopySuffix + (i == 1 ? "" : "-" + i);
+                if (IsValidName(n) && !Directory.Exists(Path.Combine(Root, n)) && !reg.ContainsKey(n)) return n;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// A Default or Admin SKILL.md edited outside the plugin (Explorer, Notepad): the edit moves to a You copy
+        /// and the original is put back (Default from Contents\skills-mau, Admin from the copy saved with the pack).
+        /// Returns whether the registry changed.
+        /// </summary>
+        private bool SplitOutsideEdits(Dictionary<string, Entry> reg)
+        {
+            bool changed = false;
+            var todo = new List<(string folder, string baseName, byte[] original, Entry admin)>();
+            if (!string.IsNullOrEmpty(PristineDir))
+                foreach (var n in BuiltinNames)
+                    if (System.IO.File.Exists(SkillFile(n)) && SampleSkills.IsEdited(PristineDir, Root, n + "/SKILL.md"))
+                        todo.Add((n, n, System.IO.File.ReadAllBytes(Path.Combine(PristineDir, n, "SKILL.md")), null));
+            foreach (var e in reg.Values.Where(x => x.Origin == AdminOrigin && x.FileSha != null && IsValidName(x.Name)).ToList())
+            {
+                var file = SkillFile(e.Name);
+                if (!System.IO.File.Exists(file) || FileSha(file) == e.FileSha) continue;
+                var orig = OriginalFile(e.Name);
+                if (!System.IO.File.Exists(orig) || SkillPackLogic.Sha256(System.IO.File.ReadAllBytes(orig)) != e.FileSha) continue; // ScanCore: becomes You
+                todo.Add((e.Name, IsValidName(e.AdminName) ? e.AdminName : e.Name, System.IO.File.ReadAllBytes(orig), e));
+            }
+            foreach (var t in todo)
+            {
+                try
+                {
+                    var copy = FreeCopyName(t.baseName, reg);
+                    if (copy == null) { Logger.Warn($"skill {t.folder}: edited outside the plugin, no free name for a copy"); continue; }
+                    var edited = System.IO.File.ReadAllText(SkillFile(t.folder), Encoding.UTF8);
+                    CopySkill(t.folder, copy, edited);
+                    System.IO.File.WriteAllBytes(SkillFile(t.folder), t.original);
+                    reg[copy] = new Entry { Name = copy, Enabled = true, Added = DateTime.Now, Source = "Bản sửa của " + t.baseName + " (sửa ngoài plugin)", EditOf = t.folder };
+                    _pendingSwitches.Add((copy, t.folder));
+                    changed = true;
+                    Logger.Info($"skill {t.folder}: edited outside the plugin, edit moved to {copy}, original put back");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn($"skill {t.folder}: edit outside the plugin not split: {ex.Message}");
+                }
+            }
+            return changed;
+        }
+
+        /// <summary>
+        /// Copies that just got their first real edit (or were split from an outside edit): (copy, original) pairs,
+        /// each reported once, so the current chat can move from the original to the copy.
+        /// </summary>
+        public List<(string copy, string original)> TakeSwitches()
+        {
+            lock (_gate)
+            {
+                var list = new List<(string copy, string original)>(_pendingSwitches);
+                _pendingSwitches.Clear();
+                var reg = LoadRegistry();
+                bool changed = false;
+                foreach (var e in reg.Values.Where(x => x.EditOf != null && x.EditSha != null))
+                {
+                    var h = TextHash(SkillFile(e.Name));
+                    if (h == null || h == e.EditSha) continue;
+                    list.Add((e.Name, e.EditOf));
+                    e.EditSha = null; // edited: a copy of the user's for good
+                    changed = true;
+                }
+                if (changed) SaveRegistry(reg.Values);
+                return list;
+            }
+        }
+
+        /// <summary>Copies made by "Sửa" that were opened and closed without a change: removed (plugin start).</summary>
+        public List<string> DiscardUntouchedCopies()
+        {
+            lock (_gate)
+            {
+                var gone = new List<string>();
+                var reg = LoadRegistry();
+                foreach (var e in reg.Values.Where(x => x.EditOf != null && x.EditSha != null && IsValidName(x.Name)).ToList())
+                {
+                    if (TextHash(SkillFile(e.Name)) != e.EditSha) continue;
+                    try
+                    {
+                        Directory.Delete(Path.Combine(Root, e.Name), true);
+                        reg.Remove(e.Name);
+                        gone.Add(e.Name);
+                    }
+                    catch (Exception ex) { Logger.Warn($"untouched copy {e.Name} not removed: {ex.Message}"); }
+                }
+                if (gone.Count > 0) SaveRegistry(reg.Values);
+                return gone;
+            }
         }
     }
 }

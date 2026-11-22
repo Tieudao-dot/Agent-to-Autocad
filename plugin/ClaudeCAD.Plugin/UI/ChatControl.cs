@@ -1484,7 +1484,9 @@ namespace ClaudeCAD.Plugin.UI
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
             var name = k.Name;
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
-            var edit = SmallButton("Sửa", "Mở SKILL.md để sửa; lưu file là Claude dùng bản mới từ tin nhắn tiếp theo");
+            var edit = SmallButton("Sửa", k.Builtin || k.Admin
+                ? "Chép thành bản của cậu (" + k.DisplayName + "-sua, nhãn You) rồi mở để sửa; bản gốc giữ nguyên"
+                : "Mở SKILL.md để sửa; lưu file là Claude dùng bản mới từ tin nhắn tiếp theo");
             edit.Click += (s, e) => SkillEditRequested?.Invoke(name);
             buttons.Children.Add(edit);
             var toggle = SmallButton(inUse ? "−" : "+", inUse
@@ -1513,7 +1515,9 @@ namespace ClaudeCAD.Plugin.UI
             string status = k.Error != null ? "⚠ " + k.Error
                 : k.Warning != null ? "⚠ Bảng chuẩn chưa đọc được (chưa tự áp chuẩn): " + k.Warning
                 : k.Admin ? "Chủ plugin gửi tới máy này" + when + (k.Name != shown ? " (thư mục " + k.Name + ", vì cậu đã có skill " + shown + ")" : "")
-                : k.Builtin ? "Skill mẫu đi kèm plugin" : "Đã thêm" + when;
+                : k.Builtin ? "Skill mẫu đi kèm plugin"
+                : k.EditOf != null ? "Bản cậu sửa từ " + k.EditOf + when
+                : "Đã thêm" + when;
             var st = new TextBlock { Text = status, FontSize = 11, TextWrapping = TextWrapping.Wrap };
             Theme.Ref(st, TextBlock.ForegroundProperty, k.Error != null ? Theme.ErrorFg : k.Warning != null ? Theme.WarnFg : Theme.MutedFg);
             info.Children.Add(st);

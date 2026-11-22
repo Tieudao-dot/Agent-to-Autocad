@@ -373,6 +373,9 @@ namespace ClaudeCAD.Plugin
                 // after an update: newer sample skills replace the installed ones the user never edited
                 string pristine = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(SkillsRoot)) ?? "", SampleSkills.PristineFolderName);
                 var samples = _skillStore.RefreshSamples(pristine);
+                _skillStore.PristineDir = pristine; // an edited Default skill is put back from here (its edit moves to <name>-sua)
+                var untouched = _skillStore.DiscardUntouchedCopies(); // "Sửa" opened and closed without a change
+                if (untouched.Count > 0) Logger.Info("untouched skill copies removed: " + string.Join(", ", untouched));
                 if (samples.Updated.Count > 0) Logger.Info("sample skills updated: " + string.Join(", ", samples.Updated));
                 if (samples.Kept.Count > 0) Logger.Info("sample skills kept (edited by the user): " + string.Join(", ", samples.Kept));
             }
@@ -452,8 +455,32 @@ namespace ClaudeCAD.Plugin
         private List<SkillInfo> RefreshSkills()
         {
             _library = _skillStore?.Scan() ?? new List<SkillInfo>();
+            SwitchChatToEditedCopies();
             Ui.SetSkills(_library, ChatSkills());
             return _library;
+        }
+
+        /// <summary>
+        /// A Default / Admin skill the user edited lives on as a You copy (&lt;name&gt;-sua): the current chat moves from
+        /// the original to the copy (never both — two standards that disagree). Other chats keep what they use.
+        /// </summary>
+        private void SwitchChatToEditedCopies()
+        {
+            var switches = _skillStore?.TakeSwitches();
+            if (switches == null || switches.Count == 0 || _transcript == null) return;
+            var list = ChatSkillChoice();
+            var moved = new List<string>();
+            foreach (var (copy, original) in switches)
+            {
+                if (!list.Contains(original)) continue;
+                list = SkillSelection.Toggle(SkillSelection.Toggle(list, original, false), copy, true);
+                moved.Add($"{original} → {copy}");
+            }
+            if (moved.Count == 0) return;
+            RememberChatSkills(list);
+            SaveTranscript();
+            ReloadSkillsInAgent();
+            Ui.AddNote("Đoạn chat này chuyển sang bản cậu sửa: " + string.Join(", ", moved) + " (bản gốc vẫn giữ nguyên trong thư viện).");
         }
 
         /// <summary>
@@ -570,11 +597,18 @@ namespace ClaudeCAD.Plugin
 
         private void EditSkill(string name)
         {
-            var file = _skillStore?.SkillFile(name);
-            if (file == null || !File.Exists(file)) return;
+            if (_skillStore == null) return;
+            // Default / Admin: copied to <name>-sua first, the original is never written (v0.9.6)
+            var (open, copied) = _skillStore.PrepareEdit(name);
+            if (copied) { _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10); RefreshSkills(); }
+            var file = _skillStore.SkillFile(open);
+            if (!File.Exists(file)) return;
             try { Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); }
             catch { Process.Start("notepad.exe", "\"" + file + "\""); } // no .md editor associated
-            Ui.SetToolStatus($"Đang mở {name}\\SKILL.md — lưu file là xong, plugin tự nạp lại.");
+            Ui.SetToolStatus(open == name
+                ? $"Đang mở {name}\\SKILL.md — lưu file là xong, plugin tự nạp lại."
+                : (copied ? $"Đã chép {name} thành {open} (nhãn You) để cậu sửa; bản gốc giữ nguyên. " : $"Mở bản cậu sửa {open}; bản gốc {name} giữ nguyên. ")
+                  + "Lưu file là đoạn chat này chuyển sang bản sửa.");
         }
 
         // ================================================================= per-drawing history (17)

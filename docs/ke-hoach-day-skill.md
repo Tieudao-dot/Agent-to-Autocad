@@ -21,7 +21,7 @@
 | --- | --- | --- |
 | 1 | Nơi để nội dung skill | Tab **"Skill"** trong Google Sheet |
 | 2 | Gán / gỡ | Tab **"Gán skill"**: Mã máy · Tên skill · **Hành động** (Thêm / Ẩn / Xóa). Dòng luôn giữ trên Sheet; hành động chỉ tác động thư viện skill trên máy khách. Máy không có dòng nào cho một skill thì giữ nguyên như lần nhận cuối |
-| 3 | Khách sửa skill được đẩy | Được. Sửa xong thì skill đó thành **của khách**, không nhận cập nhật nữa. Danh sách skill có **nhãn**: **Admin** (chủ plugin đẩy), **Default** (skill mẫu kèm plugin), **You** (khách tự thêm hoặc đã sửa) |
+| 3 | Khách sửa skill được đẩy | *(đổi 22/11, qua thread nghiên cứu Skill)* Áp dụng cho cả **Default** và **Admin**. Bấm **Sửa** → plugin **chép trước** sang `<tên>-sua` (nhãn You) rồi mới mở bản chép. Bản gốc không bao giờ bị ghi, và vẫn nhận cập nhật / Ẩn / Xóa. Đoạn chat hiện tại đang dùng bản gốc thì chuyển sang bản sửa khi khách lưu; các đoạn chat khác giữ nguyên. Mở rồi đóng không sửa gì thì bản chép bị xóa ở lần mở AutoCAD sau. Sửa thẳng file gốc ngoài plugin cũng **tách** như vậy, và bản gốc được khôi phục (Default từ `skills-mau`, Admin từ `.claudecad-admin`). Bản khách sửa không báo gì về chủ plugin. Danh sách skill có **nhãn**: **Admin** · **Default** · **You** |
 | 4 | Trùng tên Admin ↔ You | **Lưu cả hai**, nhãn để phân biệt (bản Admin nằm ở thư mục `<tên>-admin`, xem 4.3) |
 | 5 | Tự bật "Đang dùng" | **Không**. Skill chỉ vào Thư viện, kèm toast báo |
 
@@ -153,9 +153,14 @@ Không cần quyền Google mới, vì script đã có quyền trên Sheet này.
     nhãn Admin. Nếu tên `<tên>-admin` cũng bị skill You chiếm thì bỏ qua và ghi log.
 - **Ẩn**: giữ file, đặt `Hidden`. Skill không hiện trong thư viện và không được nạp.
 - **Xóa**: xóa thư mục bản Admin.
-- **Khách sửa bản Admin** (lúc `Scan()` thấy `sha256` của file khác giá trị đã lưu) → chuyển thành **You**, tên giữ
-  nguyên, thôi nhận Thêm / Ẩn / Xóa cho bản đó (chốt #3). Hệ quả: ở lần nhận pack kế tiếp có skill đó, bản Admin mới
-  sẽ vào `<tên>-admin` theo quy tắc trùng tên ở trên, nên khách có cả hai bản.
+- **Khách sửa** (chốt #3, bản 22/11):
+  - `SkillStore.PrepareEdit` chép Default / Admin sang `<tên>-sua`, ghi `editOf` và `editSha` vào registry.
+  - `TakeSwitches` báo lần sửa thật đầu tiên để `ChatController` đổi đoạn chat hiện tại sang bản sửa.
+  - `DiscardUntouchedCopies` (lúc mở AutoCAD) xóa bản chép chưa sửa. So nội dung bằng `SampleSkills.Hash`, nên đổi
+    xuống dòng không bị tính là sửa.
+  - Sửa ngoài plugin: `Scan()` → `SplitOutsideEdits`. Bản gốc Admin được lưu ở `.claudecad-admin\<thư mục>.md` mỗi lần
+    nhận gói.
+  - Chỉ khi thiếu bản lưu đó (gói nhận bởi bản build cũ hơn) thì skill mới chuyển thành You như quy tắc cũ.
 - Khách xóa tay một bản Admin → sẽ được ghi lại ở lần đổi pack kế tiếp. Mã băm `sk` lấy theo pack đã nhận, không theo
   file trên máy, nên không tải lại mỗi 6 giờ.
 

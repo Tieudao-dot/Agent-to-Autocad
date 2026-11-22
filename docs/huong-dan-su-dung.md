@@ -218,7 +218,10 @@ Skill là file `.md` mô tả chuẩn vẽ: bảng layer, chiều cao chữ, quy
 
 - Có sẵn 3 skill mẫu: `ve-kien-truc` (mặt bằng kiến trúc), `ve-mep` (điện, cấp thoát nước), `ve-ha-tang` (đường, lý trình,
   cao độ, cống, bảng tọa độ). Skill mẫu nằm trong thư viện nhưng **không tự dùng**: bấm + khi cần.
-- ✦ **Skill (N)**: phần *Đang dùng* (nút **−** để bỏ) và *Thư viện* (nút **+** để dùng); **Sửa** để mở file skill.
+- ✦ **Skill (N)**: phần *Đang dùng* (nút **−** để bỏ) và *Thư viện* (nút **+** để dùng). Cạnh tên mỗi skill có nhãn
+  **Admin** (chủ plugin gửi) / **Default** (mẫu kèm plugin) / **You** (của cậu). **Sửa** mở file skill:
+  - Với skill Default / Admin, plugin chép thành bản của cậu `<tên>-sua` rồi mới mở. Bản gốc giữ nguyên.
+  - Lưu xong thì đoạn chat này chuyển sang bản cậu sửa.
 - Mỗi đoạn chat có bộ skill riêng. Đoạn chat mới dùng skill của đoạn chat gần nhất.
 - ＋ **Add skill**: chọn một hoặc nhiều file `.md` (giữ Ctrl / Shift). Skill vào thư viện và được dùng luôn ở đoạn chat này.
 

@@ -30,7 +30,10 @@ Mỗi đoạn chat (mỗi bản vẽ) dùng **bộ skill riêng**, lấy từ **
 
 - **ĐANG DÙNG TRONG ĐOẠN CHAT NÀY:** skill có dấu ✓ và nút **−**. Bấm **−** thì đoạn chat này không dùng skill đó nữa; skill vẫn nằm trong thư viện. Claude được dặn bỏ qua chuẩn của skill đó từ tin nhắn tiếp theo; muốn sạch hoàn toàn khỏi trí nhớ cuộc chat thì bấm **Chat mới**.
 - **THƯ VIỆN (chưa dùng trong đoạn chat này):** các skill còn lại, có nút **+** để dùng trong đoạn chat này.
-- **Sửa:** mở `SKILL.md` bằng trình soạn mặc định. Lưu file là plugin tự nạp lại.
+- **Sửa:**
+  - Skill **You**: mở `SKILL.md` bằng trình soạn mặc định. Lưu file là plugin tự nạp lại.
+  - Skill **Default** / **Admin**: plugin chép thành bản của cậu `<tên>-sua` (nhãn You) rồi mới mở bản chép. Bản gốc
+    không bao giờ bị ghi. Xem mục "Nhãn skill" bên dưới.
 
 **Đoạn chat mới** (bấm Chat mới, hoặc mở bản vẽ chưa có chat) dùng **đúng các skill của đoạn chat gần nhất**. 3 skill mẫu đi kèm plugin có sẵn trong thư viện nhưng **không tự dùng**: bấm **+** khi cần.
 
@@ -46,8 +49,18 @@ Cạnh tên mỗi skill trong danh sách có một nhãn:
 | **Default** | 3 skill mẫu đi kèm plugin. |
 | **You** | Skill cậu tự thêm bằng **+ Add skill**. |
 
-- **Sửa một skill Admin:** sau khi sửa, skill đó thành của cậu (nhãn **You**). Bản của cậu không bị ghi đè, và chủ
-  plugin không ẩn hay xóa được nó nữa. Nếu chủ plugin gửi bản mới, bản đó được lưu thêm bên cạnh.
+- **Sửa một skill Default hoặc Admin** (từ 0.9.6):
+  - Bấm **Sửa** thì plugin chép skill thành `<tên>-sua` (nhãn **You**) rồi mở bản chép. Bản gốc giữ nguyên.
+    - Skill Default vẫn được làm mới khi cập nhật plugin.
+    - Skill Admin vẫn nhận cập nhật / Ẩn / Xóa từ chủ plugin.
+  - Lưu bản chép xong, **đoạn chat hiện tại** tự chuyển từ bản gốc sang bản của cậu (không dùng cả hai cùng lúc, vì hai
+    chuẩn khác nhau). Các đoạn chat khác giữ nguyên.
+  - Đã có `<tên>-sua` thì bấm Sửa lần nữa sẽ mở lại bản đó, không chép thêm.
+  - Mở ra rồi đóng mà không sửa gì thì bản chép tự xóa ở lần mở AutoCAD sau.
+  - Bản cậu sửa không gửi gì về chủ plugin.
+- **Sửa thẳng file gốc** (bằng Explorer, Notepad…): plugin cũng tách như trên. Phần sửa chuyển sang `<tên>-sua` (hoặc
+  `<tên>-sua-2`… nếu đã có), còn bản gốc được khôi phục: skill Default lấy lại từ bản mẫu kèm plugin, skill Admin lấy
+  lại từ bản đã lưu khi nhận.
 - **Trùng tên:** nếu chủ plugin gửi một skill trùng tên với skill của cậu, máy giữ cả hai. Bản Admin nằm ở thư mục
   `<tên>-admin`.
 - **Chủ plugin ẩn skill:** skill biến khỏi danh sách và Claude không dùng nữa, kể cả trong đoạn chat đang dùng nó.
@@ -59,7 +72,8 @@ Cạnh tên mỗi skill trong danh sách có một nhãn:
 | --- | --- |
 | Thư mục skill của plugin | `%AppData%\Autodesk\ApplicationPlugins\ClaudeCAD.bundle\Contents\skills\` |
 | Mỗi skill | `...\skills\<tên>\SKILL.md` (+ file tham khảo nếu skill là một thư mục) |
-| File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn; với skill Admin thêm `origin`, `rev`, `hidden` |
+| File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn; với skill Admin thêm `origin`, `rev`, `hidden`; với bản sửa `editOf` |
+| Bản gốc của skill Admin (để khôi phục) | `...\skills\.claudecad-admin\<tên>.md` |
 | Gói skill chủ plugin gửi lần gần nhất | `%LocalAppData%\ClaudeCAD\skill-pack.txt` (thời điểm + mã băm, để không tải lại) |
 | Skill của từng đoạn chat | lưu cùng lịch sử chat của bản vẽ (`%LocalAppData%\ClaudeCAD\chats`); skill của đoạn chat gần nhất trong `%AppData%\ClaudeCAD\settings.json` |
 
