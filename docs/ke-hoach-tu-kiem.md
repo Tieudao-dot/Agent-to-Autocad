@@ -290,7 +290,8 @@ Chi phí cho người dùng: bắt điểm không thêm lần gọi nào; `get_s
   - Mục kiểm tra của 3 skill thay bằng `verify_drawing` + `expect` + bảng cách sửa từng mã + phần máy không đo được.
   - Ví dụ cửa của `ve-kien-truc` bắt điểm vào mép lỗ. `skills/README.md` cập nhật theo.
 - **Test:**
-  - Lõi 236/236: thêm `SnapRulesTests` 15 và `DrawingStandardTests` 22. Các test này đọc thẳng 3 skill mẫu.
+  - Lõi 236/236: thêm `SnapRulesTests` 15 và `DrawingStandardTests` 23 (đọc thẳng 3 skill mẫu); bỏ 1 test của
+    `ignore` vì tính năng đã gỡ.
   - Trợ lý 172/172: thêm `snap.test.ts`; `skills.test.ts` kiểm thêm bắt điểm, mục kiểm tra, định dạng bảng layer.
   - Build net48 / net8 / net10 đạt trên Linux.
 - **Còn lại:**
