@@ -217,3 +217,8 @@ Nhãn có từ tính năng đẩy skill theo máy (`claude/day-skill-theo-may`, 
 4. Bản khách sửa **không báo về chủ plugin**. Hiện đã đúng, giữ nguyên.
 
 Đã chuyển cho thread "đẩy skill theo máy" (`session_01D56HmERgjnrwP5MTbkGKro`) làm.
+
+**Đã làm** (thread đẩy skill, `claude/day-skill-theo-may` @ `d76641b`, CI Windows xanh, lõi 264/264, trợ lý 186/186):
+đúng 4 điểm trên. Bản chép không sửa gì bị xóa ở lần mở AutoCAD sau. Sửa thẳng file gốc ngoài plugin: chủ dự án chốt
+tách giống nút Sửa (`<tên>-sua`, `-sua-2`…), bản gốc khôi phục từ `skills-mau` (Default) hoặc bản lưu gói đã nhận
+(Admin). Chưa thử trên AutoCAD thật, chưa vào `main`.
