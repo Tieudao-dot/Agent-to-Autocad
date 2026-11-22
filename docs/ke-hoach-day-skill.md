@@ -1,6 +1,11 @@
 # Kế hoạch: đẩy skill tới từng máy theo mã máy
 
-> Trạng thái: **đã chốt 5 điểm (mục 5), chờ chủ dự án duyệt cả plan**. Chưa code. Nhánh `claude/day-skill-theo-may`.
+> Trạng thái: plan được duyệt 22/11/2026. **Đã code xong** trên nhánh `claude/day-skill-theo-may`; còn chờ CI Windows,
+> rà bảo mật, rồi chủ dự án triển khai Apps Script. Hướng dẫn dùng: `activation/README.md` (mục "Đẩy skill tới từng
+> máy") và `skills/README.md`.
+>
+> Khác với bản plan ban đầu: máy chủ **không** dùng CacheService cho trang Skill. Mỗi lần `status`, máy chủ chỉ đọc
+> trang Skill khi máy có dòng gán, mà mỗi máy chỉ gọi khoảng 6 giờ một lần, nên cache không đáng thêm độ phức tạp.
 
 ## 0. Quyết định đã chốt (22/11/2026)
 
@@ -115,8 +120,6 @@ Không cần quyền Google mới, vì script đã có quyền trên Sheet này.
   `out.skills = makeSkillPack(...)`. Trường `skills` đặt **sau** `status` trong JSON. Skill gán mà không tìm thấy
   hoặc không hợp lệ thì bỏ qua và ghi vào Ghi chú của dòng gán. Một máy có hai dòng cùng một skill thì dòng dưới thắng.
 - `makeSkillPack(machine, list)` → `signLine('CCP1|' + machine + '|' + thời điểm + '|' + base64url(JSON))`.
-- Cache 5 phút cho tab Skill (`CacheService`, chia khóa nếu quá 100 KB), để mỗi lần `status` không phải đọc lại cả
-  tab.
 - `kiemTra()`: thêm bước tự kiểm pack cho máy thử.
 - Không đổi `SECRET` / `PRIVATE_KEY` / URL web app.
 
@@ -185,10 +188,10 @@ Xem bảng ở mục 0.
 ## 7. Việc chủ dự án làm tay trên Google (sau khi code xong và thread bảo mật rà xong)
 
 1. Mở dự án Apps Script đang chạy (Sheet → Tiện ích mở rộng → Apps Script).
-2. **Thay phần code, giữ nguyên 3 dòng `EMAIL` / `SECRET` / `PRIVATE_KEY` đang có.** Không chạy lại
-   `make-apps-script.mjs` mà thiếu `--secret` cũ: nếu thiếu, script sẽ tạo SECRET mới và mọi key đã cấp sẽ hết
-   dùng được. Tớ sẽ đưa sẵn đoạn code để dán, không chứa bí mật.
-3. Chạy `caiDat` một lần (▶). Hàm này tạo tab Skill và Gán skill. Sau đó chạy `kiemTra`.
+2. **Thay phần code, giữ nguyên 3 dòng `EMAIL` / `SECRET` / `PRIVATE_KEY` đang có.** Code lấy từ
+   `activation/apps-script/Code.gs.template`, bỏ 3 dòng `{{…}}`. Không chạy lại `make-apps-script.mjs` mà thiếu
+   `--secret` cũ: nếu thiếu, script sẽ tạo SECRET mới và mọi key đã cấp sẽ hết dùng được.
+3. Chạy `kiemTra` một lần (▶). Hàm này gọi `caiDat`, nên tự tạo trang Skill và Gán skill, rồi tự kiểm.
 4. **Triển khai → Quản lý bản triển khai → sửa (✎) bản đang có → Phiên bản: Mới → Triển khai.** Không bấm
    "Bản triển khai mới": làm vậy sẽ ra URL mới, và mọi máy đã cài sẽ mất kết nối.
 5. Dán skill vào tab Skill. Thêm dòng ở tab Gán skill: mã máy khách, tên skill, chọn Thêm. Xong.

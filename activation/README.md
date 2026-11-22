@@ -32,6 +32,41 @@ Lưu ý:
 - Trạng thái chỉ nhận `Active` / `Disabled` (không phân biệt hoa thường); mọi giá trị khác — kể cả gõ nhầm — được coi là "Chờ duyệt" (máy bị khóa), nên lỗi gõ không bao giờ mở nhầm quyền.
 - Tên thiết bị và user Windows do máy kia **tự khai** — xác nhận người xin qua Zalo trước khi duyệt.
 
+## Đẩy skill tới từng máy (chủ plugin, từ plugin 0.9.6)
+
+Hai trang trong cùng Google Sheet. `caiDat` / `kiemTra` tự tạo, kèm tiêu đề và ô chọn:
+
+- **Skill**: Tên · Phiên bản · Nội dung SKILL.md · Ghi chú.
+  - Mỗi dòng là một skill.
+  - Dán **toàn bộ** nội dung file `SKILL.md` vào một ô, gồm cả phần đầu `---` / `name:` / `description:` như trong
+    [`skills/README.md`](../skills/README.md).
+  - `name` phải trùng cột Tên: chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng `-admin`.
+  - Mỗi skill tối đa 45.000 ký tự.
+  - **Sửa nội dung thì tăng Phiên bản.**
+- **Gán skill**: Mã máy · Tên skill · Hành động · Ghi chú. Mỗi dòng là một skill cho một máy; một máy có thể có
+  nhiều dòng.
+
+| Hành động | Trên máy khách (ở lần kiểm tra kế tiếp: mở AutoCAD, ~6 giờ/lần, hoặc bấm **Kiểm tra lại**) |
+| --- | --- |
+| **Thêm** | Skill vào **Thư viện** với nhãn **Admin**, kèm toast báo. Skill **không tự bật**: người dùng bấm **+** để dùng. Đổi nội dung + Phiên bản thì máy nhận bản mới. |
+| **Ẩn** | File giữ trên máy nhưng skill biến khỏi Thư viện, và Claude không nạp nữa, kể cả với đoạn chat đang dùng. Chọn lại **Thêm** là hiện lại ngay, không phải tải lại. |
+| **Xóa** | Xóa skill khỏi máy. |
+
+- **Dòng gán cứ để nguyên trên Sheet.** Nếu thiếu dòng (xóa dòng), máy giữ nguyên skill như lần nhận cuối, không
+  xóa gì.
+- Hai dòng cùng máy, cùng skill: **dòng dưới thắng**.
+- Chỉ máy **Active** nhận skill. Mỗi máy tối đa **20 skill**, tổng tối đa 400 KB.
+- Dòng có lỗi (skill không có trong trang Skill, quá dài, thiếu description, name sai, hành động lạ…) **không được
+  gửi** và có lý do ở cột **Ghi chú**. Trang Skill cũng ghi lỗi của từng skill ở Ghi chú.
+- **Nhãn trong danh sách Skill của khách:** **Admin** (cậu gửi) · **Default** (3 skill mẫu đi kèm) · **You**
+  (khách tự thêm).
+  - Khách **sửa** một skill Admin thì skill đó thành của khách (nhãn You). Từ đó nó không nhận cập nhật, Ẩn hay Xóa
+    từ Sheet nữa.
+  - Lần sau cậu gửi bản mới của skill đó, bản Admin được lưu thêm cạnh bản của khách.
+- **Trùng tên** với skill You hoặc Default đã có: **lưu cả hai**. Bản Admin nằm ở thư mục `<tên>-admin`; trong danh
+  sách vẫn hiện tên gốc kèm nhãn Admin. Skill của khách không bị đụng tới.
+- Plugin 0.9.5 trở về trước không nhận skill. Máy đó vẫn chạy bình thường.
+
 ## Cài máy chủ kích hoạt + bảng thiết bị (chủ plugin làm một lần, khoảng 10 phút)
 
 Cần file **`ClaudeCAD-Code.gs`** do người phát triển gửi riêng. File này đã điền sẵn email nhận thông báo và khóa bí mật. **Không chia sẻ file này, không đưa lên GitHub**: ai có file này thì tự tạo được key.
@@ -49,6 +84,16 @@ Cần file **`ClaudeCAD-Code.gs`** do người phát triển gửi riêng. File 
    → **Triển khai** → sao chép **URL ứng dụng web**, dạng `https://script.google.com/macros/s/AKfy…/exec`.
 6. Thử: mở URL đó trên trình duyệt, thêm `?action=ping` vào cuối. Thấy `{"ok":true,"service":"ClaudeCAD activation"}` là xong.
 7. Gửi URL này cho người phát triển. URL được ghi vào `activation/activation.json`, và các bản phát hành sau sẽ dùng nó.
+
+**Cập nhật lên bản có đẩy skill (0.9.6)** trên máy chủ đang chạy:
+
+1. Mở dự án Apps Script (Sheet → Tiện ích mở rộng → Apps Script).
+2. Thay **phần code**, **giữ nguyên** 3 dòng đầu `var EMAIL = …`, `var SECRET = …`, `var PRIVATE_KEY = …` đang có.
+   Lấy code từ `activation/apps-script/Code.gs.template`, bỏ 3 dòng chứa `{{…}}` của file mẫu.
+3. Chạy `kiemTra` một lần. Hàm này tạo trang Skill và Gán skill, và không cần quyền mới.
+4. Triển khai phiên bản mới **trên bản triển khai cũ** như đoạn dưới.
+
+Làm phần máy chủ **trước** khi phát hành plugin 0.9.6: plugin cũ không bị ảnh hưởng.
 
 Sửa script về sau: dán code mới → 💾 Lưu → chạy **`kiemTra`** một lần (để Google hỏi thêm quyền nếu bản mới cần) → **Triển khai → Quản lý triển khai** (Manage deployments) → ✏️ → Phiên bản: **Phiên bản mới** (New version) → Triển khai. Làm như vậy thì URL giữ nguyên. Nếu bấm "Tùy chọn triển khai mới", URL sẽ đổi và bộ cài đã phát hành sẽ không gọi được máy chủ mới.
 
@@ -73,6 +118,30 @@ Key vẫn riêng cho từng máy. Cài ngầm mà không có `/KEY=` thì plugin
 - **Key:** 80 bit đầu của HMAC-SHA256(SECRET, `"CCK1|"` + mã máy), viết bằng base32 Crockford dạng `XXXX-XXXX-XXXX-XXXX`. Chỉ máy chủ biết SECRET, và chỉ máy chủ kiểm tra key.
 - **Giấy phép:** `CCL1|<mã máy>|<ngày>|<chữ ký RSA-2048 SHA-256 PKCS#1 v1.5, base64url>`. Khóa riêng nằm trong Apps Script; khóa công khai nằm trong `plugin/ClaudeCAD.Plugin/Core/License.cs`. Lưu ở `%LocalAppData%\ClaudeCAD\license.txt`.
 - **Trạng thái thiết bị:** `?action=status` trả `CCS1|<mã máy>|<active|disabled|pending|offline>|<ngày UTC>|<chữ ký>` (cùng khóa và cùng kiểu chữ ký với giấy phép), lưu ở `status.txt`. Plugin (`LicenseLogic.VerifyStatus`) chỉ mở khóa khi: giấy phép hợp lệ **và** trạng thái `active` ký trong vòng **7 ngày** (`StatusMaxAgeDays`) — hoặc `offline` (không bao giờ hết hạn). Trạng thái `pending`/`disabled`, quá hạn, hay ngày nằm ở tương lai (vặn lùi đồng hồ) đều khóa. Máy `Active` gọi `status` được trả kèm giấy phép, nên duyệt qua Sheet không cần key; `activate` bằng key cũng trả kèm trạng thái đã ký.
+- **Gói skill theo máy (0.9.6):**
+  - **Máy gửi gì:** plugin gửi `?action=status&…&sk=<mã băm gói đã nhận>` (`-` = chưa nhận gói nào). Plugin 0.9.5
+    không gửi `sk`.
+  - **Máy chủ trả gì:** chỉ trả khi máy `Active` và gói khác mã băm đó. Khi đó JSON có thêm `"skills"` (đặt sau
+    `"status"`):
+
+    ```
+    CCP1|<mã máy>|<yyyyMMddHHmmss UTC>|<base64url JSON>|<chữ ký>
+    ```
+
+    JSON có dạng `{"v":1,"skills":[{"name","act":"add|hide|delete","rev","sha256","md"}]}`. Cùng khóa, cùng kiểu
+    chữ ký với CCL1 / CCS1. Tiền tố khác nhau nên không dòng nào dùng thay được dòng kia. `CCS1` / `CCL1` không đổi.
+  - **Plugin kiểm gì** (`Core/SkillPack.cs`, `SkillPackLogic.Verify`):
+    - chữ ký;
+    - mã máy;
+    - thời điểm mới hơn gói đã nhận (chống gửi lại gói cũ), lưu ở `%LocalAppData%\ClaudeCAD\skill-pack.txt`;
+    - giới hạn 20 skill / 45.000 ký tự / 400 KB;
+    - tên, frontmatter, `sha256` của từng skill.
+
+    Gói sai bị bỏ **cả gói**, chỉ ghi log, và không ảnh hưởng việc máy có được dùng hay không.
+  - **Ghi vào thư viện:** `SkillStore.ApplyPack` chỉ đụng skill có `origin: admin` trong `skills.json`. Skill bị
+    Ẩn có `hidden: true`; trợ lý (`agent/src/agent/skills.ts`) không nạp skill đó.
+  - **Mã băm** = SHA-256 base64url của `name:act:rev:sha256\n` (sắp theo tên). Vector cố định nằm trong
+    `SkillPackTests` và `agent/test/activation.test.ts`.
 - **Google Sheet:** script phải **gắn với bảng tính** (tạo từ Tiện ích mở rộng → Apps Script) vì dùng `SpreadsheetApp.getActive()`. `request` thêm dòng Chờ duyệt; `activate`/`taoKeyThuCong` đặt Active; `status` cập nhật Lần cuối dùng + Phiên bản (tối đa 30 phút/lần/máy, có LockService); `Disabled` chặn cả `request` (không email) lẫn `activate` (key đúng cũng từ chối). Máy lạ gọi `status` không được thêm dòng.
 - **Tạo lại `ClaudeCAD-Code.gs`** (đổi email, hoặc mất file):
   ```bash
