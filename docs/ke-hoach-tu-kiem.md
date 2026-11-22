@@ -163,3 +163,96 @@ thêm 1–2 vòng sửa. Lượt chỉ đọc không tốn thêm.
   - Hộp chữ của dim mới là ước tính.
   - Block (INSERT) và hatch chưa được kiểm hình học, chỉ được đếm (`COUNT`) và xét lạc (`STRAY`).
   - Chưa có nút tắt tự kiểm trong ⚙.
+
+## 9. Kế hoạch đợt 2: bắt điểm, 12 mã, áp chuẩn lúc vẽ (chờ duyệt)
+
+Luồng chính chuyển việc ngày 22/11/2026. Thiết kế gốc: `docs/nghien-cuu-skill.md` mục 3, 4, 6 (nhánh
+`claude/nghien-cuu-skill` @670dfb2). Chủ dự án đã chốt:
+
+- Thứ tự: A → C (12 mã) + D → B → thẻ.
+- Bắt buộc sửa hết mọi mã, tối đa 2 vòng.
+- Đọc bảng trong `SKILL.md`, không thêm `standard.json`.
+- Ngưỡng 10 mm, tự nối, skill ghi đè được.
+
+### 9.1. Đợt 1 khác thiết kế gốc ở đâu, đổi gì
+
+| Chỗ khác | Đợt 1 | Đợt 2 (theo điểm đã chốt) |
+| --- | --- | --- |
+| Claude tự bỏ qua mã lỗi | Có tham số `ignore` | **Bỏ `ignore`**, vì đã chốt sửa hết mọi mã. Còn lỗi sau 2 vòng thì liệt kê |
+| Ngưỡng khe hở | Tham số `gap`, mặc định 10 | Mặc định lấy dòng `Ngưỡng khe hở: <số> mm` của skill đang dùng, không có thì 10. Giữ `gap` cho trường hợp người dùng nói rõ |
+| `PostToolUse` | Không dùng: trợ lý đã thấy mọi kết quả tool qua cầu nối, cùng tác dụng và test được | Giữ như vậy, không thêm hook `PostToolUse` |
+| Số mã | 10 | 14 mã (bảng "12 mã" của thiết kế gộp `LAYER_0` / `LAYER_UNKNOWN` và `ZERO_LEN` / `DUPLICATE`) |
+
+### 9.2. Việc làm
+
+**A. Bắt điểm theo đối tượng**
+
+- Mọi tham số điểm nhận thêm dạng tham chiếu, ví dụ
+  `{"snap": "end", "of": "2F1A", "near": [3890, 2550], "offset": [0, -110]}`.
+  - Kiểu bắt: `end`, `mid`, `cen`, `int` (với `of: [h1, h2]`), `per` (với `from: [x, y]`), `nea`, `ins`.
+  - Trong `batch_execute`, `of: "@3"` trỏ tới đối tượng mà lệnh thứ 3 của batch vừa tạo.
+- Dạng `[x, y]` cũ chạy y nguyên. Khi ghi macro, điểm đã giải được lưu thành `[x, y]`, nên macro và mẫu lệnh đã
+  lưu không đổi.
+- Tool mới `get_snap_points(handles)`: trả điểm đầu / giữa / tâm / chèn, và giao điểm giữa các đối tượng đã cho.
+- Chỗ làm:
+  - Luật tính điểm thuần, dùng lại `VShape`: `Core/SnapRules.cs`.
+  - Đọc đối tượng thật từ AutoCAD: dùng `ToShape` có sẵn.
+  - Cầu nối vào `Params.Point` / `Points`: mọi tool dùng được ngay, không phải sửa 78 chỗ đọc điểm.
+  - Phía trợ lý: schema `point` ở `agent/src/tools/common.ts`.
+
+**C. `verify_drawing` lên 14 mã**
+
+- Thêm 4 mã, chỉ chạy khi skill đang dùng có bảng chuẩn:
+  - `LAYER_UNKNOWN`: layer ngoài bảng layer chuẩn.
+  - `PROP_OVERRIDE`: màu / nét / lineweight gán riêng khác ByLayer; hatch được trừ.
+  - `TEXT_HEIGHT`: chiều cao chữ không bằng một dòng "Trên giấy" × tỷ lệ in, sai số 1 %.
+  - `DIM_STYLE`: dim có `DIMSCALE` khác tỷ lệ in, hoặc chữ dim khác dòng "Chữ kích thước".
+- Bỏ `ignore`. Ngưỡng khe hở đọc từ skill.
+
+**B. Áp chuẩn lúc vẽ**
+
+- Plugin đọc bảng "Bảng layer chuẩn" và "Chữ và kích thước theo tỷ lệ in" của các skill đang dùng trong đoạn chat,
+  cùng tỷ lệ in trên thanh ngữ cảnh.
+- Vẽ lên layer `0` / `Defpoints` thì bị từ chối, kèm gợi ý layer đúng.
+- Layer chuẩn chưa có thì tự tạo đúng màu / nét / lineweight.
+- Chữ không ghi chiều cao thì tự lấy dòng "ghi chú" × tỷ lệ.
+- Layer ngoài bảng: xử lý theo câu hỏi ở mục 9.4.
+- Thêm skill có bảng sai định dạng: plugin báo ngay trong danh sách Skill (dùng cơ chế báo lỗi skill có sẵn).
+
+**D và prompt**
+
+- Hook Stop giữ như đợt 1 (2 lần nhắc, 2 vòng sửa) và tính mọi mã.
+- System prompt: dùng bắt điểm thay vì tự cộng trừ tọa độ, bỏ câu về `ignore`.
+
+**Skill và test**
+
+- Gộp nhánh `claude/nghien-cuu-skill` (3 skill viết lại) vào nhánh này.
+- Thay mục "Kiểm tra trước khi báo xong" của 3 skill bằng một lệnh `verify_drawing` + cách xử lý từng mã.
+- Ví dụ mẫu dùng bắt điểm cho cánh cửa / cung cửa.
+- Mở rộng `agent/test/skills.test.ts`: kiểm cả `verify_drawing`, `get_snap_points`, `trim_` / `extend_`; bảng layer
+  và bảng chữ của 3 skill đọc được bằng máy.
+- Báo thread nghiên cứu trước khi sửa skill để không sửa chồng.
+
+**Tài liệu:** `bo-cai/README.md`, `docs/spec.md`, checklist (thêm mục bắt điểm / áp chuẩn vào phần I), test-log, mục
+này.
+
+### 9.3. Ước tính
+
+| Phần | Công |
+| --- | --- |
+| A. Bắt điểm + `get_snap_points` + test | 1,5–2 ngày |
+| C. Đọc bảng chuẩn + 4 mã mới + bỏ `ignore` + test | 1 ngày |
+| B. Áp chuẩn lúc vẽ + báo skill sai định dạng + test | 1–1,5 ngày |
+| Skill, prompt, tài liệu, checklist | 0,5 ngày |
+| Build 3 target, CI Windows 2 lượt (~7 phút / lượt) | 0,5 ngày |
+| **Tổng** | **4,5–5,5 ngày công** |
+
+Thiết kế gốc ước 7–10 ngày cho cả gói. Thẻ, hook và 10 mã đã xong ở đợt 1.
+
+Chi phí khi làm: build / test tại chỗ là chính, không cần tác vụ con. CI Windows 2 lượt.
+
+Chi phí cho người dùng: bắt điểm không thêm lần gọi nào; `get_snap_points` chỉ gọi khi cần số đo.
+
+### 9.4. Câu hỏi cho chủ dự án
+
+1. Vẽ lên layer ngoài bảng chuẩn của skill: từ chối hẳn, hay cho khi người dùng tự nêu tên layer đó?
