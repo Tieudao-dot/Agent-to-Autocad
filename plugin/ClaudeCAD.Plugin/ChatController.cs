@@ -73,6 +73,11 @@ namespace ClaudeCAD.Plugin
         // v0.6: macros, change summary, suggestions, plans
         private readonly MacroRecorder _recorder = new MacroRecorder();
         private readonly ChangeTracker _changes = new ChangeTracker();
+        /// <summary>Last verify_drawing of the running turn ("Tự kiểm" card), null = none.</summary>
+        private SelfCheckSummary _selfCheck;
+        /// <summary>Standard of the chat's skills for the running turn, and the layers the user chose for it.</summary>
+        private DrawingStandard _turnStandard;
+        private List<string> _turnLayers = new List<string>();
         private readonly System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>> _turnMacros =
             new System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>>();
         private MacroStore _macroStore;
@@ -507,6 +512,8 @@ namespace ClaudeCAD.Plugin
                         default:
                             added.Add(r.Name);
                             Ui.AddNote("✓ " + r.Message + " Đã dùng trong đoạn chat này; Claude áp dụng từ tin nhắn tiếp theo (vẫn nhớ cuộc chat).");
+                            if (r.Warning != null)
+                                Ui.AddErrorCard($"Skill \"{r.Name}\": plugin không đọc được bảng chuẩn, nên chưa tự áp chuẩn và tự kiểm theo bảng này. {r.Warning}\n\nSửa bằng nút Sửa trong danh sách Skill (định dạng bảng: xem skill mẫu ve-kien-truc).", false);
                             break;
                     }
                 }
@@ -844,6 +851,9 @@ namespace ClaudeCAD.Plugin
             }
             _recorder.Clear();
             _changes.Clear();
+            _selfCheck = null;
+            _turnLayers = userEntry?.Layers?.ToList() ?? new List<string>();
+            _turnStandard = LoadStandard(ChatSkills());
             // a slow (Wblock) version copy is prepared now, before any tool call can time out waiting for it
             if (_settings.Versions && doc != null)
             {
@@ -963,10 +973,13 @@ namespace ClaudeCAD.Plugin
             Autodesk.AutoCAD.DatabaseServices.Database turnDb;
             Document turnStartDoc;
             List<string> suggestions;
+            SelfCheckSummary selfCheck;
             lock (_gate)
             {
                 if (!_busy) return;
                 _busy = false;
+                selfCheck = _selfCheck;
+                _selfCheck = null;
                 turnDb = _turnDb;
                 _turnDb = null;
                 turnStartDoc = _turnStartDoc;
@@ -1022,6 +1035,7 @@ namespace ClaudeCAD.Plugin
                 if (!empty)
                 {
                     assistant.Changes = changes;
+                    assistant.SelfCheck = selfCheck;
                     bool canMacro = macroCalls != null;
                     if (canMacro) { _turnMacros.Remove(assistant); _turnMacros.Add(assistant, macroCalls); }
                     _transcript?.Entries.Add(assistant);
@@ -2174,9 +2188,48 @@ namespace ClaudeCAD.Plugin
 
         public void RecordCall(string tool, Dictionary<string, object> parameters, object result) => _recorder.Record(tool, parameters, result);
 
+        public IReadOnlyDictionary<string, string> TurnChanges()
+        {
+            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (kind, h) in _changes.Snapshot())
+                if (kind != "erased") d[h] = kind;
+            return d;
+        }
+
+        public void RecordSelfCheck(SelfCheckSummary summary) => _selfCheck = summary;
+
+        /// <summary>A macro replays what the user saved: no standard is enforced on it.</summary>
+        public DrawingStandard Standard => _macroRunning ? null : _turnStandard;
+
+        public double? PrintScale => DrawingStandard.ScaleDenominator(_settings.Scale);
+
+        public bool UserAllowsLayer(string layer) =>
+            !string.IsNullOrEmpty(layer) &&
+            (_turnLayers.Any(l => string.Equals(l, layer, StringComparison.OrdinalIgnoreCase)) || DrawingStandard.TextNamesLayer(_turnLabel, layer));
+
+        /// <summary>The machine-readable tables of the chat's skills (layer B); a broken file only loses its standard.</summary>
+        private DrawingStandard LoadStandard(List<string> skills)
+        {
+            if (_skillStore == null || skills == null || skills.Count == 0) return null;
+            var list = new List<DrawingStandard>();
+            foreach (var name in skills)
+            {
+                try
+                {
+                    var file = _skillStore.SkillFile(name);
+                    if (System.IO.File.Exists(file)) list.Add(DrawingStandard.Parse(System.IO.File.ReadAllText(file, Encoding.UTF8), name));
+                }
+                catch (Exception ex) { Logger.Warn($"standard of skill {name} not read: {ex.Message}"); }
+            }
+            var std = DrawingStandard.Merge(list);
+            return std.IsEmpty ? null : std;
+        }
+
         /// <summary>First change of a chat turn: keep a copy of the drawing as it was (every 30 min max).</summary>
         public void BeforeWrite(Document doc)
         {
+            var check = _selfCheck;
+            if (check != null) check.Stale = true; // changed again after the last self-check (a new check replaces it)
             if (_versionChecked || !_settings.Versions || doc == null) return;
             _versionChecked = true;
             try

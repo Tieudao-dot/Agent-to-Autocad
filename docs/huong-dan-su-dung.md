@@ -159,12 +159,20 @@ Dưới mỗi câu trả lời có:
 
 - **Xem kết quả (N)**: zoom tới và tô sáng phần vừa vẽ / sửa. Link tên đối tượng trong câu trả lời cũng bấm được.
 - **Thay đổi: Thêm · Sửa · Xóa**: tách theo layer; bấm một dòng để zoom và tô sáng.
+- **Tự kiểm ✓ / ✗**: kết quả Claude đo lại bản vẽ trước khi báo xong (khe hở ở đầu nét, polyline chưa đóng, đối tượng
+  trùng, cung cửa không chạm, sai layer / thuộc tính / chiều cao chữ theo skill, chữ đè, thiếu / thừa…). Lỗi an toàn đã
+  tự sửa; còn lỗi thì thẻ ghi ✗, bấm **Chọn đối tượng lỗi** để xem trong bản vẽ. Một lần U vẫn hoàn tác cả lượt.
 - **Thao tác (N)**: từng thao tác Claude đã làm, thời gian, lỗi nếu có.
 - Nút gợi ý bước tiếp theo (ví dụ "Ghi kích thước các phòng"): bấm là gửi; chuột phải để sửa trước khi gửi.
 
 Claude biết phần bạn sửa tay giữa các lượt: khung chat hiện dòng *"✎ Bản vẽ đã được sửa ngoài khung chat…"* và Claude đọc
 lại các đối tượng đó trước khi làm tiếp. Sau việc vẽ lớn, Claude có thể tự chụp vùng vừa vẽ để soát lỗi (chữ đè, ký hiệu
 lệch) rồi sửa. Tắt: ⚙ ▸ **Tự kiểm tra bằng ảnh**.
+
+Khi đoạn chat dùng skill có **bảng layer chuẩn**, công cụ vẽ chỉ cho vẽ trên các layer của bảng. Layer `0` và layer
+ngoài bảng bị từ chối, trừ khi bạn tự nêu tên layer đó trong tin nhắn hoặc chọn nó bằng nút **Layer**. Layer chuẩn chưa
+có thì plugin tự tạo đúng màu / nét / lineweight. Chữ không ghi chiều cao lấy theo bảng chữ của skill × tỷ lệ in trên
+thanh ngữ cảnh.
 
 ### 5.2 Chọn đối tượng và lấy điểm
 

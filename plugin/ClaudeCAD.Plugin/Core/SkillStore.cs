@@ -21,6 +21,8 @@ namespace ClaudeCAD.Plugin.Core
         public string Folder;
         public string File;
         public string Error;            // invalid SKILL.md (shown in the list, not loaded)
+        /// <summary>The skill works, but its standard tables cannot be read by the plugin (layer B), first problems.</summary>
+        public string Warning;
     }
 
     public enum SkillImportStatus { Added, Updated, AlreadyAdded, Conflict, Invalid }
@@ -65,6 +67,8 @@ namespace ClaudeCAD.Plugin.Core
         public SkillImportStatus Status;
         public string Name;
         public string Message;
+        /// <summary>Format problems of the standard tables (null = none).</summary>
+        public string Warning;
     }
 
     /// <summary>
@@ -226,6 +230,7 @@ namespace ClaudeCAD.Plugin.Core
                     info.Title = TitleOf(md, folder);
                     if (error != null) info.Error = error;
                     else if (name != folder) info.Error = $"name trong file là \"{name}\" nhưng thư mục là \"{folder}\"; hai tên phải giống nhau.";
+                    else info.Warning = StandardWarning(md);
                 }
                 catch (Exception ex)
                 {
@@ -329,7 +334,20 @@ namespace ClaudeCAD.Plugin.Core
                 Status = exists ? SkillImportStatus.Updated : SkillImportStatus.Added,
                 Name = name,
                 Message = exists ? $"Đã cập nhật skill \"{name}\"." : $"Đã thêm skill \"{name}\".",
+                Warning = StandardWarning(content),
             };
+        }
+
+        /// <summary>
+        /// "Bảng layer chuẩn" / "Chữ và kích thước theo tỷ lệ in" / "Ngưỡng khe hở" that the plugin cannot read
+        /// (they are then not enforced): the first 3 problems, null when fine or when the skill has no such tables.
+        /// </summary>
+        public static string StandardWarning(string md)
+        {
+            var problems = new List<string>();
+            DrawingStandard.Parse(md, null, problems);
+            if (problems.Count == 0) return null;
+            return string.Join(" ", problems.Take(3)) + (problems.Count > 3 ? $" (và {problems.Count - 3} lỗi nữa)" : "");
         }
 
         private static SkillImportResult Invalid(string file, string why) =>

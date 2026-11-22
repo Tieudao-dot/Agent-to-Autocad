@@ -61,12 +61,12 @@ Skill mẫu là **khung**: số liệu (màu, nét, chiều cao chữ…) chưa 
 
 Mỗi skill nên có đủ các mục sau (xem `ve-kien-truc/SKILL.md` làm mẫu):
 
-1. **Quy trình chuẩn bị** (bắt buộc): gọi `get_drawing_info` + `list_layers` trước, tạo layer/style còn thiếu theo bảng chuẩn, ghi nhớ số đối tượng trên layer `0`, rồi mới vẽ.
-2. **Danh mục trước khi vẽ:** Claude nêu số đối tượng dự kiến theo layer; lúc kiểm tra so lại để bắt thiếu / thừa.
-3. **Bảng layer chuẩn** với đúng các cột `Layer | Nội dung | Màu | Linetype | Lineweight`, tên layer trong dấu `` ` ``. Giữ định dạng này: công cụ tự kiểm sau này đọc thẳng bảng.
-4. **Bảng chữ theo tỷ lệ in:** chiều cao trên giấy (mm) và giá trị trong model cho từng tỷ lệ.
-5. **Cách dựng hình không phải tự tính tọa độ:** nét thứ hai bằng `offset_entity`, lỗ / giao nhau bằng `trim_entities` / `extend_entities`, đầu nét lấy đúng điểm của đối tượng có sẵn. Đây là cách giảm lỗi "điểm không khớp".
+1. **Quy trình chuẩn bị** (bắt buộc): gọi `get_drawing_info` + `list_layers` trước, tạo layer/style còn thiếu theo bảng chuẩn, rồi mới vẽ.
+2. **Danh mục trước khi vẽ:** Claude nêu số đối tượng dự kiến theo layer; lúc kiểm tra truyền làm `expect` của `verify_drawing` để bắt thiếu / thừa.
+3. **Bảng layer chuẩn** (tiêu đề mục chứa "Bảng layer chuẩn") với đúng các cột `Layer | Nội dung | Màu | Linetype | Lineweight`, tên layer trong dấu `` ` ``, màu là số ACI, lineweight là số mm. Plugin đọc thẳng bảng này: công cụ vẽ từ chối layer `0` và layer ngoài bảng (trừ khi người dùng tự nêu tên layer), tự tạo layer chuẩn còn thiếu đúng màu / nét / lineweight, và `verify_drawing` báo `LAYER_UNKNOWN` / `PROP_OVERRIDE`. Bảng sai định dạng thì plugin báo ngay khi thêm skill.
+4. **Bảng chữ theo tỷ lệ in** (tiêu đề mục chứa "Chữ và kích thước theo tỷ lệ in"): cột `Trên giấy` tính bằng mm, dòng `Chữ kích thước` cho chữ dim. Plugin lấy chiều cao chữ mặc định (dòng "ghi chú") × tỷ lệ in trên thanh ngữ cảnh, và `verify_drawing` báo `TEXT_HEIGHT` / `DIM_STYLE`.
+5. **Cách dựng hình không phải tự tính tọa độ:** nét thứ hai bằng `offset_entity`, lỗ / giao nhau bằng `trim_entities` / `extend_entities`, đầu nét **bắt điểm** vào đối tượng có sẵn (`{"snap": "end", "of": handle, "near": [x, y]}`; các kiểu `end`, `mid`, `cen`, `int`, `per`, `nea`, `ins`; trong batch `"of": "@n"` là đối tượng lệnh n vừa tạo). Đây là cách giảm lỗi "điểm không khớp".
 6. **Ví dụ hoàn chỉnh** từng bước (JSON hợp lệ).
-7. **Kiểm tra trước khi báo xong:** liệt kê lệnh đo cụ thể cho từng nhóm (layer, thuộc tính, điểm khớp, hình học, chữ/dim, thiếu/thừa, ảnh `capture_view`), dòng `Ngưỡng khe hở: 10 mm`, sửa tối đa 2 vòng, còn lỗi thì liệt kê.
+7. **Kiểm tra trước khi báo xong:** dòng `Ngưỡng khe hở: <số> mm` (plugin đọc, mặc định 10), một lệnh `verify_drawing` với `expect`, cách sửa từng mã lỗi trong nghề của skill, phần máy không đo được (bề rộng cửa, khoảng cách tuyến, tọa độ…), cuối cùng `capture_view`. Plugin bắt buộc kiểm trước khi báo xong, sửa tối đa 2 vòng, còn lỗi thì liệt kê.
 8. **Lỗi hay gặp:** những lỗi cậu đã thấy trong thực tế và cách tránh. Gặp lỗi mới thì thêm vào đây.
 9. **Báo cáo cuối lượt** theo mẫu cố định, có dòng "Tự kiểm: ✓ / ✗".

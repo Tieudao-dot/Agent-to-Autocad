@@ -83,6 +83,8 @@ namespace ClaudeCAD.Plugin.Drawing
         public static ObjectId LayerId(ToolContext ctx, string name)
         {
             var lt = (LayerTable)ctx.Tr.GetObject(ctx.Db.LayerTableId, OpenMode.ForRead);
+            if (!lt.Has(name) && ctx.Writable && ctx.Standard != null && ctx.Standard.Layers.TryGetValue(name, out var row))
+                return CreateStandardLayer(ctx, lt, row); // layer B: a missing standard layer is created as the skill says
             if (!lt.Has(name))
                 throw new ToolException(ErrorCodes.LayerNotFound,
                     $"Layer '{name}' does not exist. Call create_layer first, or list_layers to see existing layers.");
@@ -90,6 +92,33 @@ namespace ClaudeCAD.Plugin.Drawing
             if (id.IsErased)
                 throw new ToolException(ErrorCodes.LayerNotFound, $"Layer '{name}' was erased. Call create_layer to recreate it.");
             return id;
+        }
+
+        /// <summary>Creates a layer of the skill's table with its color, linetype and lineweight.</summary>
+        private static ObjectId CreateStandardLayer(ToolContext ctx, LayerTable lt, LayerStandard row)
+        {
+            var ltr = new LayerTableRecord { Name = row.Name };
+            if (row.Color is int aci) ltr.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, (short)aci);
+            if (!string.IsNullOrEmpty(row.Linetype))
+            {
+                try { ltr.LinetypeObjectId = EnsureLinetype(ctx, row.Linetype); }
+                catch (ToolException ex) { Logger.Warn($"standard layer {row.Name}: {ex.Message}"); }
+            }
+            if (row.Lineweight is double mm) ltr.LineWeight = (LineWeight)Geometry.LineWeightFrom(mm);
+            lt.UpgradeOpen();
+            var id = lt.Add(ltr);
+            ctx.Tr.AddNewlyCreatedDBObject(ltr, true);
+            return id;
+        }
+
+        /// <summary>Layer B: refuses a layer outside the skill's table (null standard: nothing is enforced).</summary>
+        public static void CheckStandardLayer(ToolContext ctx, string layer, string tool)
+        {
+            var std = ctx.Standard;
+            var host = ctx.Dispatcher?.Host;
+            if (std == null || host == null) return;
+            var refusal = std.LayerRefusal(layer, host.UserAllowsLayer, tool);
+            if (refusal != null) throw ToolException.Invalid(refusal);
         }
 
         /// <summary>Returns the linetype id, loading it from acadiso.lin / acad.lin if missing.</summary>
@@ -163,6 +192,8 @@ namespace ClaudeCAD.Plugin.Drawing
             if (defaults) ent.SetDatabaseDefaults(ctx.Db);
             if (p != null) ApplyCommon(ctx, ent, p);
             var ltr = (LayerTableRecord)ctx.Tr.GetObject(ent.LayerId, OpenMode.ForRead);
+            // a layer Claude chose (or the current one) must be in the standard; copies keep their source's layer
+            if (defaults || (p != null && p.Has("layer"))) CheckStandardLayer(ctx, ltr.Name, p?.Tool ?? "draw");
             if (ltr.IsLocked)
                 throw new ToolException(ErrorCodes.Locked, $"Layer '{ltr.Name}' is locked; cannot draw on it. Use another layer or ask the user to unlock it.");
             BlockTableRecord space;
