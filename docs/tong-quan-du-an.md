@@ -147,6 +147,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 22/11 | Cậu duyệt gộp cả 3 nhóm (đẩy skill, tự kiểm, skill mẫu tự cập nhật) vào 0.9.6. Đã giao thread gộp nhánh tạo `claude/release-0.9.6` và bộ cài thử; chưa merge `main`. Nội dung: [`ban-0.9.6.md`](ban-0.9.6.md) |
 | 22/11 | Cậu cập nhật máy chủ Google cho đẩy skill: tách BiMat, dán Code.gs mới, chạy `kiemTra`, tạo Phiên bản mới cùng link. `ping` trả `ready:true`. Bản 0.9.5 vẫn chạy bình thường |
 | 22/11 | Tự kiểm đợt 2 xong (@1eacfe3, CI xanh run 45009114005; lõi 236, trợ lý 172). Chờ cậu thử thật phần I và quyết gộp |
 | 22/11 | Đẩy skill sẵn sàng gộp (@b712ea6, CI xanh run 45006820369, đã tách `BiMat.gs`). Chờ cậu cập nhật máy chủ Google trước khi phát hành 0.9.6 |
