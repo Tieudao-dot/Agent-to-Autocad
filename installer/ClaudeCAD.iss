@@ -1,9 +1,9 @@
 ﻿; Inno Setup script: builds ClaudeCAD-Setup-<version>.exe from bundle\out\ClaudeCAD.bundle.
-; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.5 installer\ClaudeCAD.iss
+; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.6 installer\ClaudeCAD.iss
 ; (CI does this in .github/workflows/build.yml.)
 
 #ifndef AppVersion
-  #define AppVersion "0.9.5"
+  #define AppVersion "0.9.6"
 #endif
 #define BundleDir "..\bundle\out\ClaudeCAD.bundle"
 ; one installer for AutoCAD 2022-2027: refuse to build it without all three plugin builds
