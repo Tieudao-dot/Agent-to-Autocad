@@ -434,7 +434,10 @@ function skillLibrary(ss, wanted) {
 // ======================================================================= skills written in Google Docs (v0.9.8)
 
 var DOCS_LINK_RE = /^https:\/\/docs\.google\.com\/document\/(?:u\/\d+\/)?d\/([A-Za-z0-9_-]{20,128})(?:[\/?#]\S*)?$/;
-var DOCS_CACHE_SECONDS = 21600; // keyed by the doc's edit time, so a cached copy is never stale
+var DOCS_CACHE_SECONDS = 21600; // keyed by the doc's edit time, so a cached copy is never stale…
+var DOCS_FRESH_SECONDS = 120;    // …except right after an edit: Drive may still export the old text, so cache briefly
+var DOCS_FRESH_CACHE_SECONDS = 300;
+var DOCS_REV_SECONDS = 120;      // a doc's edit time is looked up at most every 2 minutes, however many machines ask
 
 /** The doc id when the Nội dung cell is only a Google Docs link, else null (pasted content). */
 function docsId(cell) {
@@ -444,17 +447,25 @@ function docsId(cell) {
 
 /** { md, rev, when } of a Google Doc read as the owner (Drive export to Markdown), or { error }. */
 function docsContent(id) {
-  var file;
-  try {
-    file = DriveApp.getFileById(id);
-  } catch (err) {
-    return { error: 'không mở được Google Docs (sai link, hoặc tài khoản chủ plugin chưa có quyền xem doc này)' };
+  var cache = CacheService.getScriptCache();
+  // edit time: from the cache when looked up less than 2 minutes ago (security review: Drive calls per doc, not per machine)
+  var revKey = 'docrev:' + id;
+  var edited = null;
+  var known = cache.get(revKey);
+  if (known && /^\d+$/.test(known)) edited = new Date(Number(known));
+  else {
+    var file;
+    try {
+      file = DriveApp.getFileById(id);
+    } catch (err) {
+      return { error: 'không mở được Google Docs (sai link, hoặc tài khoản chủ plugin chưa có quyền xem doc này)' };
+    }
+    if (file.getMimeType() !== MimeType.GOOGLE_DOCS) return { error: 'link không phải một Google Docs (file Word trên Drive: mở bằng Google Docs rồi Lưu dưới dạng Google Docs)' };
+    edited = file.getLastUpdated();
+    cache.put(revKey, String(edited.getTime()), DOCS_REV_SECONDS);
   }
-  if (file.getMimeType() !== MimeType.GOOGLE_DOCS) return { error: 'link không phải một Google Docs (file Word trên Drive: mở bằng Google Docs rồi Lưu dưới dạng Google Docs)' };
-  var edited = file.getLastUpdated();
   var rev = Utilities.formatDate(edited, 'UTC', 'yyyyMMddHHmmss');
   var when = Utilities.formatDate(edited, TIME_ZONE, 'dd/MM/yyyy HH:mm');
-  var cache = CacheService.getScriptCache();
   var key = 'doc:' + id + ':' + rev;
   var md = cache.get(key);
   if (md === null) {
@@ -465,7 +476,8 @@ function docsContent(id) {
     if (resp.getResponseCode() !== 200) return { error: 'không tải được nội dung Google Docs (mã ' + resp.getResponseCode() + ')' };
     md = resp.getContentText('UTF-8');
     if (md.length > MAX_SKILL_CHARS * 2) return { error: 'Google Docs dài quá ' + MAX_SKILL_CHARS + ' ký tự' };
-    try { cache.put(key, md, DOCS_CACHE_SECONDS); } catch (e) { /* over 100 KB: read again next time */ }
+    var fresh = (new Date().getTime() - edited.getTime()) / 1000 < DOCS_FRESH_SECONDS;
+    try { cache.put(key, md, fresh ? DOCS_FRESH_CACHE_SECONDS : DOCS_CACHE_SECONDS); } catch (e) { /* over 100 KB: read again next time */ }
   }
   return { md: normalizeDocsMarkdown(md), rev: rev, when: when };
 }

@@ -76,6 +76,7 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
   const mails: Mail[] = [];
   const quota = { left: 100 };
   const cache = new Map<string, string>();
+  const ttls = new Map<string, number>();
   const docs = new Map<string, { md: string; updated: Date; mime?: string; code?: number }>();
   const fetches: string[] = [];
   const props = new Map<string, string>();
@@ -117,7 +118,7 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
       }),
     },
     console: { log: () => {} },
-    CacheService: { getScriptCache: () => ({ get: (k: string) => cache.get(k) ?? null, put: (k: string, v: string) => cache.set(k, v) }) },
+    CacheService: { getScriptCache: () => ({ get: (k: string) => cache.get(k) ?? null, put: (k: string, v: string, t?: number) => { ttls.set(k, t ?? 600); return cache.set(k, v); } }) },
     SpreadsheetApp: {
       getActive: () => spreadsheet,
       getActiveSpreadsheet: () => spreadsheet,
@@ -158,7 +159,7 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
     JSON.parse(((sandbox.doGet as (e: unknown) => { content: string })({ parameter: params })).content);
   const sheet = () => sheets.get('Thiết bị');
   const row = (machine: string) => sheet()?.rows.find(r => r[0] === machine);
-  return { get, mails, cache, props, hooks, publicKey, sandbox, quota, sheet, row, sheets, docs, fetches };
+  return { get, mails, cache, props, hooks, publicKey, sandbox, quota, sheet, row, sheets, docs, fetches, ttls };
 }
 
 const verify = (license: string, key: crypto.KeyObject) => {
@@ -643,8 +644,8 @@ describe('skills written in Google Docs (Apps Script, v0.9.8)', () => {
     assert.equal(k.sha256, b64sha(k.md!));
     assert.match(String(s.lib.rows[1][3]), /Google Docs, bản sửa lúc/);
 
-    // edited doc: new version on the next check (after the 10-minute "up to date" memory)
-    s.cache.delete('skd:' + machine); s.cache.delete('skt:' + machine);
+    // edited doc: new version on the next check (after the 10-minute "up to date" memory and the 2-minute edit-time memory)
+    s.cache.delete('skd:' + machine); s.cache.delete('skt:' + machine); s.cache.delete('docrev:' + docId);
     s.docs.set(docId, { md: exported('Bản 2.'), updated: new Date('2026-11-25T05:00:00Z') });
     const p2 = readPack(s.get({ action: 'status', machine, sk: digestOf(p.skills) }).skills, s.publicKey);
     assert.equal(p2.skills[0].rev, '20261125050000');
@@ -694,5 +695,41 @@ describe('skills written in Google Docs (Apps Script, v0.9.8)', () => {
     assert.equal(id(`https://evil.example/document/d/${docId}`), null);
     assert.equal(id(`https://docs.google.com/spreadsheets/d/${docId}/edit`), null);
     assert.equal(id(skillMd('cty-a')), null);
+  });
+});
+
+describe('Apps Script permissions (appsscript.json, security review 25/11)', () => {
+  it('declares exactly the narrow scopes the services in Code.gs need', () => {
+    const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8')
+      + fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8');
+    const manifest = JSON.parse(fs.readFileSync(findRepoFile('activation/apps-script/appsscript.json'), 'utf8')) as { oauthScopes: string[]; runtimeVersion: string };
+    const needs: Record<string, string | null> = {
+      SpreadsheetApp: 'https://www.googleapis.com/auth/spreadsheets.currentonly',
+      MailApp: 'https://www.googleapis.com/auth/script.send_mail',
+      DriveApp: 'https://www.googleapis.com/auth/drive.readonly',
+      UrlFetchApp: 'https://www.googleapis.com/auth/script.external_request',
+      // no scope of their own
+      Utilities: null, CacheService: null, LockService: null, PropertiesService: null, ContentService: null, ScriptApp: null, Logger: null, MimeType: null,
+    };
+    const used = new Set(code.match(/\b[A-Z][A-Za-z]+(?:App|Service)\b/g) ?? []);
+    for (const svc of used) assert.ok(svc in needs, `Code.gs uses ${svc}: add its scope to appsscript.json and to this test`);
+    const want = [...new Set([...used].map(s => needs[s]).filter((x): x is string => !!x))].sort();
+    assert.deepEqual([...manifest.oauthScopes].sort(), want);
+    assert.ok(!manifest.oauthScopes.includes('https://www.googleapis.com/auth/drive'), 'never the full Drive scope');
+    assert.equal(manifest.runtimeVersion, 'V8');
+  });
+
+  it('caches a doc briefly right after an edit (the export may still be the old text)', () => {
+    const s = loadService();
+    (s.sandbox.caiDat as () => void)();
+    const id = '1FreshFreshFreshFreshFreshFresh00';
+    s.docs.set(id, { md: '---\nname: a\ndescription: x\n---\n', updated: new Date(Date.now() - 30_000) });
+    (s.sandbox.docsContent as (i: string) => unknown)(id);
+    assert.equal(s.ttls.get([...s.ttls.keys()].find(k => k.startsWith('doc:' + id))!), 300);
+    assert.equal(s.ttls.get('docrev:' + id), 120);
+    const old = '1OldOldOldOldOldOldOldOldOld0000';
+    s.docs.set(old, { md: '---\nname: a\ndescription: x\n---\n', updated: new Date(Date.now() - 3_600_000) });
+    (s.sandbox.docsContent as (i: string) => unknown)(old);
+    assert.equal(s.ttls.get([...s.ttls.keys()].find(k => k.startsWith('doc:' + old))!), 21600);
   });
 });

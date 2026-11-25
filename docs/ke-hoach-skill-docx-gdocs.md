@@ -1,7 +1,7 @@
 # Kế hoạch: skill nhận file .docx và nội dung Google Docs
 
-> Trạng thái: plan được duyệt 25/11/2026. **Đã code xong** (.docx + Google Docs); chờ CI Windows, rà bảo mật, rồi chủ
-> dự án triển khai `Code.gs`. Nhánh `claude/skill-docx-gdocs`, tách
+> Trạng thái: plan được duyệt 25/11/2026. **Đã code xong** (.docx + Google Docs), đã qua rà bảo mật. Chờ chủ dự án
+> triển khai `Code.gs` + `appsscript.json`. Nhánh `claude/skill-docx-gdocs`, tách
 > từ `main` @6e90240 (v0.9.7). Yêu cầu từ thread QnA, chuyển qua luồng chính.
 
 ## 0. Quyết định đã chốt (25/11/2026)
@@ -118,10 +118,20 @@ Máy khách: không đổi gì. Vẫn nhận gói ký số như bây giờ.
 
 ## 6. Việc chủ dự án làm tay trên Google (sau khi rà bảo mật)
 
-1. Dán `Code.gs` mới, **không đụng `BiMat.gs`**.
-2. Chạy `kiemTra` và cho phép thêm quyền đọc Drive.
-3. Quản lý bản triển khai → **Phiên bản mới**.
-4. Ở trang Skill, dán link doc vào cột Nội dung.
+Làm theo `activation/README.md`, mục **"Cập nhật lên máy chủ 0.9.8"**:
+
+1. Dán đè `Code.gs`, không đụng `BiMat.gs`.
+2. Thêm khóa `oauthScopes` (4 quyền hẹp) vào `appsscript.json`.
+3. Chạy `kiemTra`.
+4. Tạo Phiên bản mới, rồi `ping` phải trả `"ready":true`.
+
+Rà bảo mật 25/11 (thread bảo mật), đã sửa:
+
+- khai quyền hẹp `drive.readonly` thay cho quyền Drive đầy đủ, có test so dịch vụ ↔ quyền;
+- tài liệu cảnh báo "ai sửa được doc là đẩy được chỉ dẫn";
+- doc vừa sửa chỉ được cache 5 phút;
+- giờ sửa doc được cache 2 phút, nên số lần gọi Drive tính theo doc chứ không theo máy;
+- `.docx`: chặn DTD, giới hạn 50 MB sau giải nén cho mỗi phần.
 
 ## 7. Ước tính
 
