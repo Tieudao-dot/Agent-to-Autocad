@@ -53,7 +53,7 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 | Phiên bản | **0.9.8** (⚙ ghi 0.9.8) |
 | Nguồn | Nhánh `claude/release-0.9.5` @ `bca3934` (đã gộp `claude/skill-docx-gdocs` @ `dd83838`). CI `release: false` run **45540291856**, artifact `ClaudeCAD-0.9.8` id **14988664201** (339 850 784 byte cả gói) |
 | Link tải | **Không có link tải trực tiếp** (bản thử trên CI, cần đăng nhập GitHub). Tra nội bộ bằng run / artifact id ở trên |
-| Kiểm tra tệp | **Chưa có** kích thước / SHA-256 của `ClaudeCAD-Setup.exe` (máy cloud bị chặn mạng tới máy chủ lưu artifact). Ai tải được gói thì tính bằng `Get-FileHash` rồi bổ sung |
+| Kiểm tra tệp | `ClaudeCAD-Setup.exe`: 141 457 468 byte · SHA-256 `529B8D12C8AC76073AB592E2925FB0B4515B77C48768FE9EC3928E06B261BB7F` (thread lưu trữ tải gói về tự tính, 25/11) |
 | Hạn tải | **23/02/2027** |
 | Thay bản nào | Thay bản thử 0.9.8 lần 1 (`dfa8fab`, run 45534974010). Không thay bản phát hành nào |
 
