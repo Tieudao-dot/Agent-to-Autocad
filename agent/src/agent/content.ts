@@ -129,6 +129,15 @@ export function summarizeResult(tool: string, result: unknown): { summary?: stri
   const r = result as Record<string, unknown>;
   const handles = Array.isArray(r.handles) ? (r.handles.filter((h) => typeof h === 'string') as string[]) : undefined;
   const parts: string[] = [];
+  if (tool === 'verify_drawing' && typeof r.checked === 'number') {
+    const issues = Array.isArray(r.issues) ? r.issues.length : 0;
+    const more = r.more && typeof r.more === 'object' ? Object.values(r.more as Record<string, unknown>).reduce<number>((n, v) => n + (typeof v === 'number' ? v : 0), 0) : 0;
+    const fixed = Array.isArray(r.fixed) ? r.fixed.length : 0;
+    parts.push(`kiểm ${r.checked}`);
+    parts.push(issues + more === 0 ? 'không lỗi' : `${issues + more} lỗi`);
+    if (fixed > 0) parts.push(`tự sửa ${fixed}`);
+    return { summary: parts.join(', ') };
+  }
   if (tool === 'batch_execute' && typeof r.ok_count === 'number') {
     parts.push(`${r.ok_count} lệnh OK`);
     if (typeof r.error_count === 'number' && r.error_count > 0) parts.push(`${r.error_count} lỗi`);

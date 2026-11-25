@@ -73,6 +73,11 @@ namespace ClaudeCAD.Plugin
         // v0.6: macros, change summary, suggestions, plans
         private readonly MacroRecorder _recorder = new MacroRecorder();
         private readonly ChangeTracker _changes = new ChangeTracker();
+        /// <summary>Last verify_drawing of the running turn ("Tự kiểm" card), null = none.</summary>
+        private SelfCheckSummary _selfCheck;
+        /// <summary>Standard of the chat's skills for the running turn, and the layers the user chose for it.</summary>
+        private DrawingStandard _turnStandard;
+        private List<string> _turnLayers = new List<string>();
         private readonly System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>> _turnMacros =
             new System.Runtime.CompilerServices.ConditionalWeakTable<ChatEntry, List<MacroCall>>();
         private MacroStore _macroStore;
@@ -154,7 +159,7 @@ namespace ClaudeCAD.Plugin
             ui.SettingsChanged += s => Guard("settings", () => OnSettingsChanged(s));
             ui.AddSkillRequested += () => Guard("add skill", () => MainThread.Post(AddSkill));
             ui.SkillToggled += (n, on) => Guard("toggle skill", () => ToggleSkill(n, on));
-            ui.SkillEditRequested += n => Guard("edit skill", () => EditSkill(n));
+            ui.SkillEditRequested += (n, mode) => Guard("edit skill", () => EditSkill(n, mode));
             ui.CaptureScreenRequested += () => Guard("capture", () => MainThread.Post(CaptureScreen));
             ui.ReadOnlyToggled += on => Guard("read-only", () => SetReadOnly(on));
             ui.NotesRequested += () => Guard("notes", OpenNotes);
@@ -363,7 +368,30 @@ namespace ClaudeCAD.Plugin
         private void InitSkills()
         {
             _skillStore = new SkillStore(SkillsRoot);
+            try
+            {
+                // after an update: newer sample skills replace the installed ones the user never edited
+                string pristine = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(SkillsRoot)) ?? "", SampleSkills.PristineFolderName);
+                var samples = _skillStore.RefreshSamples(pristine);
+                _skillStore.PristineDir = pristine; // an edited Default skill is put back from here (its edit moves to <name>-sua)
+                var cleaned = SkillEditSession.CleanWorkRoot(SkillEditRoot); // "Sửa" working copies older than 7 days
+                if (cleaned > 0) Logger.Info($"old skill working copies removed: {cleaned}");
+                var untouched = _skillStore.DiscardUntouchedCopies(); // "Sửa" opened and closed without a change
+                if (untouched.Count > 0) Logger.Info("untouched skill copies removed: " + string.Join(", ", untouched));
+                if (samples.Updated.Count > 0) Logger.Info("sample skills updated: " + string.Join(", ", samples.Updated));
+                if (samples.Kept.Count > 0) Logger.Info("sample skills kept (edited by the user): " + string.Join(", ", samples.Kept));
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("sample skills not refreshed: " + ex.Message);
+            }
+            Ui.WordAvailable = WordInstalled();
+            Ui.SkillEditMode = _settings.SkillEditMode;
             RefreshSkills();
+            // v0.9.6: skills the owner assigns to this machine in the Google Sheet arrive with the status check
+            Activation.Skills = _skillStore;
+            Activation.SkillsPushed -= OnSkillsPushed;
+            Activation.SkillsPushed += OnSkillsPushed;
             try
             {
                 Directory.CreateDirectory(_skillStore.Root);
@@ -383,6 +411,23 @@ namespace ClaudeCAD.Plugin
         }
 
         private readonly object _skillDebounceLock = new object();
+        private DateTime _quietSkillReloadUntil; // a pushed pack shows its own toast, not "Skill đã thay đổi"
+
+        private void OnSkillsPushed(List<PackChange> changes)
+        {
+            if (changes.Count == 0) return;
+            _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10);
+            var msg = SkillPackLogic.Summary(changes);
+            Ui.Enqueue(() =>
+            {
+                if (_disposed) return;
+                RefreshSkills();
+                ReloadSkillsInAgent();
+                if (msg == null) return;
+                Ui.AddNote(msg);
+                Ui.ShowToast(msg, ChatControl.ToastKind.Info, 10);
+            });
+        }
 
         /// <summary>
         /// File watcher events come on several threads at once: one timer, pushed back 1.5 s by every event,
@@ -400,7 +445,8 @@ namespace ClaudeCAD.Plugin
                     {
                         RefreshSkills();
                         ReloadSkillsInAgent();
-                        Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
+                        if (DateTime.UtcNow >= _quietSkillReloadUntil)
+                            Ui.ShowToast("Skill đã thay đổi — Claude dùng bản mới từ tin nhắn tiếp theo.", ChatControl.ToastKind.Info);
                     }), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
                 try { _skillDebounce.Change(1500, System.Threading.Timeout.Infinite); }
                 catch (ObjectDisposedException) { }
@@ -413,8 +459,32 @@ namespace ClaudeCAD.Plugin
         private List<SkillInfo> RefreshSkills()
         {
             _library = _skillStore?.Scan() ?? new List<SkillInfo>();
+            SwitchChatToEditedCopies();
             Ui.SetSkills(_library, ChatSkills());
             return _library;
+        }
+
+        /// <summary>
+        /// A Default / Admin skill the user edited lives on as a You copy (&lt;name&gt;-sua): the current chat moves from
+        /// the original to the copy (never both — two standards that disagree). Other chats keep what they use.
+        /// </summary>
+        private void SwitchChatToEditedCopies()
+        {
+            var switches = _skillStore?.TakeSwitches();
+            if (switches == null || switches.Count == 0 || _transcript == null) return;
+            var list = ChatSkillChoice();
+            var moved = new List<string>();
+            foreach (var (copy, original) in switches)
+            {
+                if (!list.Contains(original)) continue;
+                list = SkillSelection.Toggle(SkillSelection.Toggle(list, original, false), copy, true);
+                moved.Add($"{original} → {copy}");
+            }
+            if (moved.Count == 0) return;
+            RememberChatSkills(list);
+            SaveTranscript();
+            ReloadSkillsInAgent();
+            Ui.AddNote("Đoạn chat này chuyển sang bản cậu sửa: " + string.Join(", ", moved) + " (bản gốc vẫn giữ nguyên trong thư viện).");
         }
 
         /// <summary>
@@ -454,8 +524,8 @@ namespace ClaudeCAD.Plugin
             }
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                Title = "Chọn file skill (.md)",
-                Filter = "Skill Markdown (*.md)|*.md",
+                Title = "Chọn file skill (.md hoặc Word .docx)",
+                Filter = "Skill (*.md; *.docx)|*.md;*.docx|Skill Markdown (*.md)|*.md|Word (*.docx)|*.docx",
                 Multiselect = true,
                 InitialDirectory = _skillStore.Root,
             };
@@ -478,15 +548,23 @@ namespace ClaudeCAD.Plugin
             {
                 foreach (var file in files)
                 {
-                    var r = _skillStore.Import(file, false);
+                    // v0.9.8: a Word file becomes SKILL.md (DocxToMarkdown), then the same checks as a .md file
+                    var ext = Path.GetExtension(file).ToLowerInvariant();
+                    bool word = ext == ".docx" || ext == ".doc";
+                    string wordMd = null, dropped = null;
+                    if (word && !FromWord(file, out wordMd, out dropped)) continue;
+                    var suggested = Path.GetFileNameWithoutExtension(file);
+                    var r = word ? _skillStore.ImportText(wordMd, suggested, file, false) : _skillStore.Import(file, false);
                     if (r.Status == SkillImportStatus.Conflict)
                     {
                         var answer = System.Windows.MessageBox.Show(
                             $"Plugin đã có skill \"{r.Name}\".\n\nThay bằng nội dung của file:\n{file} ?",
                             "ClaudeCAD — skill đã tồn tại", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
                         if (answer != System.Windows.MessageBoxResult.Yes) { Ui.AddNote($"Giữ nguyên skill \"{r.Name}\" (không thay)."); continue; }
-                        r = _skillStore.Import(file, true);
+                        r = word ? _skillStore.ImportText(wordMd, suggested, file, true) : _skillStore.Import(file, true);
                     }
+                    if (word && dropped != null && r.Status != SkillImportStatus.Invalid)
+                        Ui.AddNote($"Skill \"{r.Name}\" lấy từ Word; phần bị bỏ khi chuyển: {dropped}.");
                     switch (r.Status)
                     {
                         case SkillImportStatus.Invalid:
@@ -495,6 +573,8 @@ namespace ClaudeCAD.Plugin
                         default:
                             added.Add(r.Name);
                             Ui.AddNote("✓ " + r.Message + " Đã dùng trong đoạn chat này; Claude áp dụng từ tin nhắn tiếp theo (vẫn nhớ cuộc chat).");
+                            if (r.Warning != null)
+                                Ui.AddErrorCard($"Skill \"{r.Name}\": plugin không đọc được bảng chuẩn, nên chưa tự áp chuẩn và tự kiểm theo bảng này. {r.Warning}\n\nSửa bằng nút Sửa trong danh sách Skill (định dạng bảng: xem skill mẫu ve-kien-truc).", false);
                             break;
                     }
                 }
@@ -514,6 +594,33 @@ namespace ClaudeCAD.Plugin
             ReloadSkillsInAgent();
         }
 
+        /// <summary>
+        /// A Word file → skill Markdown. Without its own frontmatter the user names and describes the skill in a
+        /// dialog (Cancel = not added). False when it cannot be used (the reason is shown).
+        /// </summary>
+        private bool FromWord(string file, out string md, out string dropped)
+        {
+            md = null;
+            dropped = null;
+            var c = DocxToMarkdown.Convert(file);
+            if (c.Error != null)
+            {
+                Ui.AddErrorCard($"Không thêm được \"{Path.GetFileName(file)}\": {c.Error}.", false);
+                return false;
+            }
+            dropped = c.Dropped.Count > 0 ? string.Join("; ", c.Dropped) : null;
+            if (c.HasFrontmatter) { md = c.Markdown; return true; }
+            var suggestion = SkillStore.Slugify(Path.GetFileNameWithoutExtension(file));
+            var dlg = new UI.SkillInfoDialog(file, suggestion, dropped);
+            if (dlg.ShowDialog() != true)
+            {
+                Ui.AddNote($"Chưa thêm \"{Path.GetFileName(file)}\" (đã hủy).");
+                return false;
+            }
+            md = SkillStore.WithFrontmatter(dlg.SkillName, dlg.Description, c.Markdown);
+            return true;
+        }
+
         /// <summary>"+" / "−" in the skill list: use the skill in this chat or not (the library keeps it).</summary>
         private void ToggleSkill(string name, bool use)
         {
@@ -527,13 +634,160 @@ namespace ClaudeCAD.Plugin
                 : $"Đoạn chat này không dùng skill {name} nữa (vẫn còn trong thư viện, bấm + để dùng lại).");
         }
 
-        private void EditSkill(string name)
+        // ================================================================= "Sửa" a skill: app / Open with / Word (v0.9.8)
+
+        private static string SkillEditRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeCAD", "skill-edit");
+        private readonly Dictionary<string, (SkillEditSession session, FileSystemWatcher watcher)> _edits =
+            new Dictionary<string, (SkillEditSession, FileSystemWatcher)>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _editPromptOpen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        private static bool WordInstalled()
         {
-            var file = _skillStore?.SkillFile(name);
-            if (file == null || !File.Exists(file)) return;
-            try { Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); }
-            catch { Process.Start("notepad.exe", "\"" + file + "\""); } // no .md editor associated
-            Ui.SetToolStatus($"Đang mở {name}\\SKILL.md — lưu file là xong, plugin tự nạp lại.");
+            try { using (var k = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey("Word.Application")) return k != null; }
+            catch { return false; }
+        }
+
+        private static SkillEditMode ParseEditMode(string m) =>
+            m == "word" ? SkillEditMode.Word : m == "openwith" ? SkillEditMode.OpenWith : SkillEditMode.App;
+
+        /// <summary>
+        /// "Sửa" (mode null = as chosen last time) / "▾ ▸ …". A You skill in an app opens in place; anything else opens a
+        /// working copy, and its saves come back through <see cref="OnSkillEditSaved"/>: You → written into the skill,
+        /// Default / Admin → "Tạo skill mới từ skill gốc" (the original is never written).
+        /// </summary>
+        private void EditSkill(string name, string mode)
+        {
+            if (_skillStore == null) return;
+            if (mode != null && mode != _settings.SkillEditMode)
+            {
+                _settings.SkillEditMode = mode;
+                _settings.Save();
+                Ui.SkillEditMode = mode;
+                RefreshSkills();
+            }
+            var m = ParseEditMode(mode ?? _settings.SkillEditMode);
+            if (m == SkillEditMode.Word && !WordInstalled())
+            {
+                Ui.SetToolStatus("Máy này chưa cài Microsoft Word — bấm ▾ ở nút Sửa để chọn cách mở khác.");
+                return;
+            }
+            SkillEditSession session;
+            try { session = SkillEditSession.Start(_skillStore, name, m, SkillEditRoot); }
+            catch (Exception ex)
+            {
+                Ui.AddErrorCard($"Không mở được skill \"{name}\" để sửa: {ex.Message}", false);
+                return;
+            }
+            if (!session.InPlace) WatchSkillEdit(session);
+            var file = session.WorkFile;
+            try
+            {
+                if (m == SkillEditMode.OpenWith)
+                    Process.Start(new ProcessStartInfo("rundll32.exe", "shell32.dll,OpenAs_RunDLL " + file) { UseShellExecute = false });
+                else if (m == SkillEditMode.Word)
+                {
+                    try { Process.Start(new ProcessStartInfo("winword.exe", "\"" + file + "\"") { UseShellExecute = true }); }
+                    catch { Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); }
+                }
+                else Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
+            }
+            catch
+            {
+                if (m == SkillEditMode.Word) { Ui.AddErrorCard("Không mở được Word.", false); return; }
+                Process.Start("notepad.exe", "\"" + file + "\""); // no .md editor associated
+            }
+            string how = m == SkillEditMode.Word ? "bằng Word" : m == SkillEditMode.OpenWith ? "bằng ứng dụng cậu chọn" : "";
+            Ui.SetToolStatus(session.Target != null
+                ? $"Đang mở {name} {how} — lưu file là xong, plugin tự nạp lại.".Replace("  ", " ")
+                : $"Đang mở bản sao của {name} ({session.Label}) {how}. Bản gốc giữ nguyên; lưu xong plugin hỏi tên + mô tả để tạo skill mới.".Replace("  ", " "));
+        }
+
+        private void WatchSkillEdit(SkillEditSession session)
+        {
+            var dir = Path.GetDirectoryName(session.WorkFile);
+            var fileName = Path.GetFileName(session.WorkFile);
+            var w = new FileSystemWatcher(dir) { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size };
+            System.Threading.Timer debounce = null;
+            void Poke(string changed)
+            {
+                if (!string.Equals(Path.GetFileName(changed), fileName, StringComparison.OrdinalIgnoreCase)) return;
+                // Word saves through temp files and renames: wait until it is done
+                if (debounce == null) debounce = new System.Threading.Timer(_ => Ui.Enqueue(() => Guard("skill edit saved", () => OnSkillEditSaved(session, 0))), null, 2000, System.Threading.Timeout.Infinite);
+                else debounce.Change(2000, System.Threading.Timeout.Infinite);
+            }
+            w.Changed += (s, e) => Poke(e.FullPath);
+            w.Created += (s, e) => Poke(e.FullPath);
+            w.Renamed += (s, e) => Poke(e.FullPath);
+            w.EnableRaisingEvents = true;
+            _edits[session.WorkFile] = (session, w);
+        }
+
+        /// <summary>A working copy was saved: write it into the You skill, or offer "Tạo skill mới" for Default / Admin.</summary>
+        private void OnSkillEditSaved(SkillEditSession session, int attempt)
+        {
+            if (_disposed || _skillStore == null) return;
+            var r = session.Read();
+            if (r.Error != null)
+            {
+                if (attempt < 3) // still being written (Word keeps the file busy for a moment)
+                {
+                    System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ => Ui.Enqueue(() => Guard("skill edit saved", () => OnSkillEditSaved(session, attempt + 1))));
+                    return;
+                }
+                Ui.AddErrorCard($"Không đọc được bản sửa của \"{session.Original}\": {r.Error}.", false);
+                return;
+            }
+            if (!r.Changed) return;
+            var extra = (r.Dropped != null ? $"\n\nPhần bị bỏ khi chuyển từ Word: {r.Dropped}." : "");
+            if (session.Target != null)
+            {
+                if (r.Warning != null)
+                {
+                    var answer = System.Windows.MessageBox.Show(
+                        $"Bản sửa của skill \"{session.Target}\" có lỗi:\n\n{r.Warning}\n\nPlugin không tự áp chuẩn theo phần bảng bị lỗi. Vẫn lưu?" + extra,
+                        "ClaudeCAD — kiểm skill", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+                    if (answer != System.Windows.MessageBoxResult.Yes) { Ui.AddNote($"Chưa lưu bản sửa vào \"{session.Target}\" — sửa lại rồi lưu lần nữa."); return; }
+                }
+                try
+                {
+                    _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10);
+                    _skillStore.SaveBody(session.Target, r.Body);
+                    session.Accept(r);
+                }
+                catch (Exception ex) { Ui.AddErrorCard($"Không lưu được vào skill \"{session.Target}\": {ex.Message}", false); return; }
+                RefreshSkills();
+                ReloadSkillsInAgent();
+                Ui.AddNote($"✓ Đã lưu bản sửa vào skill \"{session.Target}\"; Claude dùng bản mới từ tin nhắn tiếp theo." + (r.Dropped != null ? $" Phần bị bỏ khi chuyển từ Word: {r.Dropped}." : ""));
+                return;
+            }
+            if (!_editPromptOpen.Add(session.WorkFile)) return; // one popup at a time per working copy
+            try
+            {
+                var notice = (r.Warning != null ? "Lưu ý: " + r.Warning + "." : null);
+                if (r.Dropped != null) notice = (notice == null ? "" : notice + " ") + "Bỏ khi chuyển từ Word: " + r.Dropped + ".";
+                var dlg = UI.SkillInfoDialog.ForEditedSkill(session.Original, session.Label, r.SuggestedName, r.SuggestedDescription, notice,
+                    (n, d) =>
+                    {
+                        var why = SkillStore.CheckNewSkillInfo(n, d);
+                        if (why != null) return why;
+                        var slug = SkillStore.Slugify(n);
+                        return _skillStore.Scan().Any(k => k.Name == slug) ? $"Thư viện đã có skill \"{slug}\": đặt tên khác." : null;
+                    });
+                if (dlg.ShowDialog() != true)
+                {
+                    Ui.AddNote($"Chưa tạo skill mới từ \"{session.Original}\". Bản sửa vẫn giữ: lưu lần nữa là plugin hỏi lại.");
+                    return;
+                }
+                _quietSkillReloadUntil = DateTime.UtcNow.AddSeconds(10);
+                var (made, error) = _skillStore.CreateEditedCopy(session.Original, dlg.SkillName, dlg.Description, r.Body);
+                if (error != null) { Ui.AddErrorCard($"Chưa tạo được skill mới: {error}", false); return; }
+                session.Target = made; // later saves of this copy go to the new skill
+                session.Accept(r);
+                RefreshSkills(); // the current chat moves from the original to the new skill
+                ReloadSkillsInAgent();
+                Ui.AddNote($"✓ Đã tạo skill \"{made}\" (nhãn You) từ \"{session.Original}\"; bản gốc giữ nguyên. Lưu tiếp trong cửa sổ đang mở là cập nhật vào \"{made}\".");
+            }
+            finally { _editPromptOpen.Remove(session.WorkFile); }
         }
 
         // ================================================================= per-drawing history (17)
@@ -832,6 +1086,9 @@ namespace ClaudeCAD.Plugin
             }
             _recorder.Clear();
             _changes.Clear();
+            _selfCheck = null;
+            _turnLayers = userEntry?.Layers?.ToList() ?? new List<string>();
+            _turnStandard = LoadStandard(ChatSkills());
             // a slow (Wblock) version copy is prepared now, before any tool call can time out waiting for it
             if (_settings.Versions && doc != null)
             {
@@ -951,10 +1208,13 @@ namespace ClaudeCAD.Plugin
             Autodesk.AutoCAD.DatabaseServices.Database turnDb;
             Document turnStartDoc;
             List<string> suggestions;
+            SelfCheckSummary selfCheck;
             lock (_gate)
             {
                 if (!_busy) return;
                 _busy = false;
+                selfCheck = _selfCheck;
+                _selfCheck = null;
                 turnDb = _turnDb;
                 _turnDb = null;
                 turnStartDoc = _turnStartDoc;
@@ -1010,6 +1270,7 @@ namespace ClaudeCAD.Plugin
                 if (!empty)
                 {
                     assistant.Changes = changes;
+                    assistant.SelfCheck = selfCheck;
                     bool canMacro = macroCalls != null;
                     if (canMacro) { _turnMacros.Remove(assistant); _turnMacros.Add(assistant, macroCalls); }
                     _transcript?.Entries.Add(assistant);
@@ -2162,9 +2423,48 @@ namespace ClaudeCAD.Plugin
 
         public void RecordCall(string tool, Dictionary<string, object> parameters, object result) => _recorder.Record(tool, parameters, result);
 
+        public IReadOnlyDictionary<string, string> TurnChanges()
+        {
+            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (kind, h) in _changes.Snapshot())
+                if (kind != "erased") d[h] = kind;
+            return d;
+        }
+
+        public void RecordSelfCheck(SelfCheckSummary summary) => _selfCheck = summary;
+
+        /// <summary>A macro replays what the user saved: no standard is enforced on it.</summary>
+        public DrawingStandard Standard => _macroRunning ? null : _turnStandard;
+
+        public double? PrintScale => DrawingStandard.ScaleDenominator(_settings.Scale);
+
+        public bool UserAllowsLayer(string layer) =>
+            !string.IsNullOrEmpty(layer) &&
+            (_turnLayers.Any(l => string.Equals(l, layer, StringComparison.OrdinalIgnoreCase)) || DrawingStandard.TextNamesLayer(_turnLabel, layer));
+
+        /// <summary>The machine-readable tables of the chat's skills (layer B); a broken file only loses its standard.</summary>
+        private DrawingStandard LoadStandard(List<string> skills)
+        {
+            if (_skillStore == null || skills == null || skills.Count == 0) return null;
+            var list = new List<DrawingStandard>();
+            foreach (var name in skills)
+            {
+                try
+                {
+                    var file = _skillStore.SkillFile(name);
+                    if (System.IO.File.Exists(file)) list.Add(DrawingStandard.Parse(System.IO.File.ReadAllText(file, Encoding.UTF8), name));
+                }
+                catch (Exception ex) { Logger.Warn($"standard of skill {name} not read: {ex.Message}"); }
+            }
+            var std = DrawingStandard.Merge(list);
+            return std.IsEmpty ? null : std;
+        }
+
         /// <summary>First change of a chat turn: keep a copy of the drawing as it was (every 30 min max).</summary>
         public void BeforeWrite(Document doc)
         {
+            var check = _selfCheck;
+            if (check != null) check.Stale = true; // changed again after the last self-check (a new check replaces it)
             if (_versionChecked || !_settings.Versions || doc == null) return;
             _versionChecked = true;
             try
@@ -2618,6 +2918,9 @@ namespace ClaudeCAD.Plugin
                 DrawingHistory.Instance.ObjectChanged -= OnDbChanged;
                 Notifier.Dispose();
                 _skillWatcher?.Dispose();
+                foreach (var e in _edits.Values) { try { e.watcher.Dispose(); } catch { } }
+                _edits.Clear();
+                Activation.SkillsPushed -= OnSkillsPushed;
                 lock (_skillDebounceLock)
                 {
                     _disposed = true;

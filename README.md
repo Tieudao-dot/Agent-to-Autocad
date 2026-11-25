@@ -32,7 +32,7 @@ Mở lại khung chat: `CLAUDECHAT`, `CC` hoặc **Ctrl+Shift+Space**. Có trụ
 
 | Hạng mục | Yêu cầu |
 | --- | --- |
-| Máy | Windows 10/11 x64, AutoCAD 2022–2025 bản full (không hỗ trợ LT); 2026/2027 đang làm, chưa phát hành ([`docs/autocad-2026-2027.md`](docs/autocad-2026-2027.md)) |
+| Máy | Windows 10/11 x64, AutoCAD 2022–2027 bản full (không hỗ trợ LT); chi tiết 2026/2027: [`docs/autocad-2026-2027.md`](docs/autocad-2026-2027.md) |
 | Build plugin | Visual Studio 2022 (workload *.NET desktop development*) hoặc .NET SDK 8 (`dotnet build`); bản AutoCAD 2027 cần thêm .NET SDK 10 |
 | Sidecar | Node.js >= 18 (khuyến nghị 20/22 LTS) có trong `PATH` khi phát triển; bộ cài đã kèm sẵn `Contents\node\node.exe` |
 | Tài khoản | Claude Pro/Max (nút **Đăng nhập Claude** trong khung chat), **hoặc** biến môi trường `ANTHROPIC_API_KEY` |
@@ -207,7 +207,7 @@ Xem [`bundle/README.md`](bundle/README.md) (thêm ở phase sau): tạo `ClaudeC
 
 ## 6. Cài đặt cho người dùng cuối (phase 3)
 
-- **Setup.exe**: `ClaudeCAD-Setup.exe` (link cố định ở mục *Cài đặt nhanh*) — cài cho user hiện tại, kèm sẵn Node.js, tự thêm thư mục plugin vào `TRUSTEDPATHS` của AutoCAD 2022–2025 (nhánh 2026/2027: thêm R26); lần đầu mở AutoCAD khung chat tự mở với nút **Đăng nhập Claude**.
+- **Setup.exe**: `ClaudeCAD-Setup.exe` (link cố định ở mục *Cài đặt nhanh*) — cài cho user hiện tại, kèm sẵn Node.js, tự thêm thư mục plugin vào `TRUSTEDPATHS` của AutoCAD 2022–2027; lần đầu mở AutoCAD khung chat tự mở với nút **Đăng nhập Claude**.
 - **PowerShell**: giải nén `ClaudeCAD-<version>.zip`, đặt `install.ps1` cạnh thư mục `ClaudeCAD.bundle`, rồi:
 
 ```bash

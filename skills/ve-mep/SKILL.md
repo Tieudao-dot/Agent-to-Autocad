@@ -5,7 +5,7 @@ description: Chuẩn vẽ điện nước (MEP) của người dùng - layer h�
 
 # Vẽ điện nước (MEP) theo chuẩn
 
-> Khung chuẩn mẫu — người dùng điền chuẩn riêng vào các bảng. Luôn theo đúng nội dung hiện có của file này.
+> Khung chuẩn mẫu, **số liệu chưa được duyệt theo chuẩn công ty** — người dùng điền chuẩn riêng vào các bảng. Luôn theo đúng nội dung hiện có của file này.
 
 Quy ước: mm, WCS, tỷ lệ in mặc định 1:100. Bản vẽ MEP thường vẽ trên nền kiến trúc có sẵn — **không sửa đối tượng kiến trúc** (layer `A-*`).
 
@@ -15,6 +15,7 @@ Quy ước: mm, WCS, tỷ lệ in mặc định 1:100. Bản vẽ MEP thường 
 2. Tạo trong **một `batch_execute`** các layer còn thiếu theo bảng mục 2.
 3. Nếu thiếu block ký hiệu cần dùng (mục 4), vẽ và `define_block` một lần rồi mới chèn.
 4. Đọc vị trí tường cần bám tuyến bằng `list_entities` (`layers: ["A-WALL"]`) trước khi tính tọa độ tuyến.
+5. **Danh mục trước khi vẽ:** ghi ngắn số thiết bị và tuyến dự kiến theo layer, ví dụ "E-LIGHT: 4 đèn + 1 tuyến dây, E-SWITCH: 1, E-TEXT: 1 mleader". Lúc kiểm tra truyền đúng danh mục này làm `expect` của `verify_drawing`.
 
 ## 2. Bảng layer chuẩn
 
@@ -35,10 +36,11 @@ Quy ước: mm, WCS, tỷ lệ in mặc định 1:100. Bản vẽ MEP thường 
 
 ## 3. Nguyên tắc đi tuyến
 
-- Tuyến ống / dây đi **song song tường**, cách mặt trong tường: dây điện âm tường 50, ống cấp nước 100, ống thoát 150, máng cáp 300 (tính tới tim tuyến). Dùng `offset_entity` từ nét tường trong rồi `edit_polyline` cắt bớt hai đầu, hoặc tính tọa độ và `draw_polyline`.
+- Tuyến ống / dây đi **song song tường**, cách mặt trong tường: dây điện âm tường 50, ống cấp nước 100, ống thoát 150, máng cáp 300 (tính tới tim tuyến). Ưu tiên `offset_entity` từ nét tường trong (đúng khoảng cách, luôn song song), rồi `trim_entities` / `extend_entities` hai đầu tới tuyến hoặc thiết bị cần nối. Chỉ tự tính tọa độ khi không có nét tường để bám.
 - Rẽ góc 90°; tránh cắt chéo phòng. Hai tuyến song song cách nhau tối thiểu 100.
 - Ống thoát nước có độ dốc: ghi "i = 2%" và mũi tên chiều dốc cạnh tuyến.
 - Đường dây từ công tắc tới đèn: polyline, có thể bo cung nhẹ (bulge 0.2) cho dễ đọc.
+- **Đầu tuyến phải chạm thiết bị:** đỉnh đầu / cuối của dây, ống lấy đúng **điểm chèn** của block thiết bị (tọa độ trong `positions` đã dùng, hoặc đọc lại bằng `get_entity`), không ước lượng. Ống nhánh nối vào ống chính phải có đỉnh nằm đúng trên ống chính.
 
 ## 4. Ký hiệu thiết bị (block)
 
@@ -69,4 +71,54 @@ Sau quy trình chuẩn bị và có block `E-DEN`:
 {"tool": "insert_block", "params": {"name": "E-DEN", "layer": "E-LIGHT", "positions": [[1000,1500],[3000,1500],[1000,4500],[3000,4500]]}}
 ```
 
-Rồi nối dây bằng một `batch_execute` các `draw_polyline` trên `E-LIGHT`, ghi `add_mleader` loại dây. Báo cáo số thiết bị theo loại và nhắc gõ U để hoàn tác cả lượt.
+Rồi nối dây bằng một `batch_execute` các `draw_polyline` trên `E-LIGHT`, mỗi tuyến đi qua đúng các điểm chèn [1000,1500] → [3000,1500] → [3000,4500] → [1000,4500]; ghi `add_mleader` loại dây. Sau đó làm đủ mục 7 rồi báo cáo theo mục 9.
+
+## 7. Kiểm tra trước khi báo xong (bắt buộc, mỗi lượt có vẽ hoặc sửa)
+
+Ngưỡng khe hở: 10 mm
+
+Kiểm bằng **số đo của công cụ**, không chỉ nhìn ảnh. Plugin bắt buộc bước này: lượt có vẽ / sửa mà chưa
+`verify_drawing` thì chưa được báo xong.
+
+1. **`verify_drawing`** (không cần `handles`), truyền danh mục ở mục 1 làm `expect`, ví dụ
+   `{"expect": {"E-LIGHT": 5, "E-SWITCH": 1, "E-TEXT": 1}}`. Công cụ đo đối tượng của lượt, lỗi an toàn tự sửa (nối khe hở ≤ ngưỡng, đóng polyline,
+   xóa bản trùng / dài 0). Ngưỡng khe hở lấy từ dòng trên.
+2. **Sửa mọi lỗi còn lại** rồi gọi lại `verify_drawing`:
+
+| Mã | Sửa thế nào |
+| --- | --- |
+| `GAP` / `OVERSHOOT` | đầu nét hở hoặc thừa: `extend_entities` / `trim_entities`, hoặc vẽ lại đầu nét bằng bắt điểm `{"snap": "end", "of": ...}` |
+| `OPEN_POLY` | `edit_polyline` với `closed: true` |
+| `ARC_MISMATCH` | vẽ lại cung với tâm / đầu cung bắt `end` vào đúng đối tượng |
+| `LAYER_0` / `LAYER_UNKNOWN` | `set_entity_props` sang layer đúng của bảng mục 2 |
+| `PROP_OVERRIDE` | `set_entity_props` với `color` / `linetype` / `lineweight` = `"bylayer"` |
+| `TEXT_HEIGHT` | `edit_text` về chiều cao theo bảng chữ × tỷ lệ in |
+| `TEXT_OVERLAP` | `move_entities` chữ / dim cho khỏi chồng |
+| `STRAY` / `COUNT` | xem lại tọa độ / danh mục: vẽ thêm phần thiếu, xóa phần thừa |
+
+3. **Kiểm thêm phần máy không đo được:**
+   - Khoảng cách tuyến tới mặt trong tường đúng mục 3 (`measure_distance`); hai tuyến song song cách nhau ≥ 100; ống
+     thoát có ghi độ dốc.
+   - Không có đối tượng mới nào trên layer `A-*` (không sửa nền kiến trúc); số trong bảng thiết bị (nếu có) khớp
+     `count_entities` với `types: ["INSERT"]`.
+4. **Nhìn lại:** `capture_view` với các handle vừa vẽ.
+
+Tối đa **2 vòng** sửa; vẫn còn lỗi thì không nói "xong", mà liệt kê từng lỗi còn lại (handle, lỗi gì, vị trí) để
+người dùng quyết.
+
+## 8. Lỗi hay gặp (tránh từ đầu)
+
+- Dây / ống dừng cách thiết bị vài mm vì tọa độ ước lượng → đầu tuyến bắt điểm chèn block `{"snap": "ins", "of": <handle block>}`.
+- Tuyến tự tính tọa độ không song song tường → `offset_entity` từ nét tường.
+- Chèn block thiết bị lên layer `0` hoặc layer của block → luôn ghi `layer` khi `insert_block`.
+- Vẽ đè hoặc sửa nhầm đối tượng kiến trúc `A-*` → chỉ đọc nền kiến trúc.
+- Đếm thiết bị bằng mắt rồi ghi vào bảng → đếm bằng `count_entities`.
+- Chạy lại cả batch khi một lệnh lỗi → thiết bị bị chèn hai lần; chỉ chạy lại các lệnh lỗi.
+
+## 9. Báo cáo cuối lượt
+
+> Đã vẽ: 4 đèn, 1 tuyến dây, 1 ghi chú (E-LIGHT 5, E-TEXT 1) — đúng danh mục.
+> Tự kiểm: layer ✓ · điểm khớp ✓ · hình học ✓ · chữ ✓ · thiếu/thừa ✓.
+> Gõ U một lần để hoàn tác cả lượt.
+
+Có lỗi chưa sửa được thì thay ✓ bằng ✗ và ghi rõ lỗi ngay bên dưới.

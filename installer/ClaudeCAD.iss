@@ -1,9 +1,9 @@
 ﻿; Inno Setup script: builds ClaudeCAD-Setup-<version>.exe from bundle\out\ClaudeCAD.bundle.
-; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.4 installer\ClaudeCAD.iss
+; Build on Windows:  "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=0.9.8 installer\ClaudeCAD.iss
 ; (CI does this in .github/workflows/build.yml.)
 
 #ifndef AppVersion
-  #define AppVersion "0.9.4"
+  #define AppVersion "0.9.8"
 #endif
 #define BundleDir "..\bundle\out\ClaudeCAD.bundle"
 ; one installer for AutoCAD 2022-2027: refuse to build it without all three plugin builds
@@ -56,7 +56,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 ; program files are replaced on upgrade
 Source: "{#BundleDir}\*"; DestDir: "{app}"; Excludes: "Contents\skills\*"; Flags: recursesubdirs createallsubdirs ignoreversion
-; skills: never overwrite files the user may have edited
+; skills: never overwrite files the user may have edited. Newer sample skills reach an existing install through
+; Contents\skills-mau (a program file, copied by the line above): the plugin replaces a sample the user never edited.
 Source: "{#BundleDir}\Contents\skills\*"; DestDir: "{app}\Contents\skills"; Flags: recursesubdirs createallsubdirs onlyifdoesntexist uninsneveruninstall
 
 #define ClaudeExe "{app}\Contents\agent\node_modules\@anthropic-ai\claude-agent-sdk-win32-x64\claude.exe"
@@ -590,6 +591,54 @@ begin
     SetStatus(Err);
     MsgBox(Err, mbError, MB_OK);
   end;
+end;
+
+{ ======================================================================= installing over an existing copy
+  AutoCAD keeps the plugin dll open and Restart Manager cannot close AutoCAD: the user only saw the English box
+  "Setup was unable to automatically close all applications". So before any file is copied: ask (in Vietnamese)
+  to close AutoCAD, and stop the plugin's own helper processes (bundled node.exe, Claude Code) if any is left. }
+function AcadRunning(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec(ExpandConstant('{cmd}'), '/C tasklist /FI "IMAGENAME eq acad.exe" /NH 2>nul | find /I "acad.exe" >nul',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+procedure StopBundleProcesses();
+var
+  ResultCode: Integer;
+  Dir, Args: String;
+begin
+  { only processes whose executable is inside the plugin folder: no other Node.js on the machine is touched }
+  Dir := AddBackslash(ExpandConstant('{app}'));
+  StringChangeEx(Dir, '''', '''''', True);
+  Args := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$d = ''' + Dir + '''; ' +
+    'Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($d, [StringComparison]::OrdinalIgnoreCase) } | ' +
+    'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"';
+  if Exec('powershell.exe', Args, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('upgrade: helper processes in the plugin folder stopped (powershell exit ' + IntToStr(ResultCode) + ')')
+  else
+    Log('upgrade: could not run powershell to stop helper processes');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  { first install: nothing of ours is in use }
+  if not DirExists(ExpandConstant('{app}\Contents')) then exit;
+  while AcadRunning() do
+  begin
+    Log('upgrade: AutoCAD is running');
+    if SuppressibleMsgBox('AutoCAD đang mở nên chưa cập nhật được ClaudeCAD.' + #13#10#13#10 +
+         'Hãy lưu bản vẽ, đóng hết các cửa sổ AutoCAD rồi bấm Retry (Thử lại).',
+         mbError, MB_RETRYCANCEL, IDCANCEL) <> IDRETRY then
+    begin
+      Result := 'AutoCAD đang mở. Hãy đóng AutoCAD rồi chạy lại bộ cài ClaudeCAD.';
+      exit;
+    end;
+  end;
+  StopBundleProcesses();
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

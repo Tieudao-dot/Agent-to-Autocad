@@ -177,12 +177,22 @@ jobs:
           $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
           $v = '${{ steps.ver.outputs.version }}'
           @(
-            "ClaudeCAD $v — hướng dẫn cài: https://github.com/${{ github.repository }}/tree/main/bo-cai",
+            "ClaudeCAD $v",
+            "",
+            "Tải trực tiếp (bấm là tải): https://github.com/${{ github.repository }}/releases/download/v$v/ClaudeCAD-Setup.exe",
+            "",
+            "Hướng dẫn cài: https://github.com/${{ github.repository }}/blob/main/bo-cai/README.md",
             "",
             "Kiểm tra file tải về (PowerShell: Get-FileHash .\ClaudeCAD-Setup.exe):",
             "- ClaudeCAD-Setup.exe: $($f.Length) bytes",
             "- SHA-256: $h"
           ) | Set-Content -Encoding utf8 release-notes.md
+          # "Điểm mới": section C of docs/ghi-chu-phat-hanh-nhap.md, when those notes are for this version.
+          # Missing or empty notes leave the description as generated above; this never fails the release.
+          node bundle/release-highlights.mjs $v release-notes.md
+          if ($LASTEXITCODE -ne 0) { Write-Warning "release highlights not added (exit $LASTEXITCODE)"; $global:LASTEXITCODE = 0 }
+          Write-Host "----- release description -----"
+          Get-Content release-notes.md -Encoding utf8 | Write-Host
 
       # Since v0.9.4 every machine needs a key. A release built without the activation service url would lock
       # out every user who updates (no way to request or check a key online): refuse to publish it.

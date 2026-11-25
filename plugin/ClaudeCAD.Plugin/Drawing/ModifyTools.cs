@@ -424,6 +424,7 @@ namespace ClaudeCAD.Plugin.Drawing
             var hs = p.Handles("handles", MaxModifyHandles);
             if (!p.Has("layer") && !p.Has("color") && !p.Has("linetype") && !p.Has("lineweight") && !p.Has("linetype_scale"))
                 throw ToolException.Invalid("set_entity_props: give at least one of layer, color, linetype, lineweight, linetype_scale.");
+            if (p.Has("layer")) Acad.CheckStandardLayer(ctx, p.Str("layer", null), "set_entity_props");
             var ents = OpenForWrite(ctx, hs);
             foreach (var e in ents) Acad.ApplyCommon(ctx, e, p);
             return new Dictionary<string, object> { ["count"] = ents.Count, ["handles"] = hs.Cast<object>().ToList() };

@@ -20,7 +20,7 @@
     ProductType="Application"
     Name="ClaudeCAD"
     Description="Chat với Claude trong AutoCAD: vẽ, đọc, sửa bản vẽ bằng tiếng Việt."
-    AppVersion="0.9.4"
+    AppVersion="0.9.8"
     Author="ClaudeCAD"
     ProductCode="{8D3C1A52-6E4B-4F0A-9C27-3B5E7A1D9F40}"
     UpgradeCode="{2A7F5C19-0B8E-4D63-A1F4-6C9E2B7D5A08}"
@@ -32,7 +32,7 @@
     <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.1" SeriesMax="R24.3" />
     <ComponentEntry
         AppName="ClaudeCAD"
-        Version="0.9.4"
+        Version="0.9.8"
         ModuleName="./Contents/ClaudeCAD.Plugin.dll"
         AppDescription="ClaudeCAD chat palette and drawing tools"
         LoadOnAutoCADStartup="True">
@@ -49,7 +49,7 @@
     <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.0" SeriesMax="R25.1" />
     <ComponentEntry
         AppName="ClaudeCAD2025"
-        Version="0.9.4"
+        Version="0.9.8"
         ModuleName="./Contents/2025/ClaudeCAD.Plugin.dll"
         AppDescription="ClaudeCAD chat palette and drawing tools"
         LoadOnAutoCADStartup="True">
@@ -66,7 +66,7 @@
     <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R26.0" SeriesMax="R26.0" />
     <ComponentEntry
         AppName="ClaudeCAD2027"
-        Version="0.9.4"
+        Version="0.9.8"
         ModuleName="./Contents/2027/ClaudeCAD.Plugin.dll"
         AppDescription="ClaudeCAD chat palette and drawing tools"
         LoadOnAutoCADStartup="True">

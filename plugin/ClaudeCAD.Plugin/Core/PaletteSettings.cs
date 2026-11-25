@@ -27,6 +27,8 @@ namespace ClaudeCAD.Plugin.Core
         public bool Versions = true;        // copy of the DWG before chat changes it (every 30 min max, 10 kept)
         /// <summary>Skills of the most recent chat: a new chat (or a drawing without one) starts with them. null = never set.</summary>
         public List<string> LastSkills;
+        /// <summary>"Sửa" on a skill opens it this way: app (default .md app) | openwith (Windows "Open with") | word (v0.9.8).</summary>
+        public string SkillEditMode = "app";
         public bool SnapshotNextToDrawing;  // also write the "biên bản" next to the DWG (shared project folders)
         public List<string> History = new List<string>(); // feature 10, newest last
 
@@ -79,6 +81,7 @@ namespace ClaudeCAD.Plugin.Core
             ["versions"] = Versions, ["snapshot_next_to_drawing"] = SnapshotNextToDrawing,
             ["history"] = History.Cast<object>().ToList(),
             ["last_skills"] = LastSkills?.Cast<object>().ToList(),
+            ["skill_edit_mode"] = SkillEditMode,
         });
 
         public static PaletteSettings FromJson(string json)
@@ -105,6 +108,7 @@ namespace ClaudeCAD.Plugin.Core
             s.SnapshotNextToDrawing = Bool("snapshot_next_to_drawing", false);
             if (d.TryGetValue("history", out var h) && h is List<object> hl) s.History = hl.OfType<string>().Take(MaxHistory).ToList();
             if (d.TryGetValue("last_skills", out var ls) && ls is List<object> lsl) s.LastSkills = SkillSelection.Clean(lsl.OfType<string>());
+            if (d.TryGetValue("skill_edit_mode", out var em) && em is string ems && (ems == "app" || ems == "openwith" || ems == "word")) s.SkillEditMode = ems;
             return s;
         }
 

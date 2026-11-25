@@ -53,24 +53,32 @@ class FakeSheet {
         vals.forEach((r, i) => r.forEach((v, j) => { sheet.cell(row + i, col + j)[col - 1 + j] = v; }));
         return range;
       },
+      getDisplayValues: () => range.getValues().map(r => r.map(v => String(v))),
       setFontWeight() { return range; },
+      setNumberFormat() { return range; },
+      setWrap() { return range; },
       setDataValidation() { return range; }, // the dropdown is cosmetic; rowStatus() tolerates any text
     };
     return range;
   }
 }
 
-function loadService() {
+function loadService(opts: { noSecrets?: boolean } = {}) {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   const pem = (privateKey.export({ format: 'pem', type: 'pkcs8' }) as string).trim() + '\n';
   const js = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '\\n');
-  const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8')
+  // the Apps Script project: BiMat.gs (the owner's secrets, filled by make-apps-script) + Code.gs (no secret)
+  const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8');
+  const secrets = fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8')
     .replace('{{EMAIL}}', 'owner@example.com')
     .replace('{{SECRET}}', 'test-secret')
     .replace('{{PRIVATE_KEY}}', js(pem));
   const mails: Mail[] = [];
   const quota = { left: 100 };
   const cache = new Map<string, string>();
+  const ttls = new Map<string, number>();
+  const docs = new Map<string, { md: string; updated: Date; mime?: string; code?: number }>();
+  const fetches: string[] = [];
   const props = new Map<string, string>();
   const hooks: { onLock?: () => void } = {};
   const sheets = new Map<string, FakeSheet>();
@@ -84,7 +92,17 @@ function loadService() {
       computeRsaSha256Signature: (value: string, key: string) => javaBytes(crypto.sign('sha256', Buffer.from(value, 'utf8'), key)),
       base64EncodeWebSafe: (bytes: number[]) => toBuf(bytes).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
       formatDate: (d: Date, _tz: string, fmt: string) =>
-        fmt === 'yyyy-MM-dd' ? d.toISOString().slice(0, 10) : fmt === 'yyyyMMddHH' ? d.toISOString().slice(0, 13).replace(/[-T]/g, '') : d.toISOString(),
+        fmt === 'yyyy-MM-dd' ? d.toISOString().slice(0, 10)
+          : fmt === 'yyyyMMddHH' ? d.toISOString().slice(0, 13).replace(/[-T]/g, '')
+            : fmt === 'yyyyMMddHHmmss' ? d.toISOString().slice(0, 19).replace(/[-T:]/g, '') : d.toISOString(),
+      DigestAlgorithm: { SHA_256: 'sha256' },
+      Charset: { UTF_8: 'utf8' },
+      computeDigest: (alg: string, value: string, _cs: string) => javaBytes(crypto.createHash(alg).update(value, 'utf8').digest()),
+      newBlob: () => {
+        let data = Buffer.alloc(0);
+        const blob = { setDataFromString: (t: string) => { data = Buffer.from(t, 'utf8'); return blob; }, getBytes: () => javaBytes(data) };
+        return blob;
+      },
     },
     MailApp: {
       sendEmail: (to: string, subject: string, body: string) => mails.push({ to, subject, body }),
@@ -100,7 +118,7 @@ function loadService() {
       }),
     },
     console: { log: () => {} },
-    CacheService: { getScriptCache: () => ({ get: (k: string) => cache.get(k) ?? null, put: (k: string, v: string) => cache.set(k, v) }) },
+    CacheService: { getScriptCache: () => ({ get: (k: string) => cache.get(k) ?? null, put: (k: string, v: string, t?: number) => { ttls.set(k, t ?? 600); return cache.set(k, v); } }) },
     SpreadsheetApp: {
       getActive: () => spreadsheet,
       getActiveSpreadsheet: () => spreadsheet,
@@ -114,14 +132,34 @@ function loadService() {
       createTextOutput: (s: string) => ({ content: s, setMimeType() { return this; } }),
     },
     Logger: { log: () => {} },
+    // v0.9.8: skills written in Google Docs (Drive export to Markdown, read as the owner)
+    MimeType: { GOOGLE_DOCS: 'application/vnd.google-apps.document' },
+    DriveApp: {
+      getFileById: (id: string) => {
+        const d = docs.get(id);
+        if (!d) throw new Error('No item with the given ID could be found');
+        return { getMimeType: () => d.mime ?? 'application/vnd.google-apps.document', getLastUpdated: () => d.updated };
+      },
+    },
+    ScriptApp: { getOAuthToken: () => 'test-token' },
+    UrlFetchApp: {
+      fetch: (url: string, o: { headers?: Record<string, string> }) => {
+        fetches.push(url);
+        const m = /files\/([^/]+)\/export\?mimeType=text%2Fmarkdown$/.exec(url);
+        const d = m ? docs.get(decodeURIComponent(m[1])) : undefined;
+        const ok = d && o.headers?.Authorization === 'Bearer test-token';
+        return { getResponseCode: () => (ok ? d!.code ?? 200 : 404), getContentText: () => (ok ? d!.md : 'not found') };
+      },
+    },
   };
   vm.createContext(sandbox);
+  if (!opts.noSecrets) vm.runInContext(secrets, sandbox);
   vm.runInContext(code, sandbox);
   const get = (params: Record<string, string>) =>
     JSON.parse(((sandbox.doGet as (e: unknown) => { content: string })({ parameter: params })).content);
   const sheet = () => sheets.get('Thiết bị');
   const row = (machine: string) => sheet()?.rows.find(r => r[0] === machine);
-  return { get, mails, cache, props, hooks, publicKey, sandbox, quota, sheet, row };
+  return { get, mails, cache, props, hooks, publicKey, sandbox, quota, sheet, row, sheets, docs, fetches, ttls };
 }
 
 const verify = (license: string, key: crypto.KeyObject) => {
@@ -329,10 +367,25 @@ describe('activation service (Apps Script)', () => {
   it('keys depend on the secret: another owner\'s service makes other keys', () => {
     const a = loadService();
     const keyA = (a.sandbox.makeKey as (m: string) => string)(machine);
+    const secrets = fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8');
+    assert.ok(secrets.includes("var SECRET = '{{SECRET}}'"), 'the template must not carry a real secret');
+    assert.ok(secrets.includes("var PRIVATE_KEY = '{{PRIVATE_KEY}}'"), 'the template must not carry a real private key');
     const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8');
-    assert.ok(code.includes("var SECRET = '{{SECRET}}'"), 'the template must not carry a real secret');
-    assert.ok(code.includes("var PRIVATE_KEY = '{{PRIVATE_KEY}}'"), 'the template must not carry a real private key');
+    assert.doesNotMatch(code, /var (EMAIL|SECRET|PRIVATE_KEY)\s*=/, 'Code.gs must hold no secret (they live in BiMat.gs)');
+    assert.doesNotMatch(code, /BEGIN PRIVATE KEY|@gmail\.com/);
     assert.match(keyA, /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/);
+  });
+
+  it('without BiMat.gs the service says so instead of failing (ping still answers)', () => {
+    const s = loadService({ noSecrets: true });
+    assert.deepEqual(s.get({ action: 'ping' }), { ok: true, service: 'ClaudeCAD activation', ready: false });
+    for (const action of ['request', 'activate', 'status']) {
+      const r = s.get({ action, machine, key: 'AAAA-BBBB-CCCC-DDDD' });
+      assert.equal(r.ok, false);
+      assert.match(r.error, /BiMat\.gs/);
+    }
+    assert.throws(() => (s.sandbox.kiemTra as () => void)(), /BiMat\.gs/);
+    assert.equal(loadService().get({ action: 'ping' }).ready, true);
   });
 
   it('the manual function emails the key, the offline code and the no-network pass', () => {
@@ -377,5 +430,306 @@ describe('activation service (Apps Script)', () => {
     // activation of a machine whose key the owner already sent still works
     const key = /KEY: (\S+)/.exec(t.mails[0]!.body)![1];
     assert.equal(t.get({ action: 'activate', machine: m(1), key }).ok, true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------- skills per machine
+
+/** The plugin's side of a CCP1 pack (plugin/ClaudeCAD.Plugin/Core/SkillPack.cs), enough to read what was sent. */
+function readPack(line: string, key: crypto.KeyObject) {
+  const parts = line.split('|');
+  assert.equal(parts.length, 5);
+  assert.equal(parts[0], 'CCP1');
+  assert.ok(verify(line, key), 'pack signature');
+  assert.match(parts[2], /^\d{14}$/);
+  const body = JSON.parse(Buffer.from(parts[3], 'base64url').toString('utf8')) as {
+    v: number; skills: Array<{ name: string; act: string; rev: string; sha256?: string; md?: string }>;
+  };
+  assert.equal(body.v, 1);
+  return { machine: parts[1], issued: parts[2], skills: body.skills };
+}
+
+const b64sha = (t: string) => crypto.createHash('sha256').update(t, 'utf8').digest('base64url');
+/** SkillPackLogic.Digest */
+const digestOf = (skills: Array<{ name: string; act: string; rev: string; sha256?: string }>) =>
+  b64sha([...skills].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .map(s => `${s.name}:${s.act}:${s.rev}:${s.act === 'delete' ? '' : s.sha256}\n`).join(''));
+
+const skillMd = (name: string, body = 'Nội dung.') =>
+  `---\nname: ${name}\ndescription: Chuẩn vẽ của công ty A - layer, chữ, kích thước. Dùng khi vẽ cho công ty A.\n---\n\n# ${name}\n\n${body}`;
+
+describe('skills per machine (Apps Script, Gán skill)', () => {
+  const machine = 'CC-1A2B-3C4D-5E6F';
+  const other = 'CC-9999-8888-7777';
+
+  function setup() {
+    const s = loadService();
+    (s.sandbox.caiDat as () => void)();
+    s.get({ action: 'request', machine, device: 'PC', user: 'u' });
+    s.get({ action: 'request', machine: other, device: 'PC2', user: 'u2' });
+    s.sheet()!.rows.forEach(r => { if (r[0] === machine || r[0] === other) r[5] = 'Active'; });
+    const lib = s.sheets.get('Skill')!;
+    const assign = s.sheets.get('Gán skill')!;
+    return { ...s, lib, assign };
+  }
+
+  it('caiDat builds the Skill and Gán skill sheets', () => {
+    const s = setup();
+    assert.deepEqual(s.lib.rows[0], ['Tên', 'Phiên bản', 'Nội dung SKILL.md', 'Ghi chú']);
+    assert.deepEqual(s.assign.rows[0], ['Mã máy', 'Tên skill', 'Hành động', 'Ghi chú']);
+  });
+
+  it('an old plugin (no sk) never gets a pack; a machine with nothing assigned gets nothing', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
+    assert.equal(s.get({ action: 'status', machine }).skills, undefined);
+    assert.equal(s.get({ action: 'status', machine: other, sk: '-' }).skills, undefined);
+  });
+
+  it('sends the assigned skills signed for that machine only, then nothing while unchanged', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', 3, skillMd('cty-a'), '']);
+    s.lib.appendRow(['cty-b', '1', skillMd('cty-b'), '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
+    s.assign.appendRow([machine.toLowerCase(), 'cty-b', 'Ẩn', '']);
+    s.assign.appendRow([machine, 'cty-old', 'Xóa', '']);
+    const r = s.get({ action: 'status', machine, sk: '-' });
+    assert.ok(r.status.startsWith('CCS1|' + machine + '|active|'));
+    assert.ok(JSON.stringify(r).indexOf('"status":"') < JSON.stringify(r).indexOf('"skills":"'), 'skills after status');
+    const p = readPack(r.skills, s.publicKey);
+    assert.equal(p.machine, machine);
+    assert.deepEqual(p.skills.map(k => [k.name, k.act, k.rev]), [['cty-a', 'add', '3'], ['cty-b', 'hide', '1'], ['cty-old', 'delete', '']]);
+    assert.equal(p.skills[0].md, skillMd('cty-a'));
+    assert.equal(p.skills[0].sha256, b64sha(skillMd('cty-a')));
+    assert.equal(p.skills[2].md, undefined);
+    // unchanged: no pack; changed rev: a new pack
+    const sk = digestOf(p.skills);
+    assert.equal(s.get({ action: 'status', machine, sk }).skills, undefined);
+    s.lib.rows[1][1] = '4';
+    assert.equal(s.get({ action: 'status', machine, sk }).skills, undefined, 'known up to date: not worked out again for 10 min');
+    s.cache.clear();
+    assert.ok(s.get({ action: 'status', machine, sk }).skills);
+    // the other machine gets nothing of it
+    assert.equal(s.get({ action: 'status', machine: other, sk: '-' }).skills, undefined);
+  });
+
+  it('digest matches the plugin (fixed vectors in SkillPackTests)', () => {
+    const s = setup();
+    const digest = s.sandbox.digest as (l: unknown[]) => string;
+    assert.equal(digest([]), '47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU');
+    const list = [{ name: 'b', act: 'delete', rev: '2', sha256: 'ignored' }, { name: 'a', act: 'add', rev: '1', sha256: b64sha('x') }];
+    assert.equal(digest(list), digestOf(list));
+    assert.equal(digest(list), 'WTqycN8fUlMedhP9nVCTcvC6bt2w0vb44eR7weJPb-w');
+  });
+
+  it('only Active machines get skills', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
+    s.sheet()!.rows.find(r => r[0] === machine)![5] = 'Disabled';
+    assert.equal(s.get({ action: 'status', machine, sk: '-' }).skills, undefined);
+    s.sheet()!.rows.find(r => r[0] === machine)![5] = 'Chờ duyệt';
+    assert.equal(s.get({ action: 'status', machine, sk: '-' }).skills, undefined);
+  });
+
+  it('bad rows are left out and explained in Ghi chú; a lower row wins', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
+    s.lib.appendRow(['cty-sai', '1', skillMd('cty-khac'), '']);
+    s.lib.appendRow(['cty-ngan', '1', '---\nname: cty-ngan\ndescription: ngắn\n---\n', '']);
+    s.lib.appendRow(['cty-dai', '1', skillMd('cty-dai', 'x'.repeat(45001)), '']);
+    s.lib.appendRow(['=cty', '1', 'x', '']);
+    s.assign.appendRow([machine, 'cty-a', 'Ẩn', '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']); // wins
+    s.assign.appendRow([machine, 'khong-co', 'Thêm', '']);
+    s.assign.appendRow([machine, 'cty-sai', 'Thêm', '']);
+    s.assign.appendRow([machine, 'cty-ngan', 'Thêm', '']);
+    s.assign.appendRow([machine, 'cty-dai', 'Thêm', '']);
+    s.assign.appendRow([machine, 'Ten Sai', 'Thêm', '']);
+    s.assign.appendRow([machine, 'x-admin', 'Thêm', '']);
+    s.assign.appendRow([machine, 'cty-a', 'Chạy', '']);
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    assert.deepEqual(p.skills.map(k => [k.name, k.act]), [['cty-a', 'add']]);
+    const note = (i: number) => String(s.assign.rows[i][3]);
+    assert.match(note(3), /Không có skill "khong-co"/);
+    assert.match(note(4), /name/);
+    assert.match(note(5), /description/);
+    assert.match(note(6), /45000/);
+    assert.match(note(7), /không hợp lệ/);
+    assert.match(note(8), /không hợp lệ/);
+    assert.match(note(9), /Hành động/);
+    assert.match(String(s.lib.rows[5][3]), /^'?Lỗi/); // "=cty": a note, never a formula
+    assert.ok(!String(s.lib.rows[5][3]).startsWith('='));
+  });
+
+  it('at most 20 skills per machine, the rest noted', () => {
+    const s = setup();
+    for (let i = 0; i < 22; i++) {
+      s.lib.appendRow([`s-${i}`, '1', skillMd(`s-${i}`), '']);
+      s.assign.appendRow([machine, `s-${i}`, 'Thêm', '']);
+    }
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    assert.equal(p.skills.length, 20);
+    assert.match(String(s.assign.rows[21][3]), /Quá 20/);
+  });
+
+  it('works a machine\'s pack out at most once a minute (calls with made-up sk cannot eat the quota)', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
+    let reads = 0;
+    const getRange = s.lib.getRange.bind(s.lib);
+    s.lib.getRange = (...a: [number, number, number?, number?]) => { reads++; return getRange(...a); };
+    assert.ok(s.get({ action: 'status', machine, sk: '-' }).skills);
+    const after = reads;
+    for (let i = 0; i < 20; i++) assert.equal(s.get({ action: 'status', machine, sk: 'bia-' + i }).skills, undefined);
+    assert.equal(reads, after);
+    assert.ok(s.get({ action: 'status', machine }).status, 'status itself still answers');
+  });
+
+  it('rejects names Windows cannot use as a folder', () => {
+    const s = setup();
+    s.lib.appendRow(['con', '1', skillMd('con'), '']);
+    s.assign.appendRow([machine, 'con', 'Thêm', '']);
+    s.assign.appendRow([machine, 'lpt1', 'Xóa', '']);
+    assert.equal(s.get({ action: 'status', machine, sk: '-' }).skills, undefined);
+    assert.match(String(s.assign.rows[1][3]), /không hợp lệ/);
+    assert.match(String(s.assign.rows[2][3]), /không hợp lệ/);
+  });
+
+  it('a machine whose rows were all removed gets one empty pack, then nothing', () => {
+    const s = setup();
+    s.lib.appendRow(['cty-a', '1', skillMd('cty-a'), '']);
+    s.assign.appendRow([machine, 'cty-a', 'Thêm', '']);
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    s.cache.clear();
+    s.assign.rows.splice(1);
+    const r = s.get({ action: 'status', machine, sk: digestOf(p.skills) });
+    assert.deepEqual(readPack(r.skills, s.publicKey).skills, []);
+    assert.equal(s.get({ action: 'status', machine, sk: digestOf([]) }).skills, undefined);
+  });
+});
+
+describe('skills written in Google Docs (Apps Script, v0.9.8)', () => {
+  const machine = 'CC-1A2B-3C4D-5E6F';
+  const other = 'CC-9999-8888-7777';
+  const docId = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  const link = `https://docs.google.com/document/d/${docId}/edit?usp=sharing`;
+  // what Google's Markdown export gives for a doc typed with the frontmatter at the top
+  const exported = (body = 'Nội dung.') =>
+    `\\---\n\n**name:** cty\\-a\\-mep\n\ndescription: Chuẩn vẽ MEP của công ty A \\- layer E\\-\\*. Dùng khi vẽ điện nước.\n\n\\---\n\n# Vẽ MEP\n\n${body}\n`;
+
+  function setup() {
+    const s = loadService();
+    (s.sandbox.caiDat as () => void)();
+    for (const m of [machine, other]) s.get({ action: 'request', machine: m, device: 'PC', user: 'u' });
+    s.sheet()!.rows.forEach(r => { if (r[0] === machine || r[0] === other) r[5] = 'Active'; });
+    const lib = s.sheets.get('Skill')!;
+    const assign = s.sheets.get('Gán skill')!;
+    return { ...s, lib, assign };
+  }
+
+  it('reads a private doc as the owner, puts the frontmatter back, versions it by its edit time', () => {
+    const s = setup();
+    s.docs.set(docId, { md: exported(), updated: new Date('2026-11-25T03:04:05Z') });
+    s.lib.appendRow(['cty-a-mep', '7', link, '']);
+    s.assign.appendRow([machine, 'cty-a-mep', 'Thêm', '']);
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    assert.equal(p.skills.length, 1);
+    const k = p.skills[0];
+    assert.equal(k.rev, '20261125030405', 'version = edit time, not the Phiên bản cell');
+    assert.ok(k.md!.startsWith('---\nname: cty-a-mep\ndescription: Chuẩn vẽ MEP của công ty A - layer E-*. Dùng khi vẽ điện nước.\n---\n'), k.md);
+    assert.ok(k.md!.includes('# Vẽ MEP'));
+    assert.equal(k.sha256, b64sha(k.md!));
+    assert.match(String(s.lib.rows[1][3]), /Google Docs, bản sửa lúc/);
+
+    // edited doc: new version on the next check (after the 10-minute "up to date" memory and the 2-minute edit-time memory)
+    s.cache.delete('skd:' + machine); s.cache.delete('skt:' + machine); s.cache.delete('docrev:' + docId);
+    s.docs.set(docId, { md: exported('Bản 2.'), updated: new Date('2026-11-25T05:00:00Z') });
+    const p2 = readPack(s.get({ action: 'status', machine, sk: digestOf(p.skills) }).skills, s.publicKey);
+    assert.equal(p2.skills[0].rev, '20261125050000');
+    assert.ok(p2.skills[0].md!.includes('Bản 2.'));
+  });
+
+  it('reads each doc once per edit (cache), and never for a machine it is not assigned to', () => {
+    const s = setup();
+    s.docs.set(docId, { md: exported(), updated: new Date('2026-11-25T03:04:05Z') });
+    s.lib.appendRow(['cty-a-mep', '', link, '']);
+    s.assign.appendRow([machine, 'cty-a-mep', 'Thêm', '']);
+    s.get({ action: 'status', machine: other, sk: '-' });
+    assert.equal(s.fetches.length, 0);
+    s.get({ action: 'status', machine, sk: '-' });
+    s.cache.delete('skd:' + machine); s.cache.delete('skt:' + machine);
+    s.get({ action: 'status', machine, sk: 'x' });
+    assert.equal(s.fetches.length, 1);
+    assert.ok(s.fetches[0].startsWith('https://www.googleapis.com/drive/v3/files/'));
+  });
+
+  it('explains a bad doc in Ghi chú and sends nothing for it', () => {
+    const s = setup();
+    const ids = ['1MissingMissingMissingMissing00', '1SheetNotADocSheetNotADoc000000', '1NoFrontmatterNoFrontmatter0000', '1FailsToExportFailsToExport0000'];
+    s.docs.set(ids[1], { md: '', updated: new Date(), mime: 'application/vnd.google-apps.spreadsheet' });
+    s.docs.set(ids[2], { md: '# Chỉ có tiêu đề\n', updated: new Date() });
+    s.docs.set(ids[3], { md: '', updated: new Date(), code: 403 });
+    ids.forEach((id, i) => {
+      s.lib.appendRow([`doc-${i}`, '1', `https://docs.google.com/document/d/${id}/edit`, '']);
+      s.assign.appendRow([machine, `doc-${i}`, 'Thêm', '']);
+    });
+    s.lib.appendRow(['cty-b', '1', skillMd('cty-b'), '']); // pasted content still works next to docs
+    s.assign.appendRow([machine, 'cty-b', 'Thêm', '']);
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    assert.deepEqual(p.skills.map(k => k.name), ['cty-b']);
+    assert.match(String(s.lib.rows[1][3]), /không mở được Google Docs/);
+    assert.match(String(s.lib.rows[2][3]), /không phải một Google Docs/);
+    assert.match(String(s.lib.rows[3][3]), /phần đầu/);
+    assert.match(String(s.lib.rows[4][3]), /mã 403/);
+  });
+
+  it('only a bare docs.google.com/document link counts as a doc', () => {
+    const s = setup();
+    const id = s.sandbox.docsId as (c: string) => string | null;
+    assert.equal(id(link), docId);
+    assert.equal(id(`https://docs.google.com/document/u/0/d/${docId}/edit#heading=h.1`), docId);
+    assert.equal(id(`xem https://docs.google.com/document/d/${docId}/edit`), null);
+    assert.equal(id(`https://evil.example/document/d/${docId}`), null);
+    assert.equal(id(`https://docs.google.com/spreadsheets/d/${docId}/edit`), null);
+    assert.equal(id(skillMd('cty-a')), null);
+  });
+});
+
+describe('Apps Script permissions (appsscript.json, security review 25/11)', () => {
+  it('declares exactly the narrow scopes the services in Code.gs need', () => {
+    const code = fs.readFileSync(findRepoFile('activation/apps-script/Code.gs.template'), 'utf8')
+      + fs.readFileSync(findRepoFile('activation/apps-script/BiMat.gs.template'), 'utf8');
+    const manifest = JSON.parse(fs.readFileSync(findRepoFile('activation/apps-script/appsscript.json'), 'utf8')) as { oauthScopes: string[]; runtimeVersion: string };
+    const needs: Record<string, string | null> = {
+      SpreadsheetApp: 'https://www.googleapis.com/auth/spreadsheets.currentonly',
+      MailApp: 'https://www.googleapis.com/auth/script.send_mail',
+      DriveApp: 'https://www.googleapis.com/auth/drive.readonly',
+      UrlFetchApp: 'https://www.googleapis.com/auth/script.external_request',
+      // no scope of their own
+      Utilities: null, CacheService: null, LockService: null, PropertiesService: null, ContentService: null, ScriptApp: null, Logger: null, MimeType: null,
+    };
+    const used = new Set(code.match(/\b[A-Z][A-Za-z]+(?:App|Service)\b/g) ?? []);
+    for (const svc of used) assert.ok(svc in needs, `Code.gs uses ${svc}: add its scope to appsscript.json and to this test`);
+    const want = [...new Set([...used].map(s => needs[s]).filter((x): x is string => !!x))].sort();
+    assert.deepEqual([...manifest.oauthScopes].sort(), want);
+    assert.ok(!manifest.oauthScopes.includes('https://www.googleapis.com/auth/drive'), 'never the full Drive scope');
+    assert.equal(manifest.runtimeVersion, 'V8');
+  });
+
+  it('caches a doc briefly right after an edit (the export may still be the old text)', () => {
+    const s = loadService();
+    (s.sandbox.caiDat as () => void)();
+    const id = '1FreshFreshFreshFreshFreshFresh00';
+    s.docs.set(id, { md: '---\nname: a\ndescription: x\n---\n', updated: new Date(Date.now() - 30_000) });
+    (s.sandbox.docsContent as (i: string) => unknown)(id);
+    assert.equal(s.ttls.get([...s.ttls.keys()].find(k => k.startsWith('doc:' + id))!), 300);
+    assert.equal(s.ttls.get('docrev:' + id), 120);
+    const old = '1OldOldOldOldOldOldOldOldOld0000';
+    s.docs.set(old, { md: '---\nname: a\ndescription: x\n---\n', updated: new Date(Date.now() - 3_600_000) });
+    (s.sandbox.docsContent as (i: string) => unknown)(old);
+    assert.equal(s.ttls.get([...s.ttls.keys()].find(k => k.startsWith('doc:' + old))!), 21600);
   });
 });

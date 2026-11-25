@@ -170,6 +170,7 @@ namespace ClaudeCAD.UI.Tests
                     ("added", "A-WALL", "1"), ("added", "A-WALL", "2"), ("added", "A-DOOR", "3"), ("added", "A-DIM", "4"),
                     ("modified", "A-TEXT", "5"), ("erased", "A-TEMP", "6"),
                 }),
+                SelfCheck = new SelfCheckSummary { Checked = 96, Fixed = 2 },
             };
             c.EndAssistant(a, true, true);
             c.AddSuggestions(new[] { "Ghi tên phòng và diện tích", "Bố trí thiết bị vệ sinh", "Vẽ mặt cắt A-A" });
@@ -361,6 +362,48 @@ namespace ClaudeCAD.UI.Tests
             Assert.Equal(new[] { "done", "done", "done" }, tagsDone);
             Assert.StartsWith("Thao tác (5)", titleDone); // 5 calls in 3 steps
             Assert.False(openDone, "the step list folds again when the turn ends");
+        }
+
+        /// <summary>"Tự kiểm" card under a reply: ✓ when clean, ✗ with clickable issues and "Chọn đối tượng lỗi".</summary>
+        [Fact]
+        public void SelfCheckCardShowsCleanAndOpenIssues()
+        {
+            string okHead = null, badHead = null;
+            int cards = 0, issueRows = 0;
+            List<string> zoomed = null;
+            bool pickFound = false;
+            Sta(() =>
+            {
+                var c = new ChatControl { Width = 400, Height = 700 };
+                c.ZoomRequested += h => zoomed = h;
+                c.AddUserMessage(new ChatEntry { Role = "user", Text = "Vẽ phòng 4x3m" });
+                c.BeginAssistant();
+                c.EndAssistant(new ChatEntry { Role = "assistant", Text = "Đã vẽ phòng. Tự kiểm: ✓", SelfCheck = new SelfCheckSummary { Checked = 4, Fixed = 1 } }, true);
+                c.AddUserMessage(new ChatEntry { Role = "user", Text = "Thêm cửa" });
+                c.BeginAssistant();
+                var bad = new SelfCheckSummary { Checked = 6 };
+                bad.Items.Add(new SelfCheckItem { Code = "ARC_MISMATCH", Message = "Đầu cung không chạm đối tượng nào (layer A-DOOR)", Handles = { "2F51" } });
+                bad.Items.Add(new SelfCheckItem { Code = "LAYER_0", Message = "2 đối tượng trên layer 0", Handles = { "2F52", "2F53" } });
+                c.EndAssistant(new ChatEntry { Role = "assistant", Text = "Còn 2 lỗi chưa sửa được.", SelfCheck = bad }, true);
+                c.SetBusy(false);
+                Pump();
+                Shot(c, "the-tu-kiem");
+                var borders = FindAll<Border>(c).Where(x => x.Tag as string == "selfcheck").ToList();
+                cards = borders.Count;
+                var heads = borders.Select(x => FindAll<TextBlock>(x).Select(t => t.Text).FirstOrDefault(t => t != null && t.StartsWith("Tự kiểm"))).ToList();
+                okHead = heads.FirstOrDefault();
+                badHead = heads.LastOrDefault();
+                issueRows = FindAll<TextBlock>(borders.Last()).Count(t => t.Text != null && t.Text.StartsWith("• "));
+                var pick = FindAll<Button>(borders.Last()).FirstOrDefault(x => (x.Content as string)?.StartsWith("Chọn đối tượng lỗi") == true);
+                pickFound = pick != null && !FindAll<Button>(borders.First()).Any(x => (x.Content as string)?.StartsWith("Chọn đối tượng lỗi") == true);
+                pick?.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            });
+            Assert.Equal(2, cards);
+            Assert.Equal("Tự kiểm: 4 đối tượng · không lỗi ✓ · đã tự sửa 1", okHead);
+            Assert.Equal("Tự kiểm: 6 đối tượng · 2 lỗi ✗", badHead);
+            Assert.Equal(2, issueRows);
+            Assert.True(pickFound, "only the card with open issues has the select button");
+            Assert.Equal(new[] { "2F51", "2F52", "2F53" }, zoomed);
         }
 
         /// <summary>Screen C: "Bắt đầu" card with three numbered steps; the step to do now carries the buttons.</summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -259,6 +260,55 @@ namespace ClaudeCAD.Plugin.Sidecar
             }
         }
 
+        // ------------------------------------------------------------------ v0.9.6: skills pushed per machine
+
+        /// <summary>The library the owner's skills go to (set by the palette); null = do not ask for skills.</summary>
+        public static SkillStore Skills;
+
+        /// <summary>Raised (on a worker thread) after a pack changed the library; the list may be empty.</summary>
+        public static event Action<List<PackChange>> SkillsPushed;
+
+        private static string PackFile => Path.Combine(Root, "skill-pack.txt");
+        private static readonly object PackLock = new object();
+
+        /// <summary>Issued + digest of the last pack accepted on this machine (Windows user).</summary>
+        public static (string issued, string digest) PackState()
+        {
+            try { return SkillPackLogic.ParseState(File.Exists(PackFile) ? File.ReadAllText(PackFile, Encoding.UTF8) : ""); }
+            catch (Exception ex) { Logger.Warn("skill-pack.txt unreadable: " + ex.Message); return ("", SkillPackLogic.NoPack); }
+        }
+
+        /// <summary>
+        /// A CCP1 line from the owner: checked (signature, machine, newer than the last one, limits) before a single
+        /// file is written. A bad pack is logged and ignored — it never changes whether the machine may be used.
+        /// </summary>
+        private static void ApplySkillPack(string line)
+        {
+            var store = Skills;
+            if (string.IsNullOrEmpty(line) || store == null) return;
+            List<PackChange> changes;
+            lock (PackLock)
+            {
+                var check = SkillPackLogic.Verify(line, MachineCode, PackState().issued);
+                if (!check.Ok) { Logger.Warn("skill pack refused: " + check.Reason); return; }
+                try
+                {
+                    changes = store.ApplyPack(check.Skills);
+                    Directory.CreateDirectory(Root);
+                    File.WriteAllText(PackFile, SkillPackLogic.FormatState(check), new UTF8Encoding(false));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn("skill pack not applied: " + ex.Message); // tried again at the next check (state not saved)
+                    return;
+                }
+                Logger.Info($"skill pack {check.Issued}: {check.Skills.Count} skill(s), " +
+                    string.Join(", ", changes.Select(ch => ch.Kind + " " + ch.Folder + (ch.Note != null ? " (" + ch.Note + ")" : ""))));
+            }
+            try { SkillsPushed?.Invoke(changes); }
+            catch (Exception ex) { Logger.Warn("skills pushed handler: " + ex.Message); }
+        }
+
         /// <summary>Writes a verified CCS1 line to status.txt and refreshes the cached status.</summary>
         private static void SaveStatus(string line, StatusCheck verified)
         {
@@ -281,12 +331,14 @@ namespace ClaudeCAD.Plugin.Sidecar
                 new KeyValuePair<string, string>("action", "status"),
                 new KeyValuePair<string, string>("machine", MachineCode),
                 new KeyValuePair<string, string>("ver", UpdateService.CurrentVersion?.ToString(3) ?? ""),
-            });
+            }.Concat(Skills == null ? new KeyValuePair<string, string>[0]
+                : new[] { new KeyValuePair<string, string>("sk", PackState().digest) })); // v0.9.6: skills per machine
             try
             {
                 using (var c = NewClient())
                 {
-                    var r = LicenseLogic.ParseResponse(await c.GetStringAsync(url).ConfigureAwait(false));
+                    var body = await c.GetStringAsync(url).ConfigureAwait(false);
+                    var r = LicenseLogic.ParseResponse(body);
                     if (!r.ok || string.IsNullOrEmpty(r.status))
                         return (false, "Không kiểm tra được trạng thái máy: " + (r.error ?? "máy chủ không trả lời đúng."));
                     var st = LicenseLogic.VerifyStatus(r.status, MachineCode, DateTime.UtcNow);
@@ -305,6 +357,7 @@ namespace ClaudeCAD.Plugin.Sidecar
                         }
                     }
                     Logger.Info("device status: " + st.Status + " (" + MachineCode + ")");
+                    if (st.Status == "active") ApplySkillPack(SkillPackLogic.FromResponse(body));
                     if (st.Status == "disabled") return (true, BlockedMessage);
                     if (st.Status == "active") return (true, IsActivated
                         ? "Máy này đang được chủ plugin cho phép dùng."

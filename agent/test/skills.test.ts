@@ -7,12 +7,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { SNAP_KINDS } from '../src/tools/common.js';
 import { buildTools } from '../src/tools/index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const skillsDir = path.resolve(here, '..', '..', '..', 'skills');
 const toolNames = new Set(buildTools({ call: async () => ({ id: '', ok: true, result: {} }), status: () => {} }).map((t) => t.name));
-const TOOL_PREFIX = /^(draw|add|create|list|set|get|insert|define|find|measure|count|move|copy|rotate|scale|mirror|offset|array|fillet|chamfer|explode|join|erase|edit|zoom|regen|save|purge|undo|batch)_[a-z0-9_]+$/;
+const TOOL_PREFIX = /^(draw|add|create|list|set|get|insert|define|find|measure|count|move|copy|rotate|scale|mirror|offset|array|fillet|chamfer|explode|join|erase|edit|zoom|regen|save|purge|undo|batch|trim|extend|verify|capture)_[a-z0-9_]+$/;
 
 function frontmatter(md: string): Record<string, string> {
   const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(md);
@@ -61,6 +62,32 @@ describe('sample skills', () => {
 
       it('JSON examples are valid JSON', () => {
         for (const m of md.matchAll(/```json\n([\s\S]*?)```/g)) assert.doesNotThrow(() => JSON.parse(m[1]!), m[1]!.slice(0, 80));
+      });
+
+      it('snap references in the examples use real snap kinds', () => {
+        for (const m of md.matchAll(/"snap":\s*"([a-z]+)"/g)) assert.ok((SNAP_KINDS as readonly string[]).includes(m[1]!), m[1]);
+      });
+
+      it('the self-check section runs verify_drawing and states the gap threshold', () => {
+        const idx = md.indexOf('Kiểm tra trước khi báo xong');
+        assert.ok(idx > 0, 'missing "Kiểm tra trước khi báo xong"');
+        const section = md.slice(idx, md.indexOf('\n## ', idx + 10));
+        assert.match(section, /verify_drawing/);
+        assert.match(section, /"expect"/);
+        assert.match(section, /^Ngưỡng khe hở: \d+(?:[.,]\d+)? mm$/m);
+      });
+
+      it('the layer table keeps the machine-readable format', () => {
+        const idx = md.indexOf('Bảng layer chuẩn');
+        assert.ok(idx > 0, 'missing "Bảng layer chuẩn"');
+        const lines = md.slice(idx).split('\n');
+        const start = lines.findIndex((l) => l.startsWith('|'));
+        const end = lines.findIndex((l, i) => i > start && !l.startsWith('|'));
+        const table = lines.slice(start, end);
+        assert.match(table[0]!, /^\| Layer \| Nội dung \| Màu[^|]*\| Linetype \| Lineweight[^|]*\|$/);
+        const rows = table.slice(2);
+        assert.ok(rows.length >= 5);
+        for (const r of rows) assert.match(r, /^\| `[^`]+` \| [^|]+ \| \d{1,3}\b[^|]* \| [A-Z0-9_]+ \| \d+(\.\d+)? \|$/, r);
       });
     });
   }

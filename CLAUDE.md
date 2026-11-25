@@ -68,7 +68,7 @@ tình hình, việc chờ quyết, thread, plugin, nhật ký; luồng chính c�
 | Thread | Session id | Phạm vi |
 | --- | --- | --- |
 | Luồng chính | `session_01D56HmELvEuaLYUjB1TYfNq` | Điều phối, tổng hợp, việc chưa thuộc thread nào |
-| Gộp nhánh & phát hành | `session_01D56HmErdvF4wWAbxpf9F5t` | Nhánh `claude/release-0.9.5`: gộp, bộ cài thử, sửa theo phản hồi test, nâng phiên bản, phát hành |
+| Gộp nhánh & phát hành | `session_01D56HmErdvF4wWAbxpf9F5t` | Nhánh `claude/release` (tới v0.9.8 là `claude/release-0.9.5`, giữ lại không xóa): gộp, bộ cài thử, sửa theo phản hồi test, nâng phiên bản, phát hành |
 | Bảo mật, khóa key & quản lý thiết bị | `session_01D56HmEsRHYufkFu48qFmGR` | Nhánh `claude/device-management`: key, kích hoạt, Apps Script / Google Sheet, trang key của bộ cài |
 | Giao diện & UX | `session_01D56HmHQPBueRAkYDSecN9n` | Nhánh `claude/ux-autocad`: khung chat, theme, thu gọn, icon thanh trạng thái, tiến độ từng bước **(lưu trữ 18/11; mở lại khi cần)** |
 | Kiểm thử | `session_01D56HmG5SsqRGRPe9bHKUad` | Nhánh `claude/test-checklist`: checklist thử thật, lệnh tự kiểm tra, test-log **(lưu trữ 18/11; mở lại khi cần)** |

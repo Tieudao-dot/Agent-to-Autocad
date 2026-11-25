@@ -26,15 +26,88 @@ Mỗi đoạn chat (mỗi bản vẽ) dùng **bộ skill riêng**, lấy từ **
 3. Skill vào **thư viện** và **được dùng luôn trong đoạn chat hiện tại**. Khung chat báo "✓ Đã thêm skill …". Claude dùng từ tin nhắn tiếp theo, vẫn nhớ cuộc chat.
 4. Trùng tên với skill đã có → plugin hỏi có thay không.
 
+**Thêm skill từ file Word (.docx)** (từ 0.9.8)
+
+- Bấm **+ Add skill** và chọn file `.docx`. Chọn chung với file `.md` cũng được.
+- **Plugin tự chuyển sang `SKILL.md`.** Giữ được:
+  - tiêu đề (Heading 1–6, kể cả style tiếng Việt);
+  - chữ đậm / nghiêng;
+  - danh sách chấm và danh sách số, có thụt cấp;
+  - bảng: hàng đầu là tiêu đề. Ở bảng có cột **Layer**, tên layer được tự bọc trong dấu `` ` `` để plugin đọc được
+    **Bảng layer chuẩn**;
+  - chữ của link;
+  - chỉnh sửa theo dõi (tracked changes): lấy bản đã chấp nhận.
+- **Phần bị bỏ** được kể ra trong khung chat:
+  - ảnh / hình vẽ (skill chỉ dùng chữ: ảnh nào chứa quy cách thì viết lại thành chữ hoặc bảng);
+  - hộp chữ;
+  - chú thích cuối trang, ghi chú lề;
+  - công thức;
+  - ô gộp: được tách ra, ô thừa để trống;
+  - dấu `|` trong ô đổi thành `/`.
+- **File chưa có phần đầu** (`name` / `description`): plugin mở hộp thoại để cậu đặt **Tên** (gợi ý từ tên file) và
+  viết **Mô tả** (khi nào dùng skill, 20–1024 ký tự). Bấm Hủy thì không thêm.
+  - Muốn file Word tự mang phần đầu: gõ ở đầu file 4 đoạn `---`, `name: …`, `description: …`, `---`.
+  - Lưu ý: Word có thể tự đổi `---` thành đường kẻ ngang. Khi đó plugin không thấy phần đầu và sẽ hiện hộp thoại.
+- **Giới hạn:** file tối đa 10 MB; kết quả tối đa 45.000 ký tự. File `.doc` cũ thì mở bằng Word rồi lưu lại thành
+  `.docx`.
+- **Cập nhật:** sửa file Word rồi chọn lại bằng + Add skill, plugin sẽ hỏi có thay không. Thư viện chỉ giữ `SKILL.md`
+  đã chuyển; đường dẫn file Word gốc được ghi trong `skills.json`.
+
 **Danh sách skill: nút Skill (N)** (N = số skill đoạn chat này đang dùng)
 
 - **ĐANG DÙNG TRONG ĐOẠN CHAT NÀY:** skill có dấu ✓ và nút **−**. Bấm **−** thì đoạn chat này không dùng skill đó nữa; skill vẫn nằm trong thư viện. Claude được dặn bỏ qua chuẩn của skill đó từ tin nhắn tiếp theo; muốn sạch hoàn toàn khỏi trí nhớ cuộc chat thì bấm **Chat mới**.
 - **THƯ VIỆN (chưa dùng trong đoạn chat này):** các skill còn lại, có nút **+** để dùng trong đoạn chat này.
-- **Sửa:** mở `SKILL.md` bằng trình soạn mặc định. Lưu file là plugin tự nạp lại.
+- **⌄ Xem** (từ 0.9.8): nút **⌄** ở mỗi skill mở khung xem nội dung ngay trong danh sách. Bấm **⌃** để thu gọn.
+  - Khung xem hiện Markdown đã định dạng (tiêu đề, danh sách, bảng layer…), theo màu và font của khung chat. Khung có
+    chiều cao giới hạn, kéo thanh cuộn để xem tiếp. Phần đầu name / description không hiện lại, vì mô tả đã có ở dòng
+    trên.
+  - Chỉ xem: không tạo bản sao, không ghi file. File skill đổi thì nội dung xem tự cập nhật.
+- **Sửa** (từ 0.9.8): bấm **Sửa** là mở theo cách đã chọn lần trước. Bấm **▾** cạnh nút để chọn cách mở; plugin nhớ
+  lựa chọn đó:
+  - **Mở bằng ứng dụng mặc định**: ứng dụng Windows đang mở file `.md` (Notepad, VS Code…).
+  - **Chọn ứng dụng khác…**: hộp "Mở bằng…" của Windows.
+  - **Mở bằng Word**: plugin chuyển skill sang file Word để sửa, nên chỉ có nội dung, phần đầu name / description
+    plugin tự giữ. Khi cậu lưu trong Word, plugin chuyển ngược lại và kiểm lại **Bảng layer chuẩn**. Bảng bị lệch
+    (thiếu cột, màu sai…) thì plugin báo lỗi theo dòng và hỏi có lưu không. Phần Word thêm vào mà skill không giữ
+    được (ảnh, ô gộp…) cũng được báo. Máy chưa cài Word thì mục này mờ.
+  - **Lưu:**
+    - Skill **You**: lưu là ghi thẳng vào skill đó. Plugin tự nạp lại, Claude dùng bản mới từ tin nhắn tiếp theo.
+    - Skill **Default** / **Admin**: plugin mở một **bản sao**, bản gốc không bao giờ bị ghi. Lưu bản sao xong, plugin
+      hiện hộp **"Tạo skill mới từ skill gốc"**: Tên gợi ý `<tên>-sua`, Mô tả lấy từ bản gốc, cậu sửa được cả hai.
+      - Bấm **Tạo skill**: có skill mới nhãn **You**, và **đoạn chat hiện tại** chuyển sang skill mới. Các lần lưu
+        sau trong cửa sổ đang mở sẽ cập nhật vào skill mới.
+      - Bấm **Để sau**: chưa tạo gì; lưu lần nữa là plugin hỏi lại.
+      - Mở rồi đóng mà không sửa gì: không có gì xảy ra.
+      - Bản sao nằm ở `%LocalAppData%\ClaudeCAD\skill-edit` và tự dọn sau 7 ngày.
 
 **Đoạn chat mới** (bấm Chat mới, hoặc mở bản vẽ chưa có chat) dùng **đúng các skill của đoạn chat gần nhất**. 3 skill mẫu đi kèm plugin có sẵn trong thư viện nhưng **không tự dùng**: bấm **+** khi cần.
 
 Muốn bỏ hẳn một skill khỏi thư viện: xóa thư mục `<tên skill>` trong thư mục skill (đường dẫn ở bảng dưới).
+
+## Nhãn skill và skill do chủ plugin gửi (từ 0.9.6)
+
+Cạnh tên mỗi skill trong danh sách có một nhãn:
+
+| Nhãn | Nghĩa |
+| --- | --- |
+| **Admin** | Chủ plugin gửi tới riêng máy này (qua Google Sheet, xem [`activation/README.md`](../activation/README.md#đẩy-skill-tới-từng-máy-chủ-plugin-từ-plugin-096)). Máy tự nhận ở lần kiểm tra trạng thái kế tiếp, có toast báo. Skill **không tự dùng**: bấm **+** khi cần. |
+| **Default** | 3 skill mẫu đi kèm plugin. |
+| **You** | Skill cậu tự thêm bằng **+ Add skill**. |
+
+- **Sửa một skill Default hoặc Admin:** bản gốc giữ nguyên. Từ 0.9.8, lưu bản sao xong thì plugin hỏi Tên + Mô tả để
+  tạo skill mới (xem mục **Sửa** ở trên). Bản 0.9.6–0.9.7 thì tự chép sang `<tên>-sua`.
+  - Skill Default vẫn được làm mới khi cập nhật plugin.
+  - Skill Admin vẫn nhận cập nhật / Ẩn / Xóa từ chủ plugin.
+  - Đoạn chat hiện tại chuyển sang skill mới, không dùng cả hai cùng lúc vì hai chuẩn khác nhau. Các đoạn chat khác
+    giữ nguyên.
+  - Bản cậu sửa không gửi gì về chủ plugin.
+- **Sửa thẳng file gốc** (bằng Explorer, Notepad…): plugin cũng tách như trên. Phần sửa chuyển sang `<tên>-sua` (hoặc
+  `<tên>-sua-2`… nếu đã có), còn bản gốc được khôi phục: skill Default lấy lại từ bản mẫu kèm plugin, skill Admin lấy
+  lại từ bản đã lưu khi nhận.
+- **Trùng tên:** nếu chủ plugin gửi một skill trùng tên với skill của cậu, máy giữ cả hai. Bản Admin nằm ở thư mục
+  `<tên>-admin`.
+- **Chủ plugin ẩn skill:** skill biến khỏi danh sách và Claude không dùng nữa, kể cả trong đoạn chat đang dùng nó.
+- **Chủ plugin gỡ skill:** skill bị xóa khỏi máy.
 
 ## Lưu ở đâu
 
@@ -42,10 +115,12 @@ Muốn bỏ hẳn một skill khỏi thư viện: xóa thư mục `<tên skill>`
 | --- | --- |
 | Thư mục skill của plugin | `%AppData%\Autodesk\ApplicationPlugins\ClaudeCAD.bundle\Contents\skills\` |
 | Mỗi skill | `...\skills\<tên>\SKILL.md` (+ file tham khảo nếu skill là một thư mục) |
-| File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn |
+| File lưu danh sách skill đã thêm | `...\skills\skills.json` — tên, ngày thêm, file nguồn; với skill Admin thêm `origin`, `rev`, `hidden`; với bản sửa `editOf` |
+| Bản gốc của skill Admin (để khôi phục) | `...\skills\.claudecad-admin\<tên>.md` |
+| Gói skill chủ plugin gửi lần gần nhất | `%LocalAppData%\ClaudeCAD\skill-pack.txt` (thời điểm + mã băm, để không tải lại) |
 | Skill của từng đoạn chat | lưu cùng lịch sử chat của bản vẽ (`%LocalAppData%\ClaudeCAD\chats`); skill của đoạn chat gần nhất trong `%AppData%\ClaudeCAD\settings.json` |
 
-Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill và `skills.json` của cậu.
+Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.csv/.json` cùng thư mục (file tham khảo). Cài bản cập nhật không ghi đè skill cậu đã thêm hay đã sửa, cũng không đụng `skills.json`. Riêng 3 skill mẫu (`ve-kien-truc`, `ve-mep`, `ve-ha-tang`) và file README này: nếu cậu **chưa sửa** thì lần mở AutoCAD đầu tiên sau khi cập nhật plugin tự thay bằng bản mẫu mới. Nếu cậu đã sửa thẳng file mẫu, phần sửa không mất: plugin chuyển nó sang `<tên>-sua` (nhãn You) như mô tả ở trên, rồi đưa bản mẫu mới về chỗ cũ (bản mẫu gốc nằm ở `Contents\skills-mau`).
 
 ## Skill mẫu có sẵn
 
@@ -55,4 +130,18 @@ Chọn một file tên `SKILL.md` thì plugin chép cả các file `.md/.txt/.cs
 | `ve-mep` | điện (chiếu sáng, ổ cắm, máng cáp) và cấp thoát nước |
 | `ve-ha-tang` | đường, lý trình, cao độ, cống, ranh giới, bảng tọa độ |
 
-Nên có mục **"Quy trình chuẩn bị"** nhắc Claude gọi `get_drawing_info` + `list_layers` trước, tạo layer/style còn thiếu theo bảng chuẩn, rồi mới vẽ. Xem `ve-kien-truc/SKILL.md` làm mẫu.
+Skill mẫu là **khung**: số liệu (màu, nét, chiều cao chữ…) chưa được duyệt theo chuẩn công ty, cậu thay bằng chuẩn của mình.
+
+## Viết skill để Claude vẽ đúng và tự kiểm lại
+
+Mỗi skill nên có đủ các mục sau (xem `ve-kien-truc/SKILL.md` làm mẫu):
+
+1. **Quy trình chuẩn bị** (bắt buộc): gọi `get_drawing_info` + `list_layers` trước, tạo layer/style còn thiếu theo bảng chuẩn, rồi mới vẽ.
+2. **Danh mục trước khi vẽ:** Claude nêu số đối tượng dự kiến theo layer; lúc kiểm tra truyền làm `expect` của `verify_drawing` để bắt thiếu / thừa.
+3. **Bảng layer chuẩn** (tiêu đề mục chứa "Bảng layer chuẩn") với đúng các cột `Layer | Nội dung | Màu | Linetype | Lineweight`, tên layer trong dấu `` ` ``, màu là số ACI, lineweight là số mm. Plugin đọc thẳng bảng này: công cụ vẽ từ chối layer `0` và layer ngoài bảng (trừ khi người dùng tự nêu tên layer), tự tạo layer chuẩn còn thiếu đúng màu / nét / lineweight, và `verify_drawing` báo `LAYER_UNKNOWN` / `PROP_OVERRIDE`. Bảng sai định dạng thì plugin báo ngay khi thêm skill.
+4. **Bảng chữ theo tỷ lệ in** (tiêu đề mục chứa "Chữ và kích thước theo tỷ lệ in"): cột `Trên giấy` tính bằng mm, dòng `Chữ kích thước` cho chữ dim. Plugin lấy chiều cao chữ mặc định (dòng "ghi chú") × tỷ lệ in trên thanh ngữ cảnh, và `verify_drawing` báo `TEXT_HEIGHT` / `DIM_STYLE`.
+5. **Cách dựng hình không phải tự tính tọa độ:** nét thứ hai bằng `offset_entity`, lỗ / giao nhau bằng `trim_entities` / `extend_entities`, đầu nét **bắt điểm** vào đối tượng có sẵn (`{"snap": "end", "of": handle, "near": [x, y]}`; các kiểu `end`, `mid`, `cen`, `int`, `per`, `nea`, `ins`; trong batch `"of": "@n"` là đối tượng lệnh n vừa tạo). Đây là cách giảm lỗi "điểm không khớp".
+6. **Ví dụ hoàn chỉnh** từng bước (JSON hợp lệ).
+7. **Kiểm tra trước khi báo xong:** dòng `Ngưỡng khe hở: <số> mm` (plugin đọc, mặc định 10), một lệnh `verify_drawing` với `expect`, cách sửa từng mã lỗi trong nghề của skill, phần máy không đo được (bề rộng cửa, khoảng cách tuyến, tọa độ…), cuối cùng `capture_view`. Plugin bắt buộc kiểm trước khi báo xong, sửa tối đa 2 vòng, còn lỗi thì liệt kê.
+8. **Lỗi hay gặp:** những lỗi cậu đã thấy trong thực tế và cách tránh. Gặp lỗi mới thì thêm vào đây.
+9. **Báo cáo cuối lượt** theo mẫu cố định, có dòng "Tự kiểm: ✓ / ✗".
