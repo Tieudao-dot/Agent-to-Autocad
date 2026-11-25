@@ -42,7 +42,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | 7 | **Ghi "Đã gỡ lúc"** khi khách gỡ plugin | Để sau, nằm ở `claude/device-management` (`53bb1bf`) |
 | 8 | **Tách `ChatControl.cs`** cho dễ bảo trì | Để sau |
 | 9 | **Hướng dẫn sử dụng:** rà lại theo giao diện thật | Sau khi thử thật |
-| 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`. Cậu đã duyệt kế hoạch (`docs/ke-hoach-skill-docx-gdocs.md` @4f91b67), ước tính 2–2,5 ngày công. Đang code |
+| 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`. Code xong @b2452fa (CI xanh ở 5df4569, run 45531742310; lõi 270, trợ lý 192), rà bảo mật xong. **Chờ cậu:** cập nhật máy chủ Google 0.9.8 (dán Code.gs, thêm `oauthScopes`, chạy `kiemTra`, Phiên bản mới), rồi quyết phát hành 0.9.8 |
 
 ## 3. Chi phí khi dùng
 
@@ -151,6 +151,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Skill .docx / Google Docs code xong (`claude/skill-docx-gdocs` @b2452fa). Rà bảo mật xong: máy chủ chỉ xin quyền xem Drive (`drive.readonly`). Chờ cậu cập nhật máy chủ Google và quyết phát hành 0.9.8 |
 | 25/11 | Cậu duyệt kế hoạch skill .docx / Google Docs: .docx thiếu tên / mô tả thì hỏi; ảnh bị bỏ và báo số ảnh; Google Docs chỉ qua Sheet (máy chủ ký rồi đẩy), phiên bản theo giờ sửa cuối của doc |
 | 25/11 | Cậu yêu cầu (qua QnA) skill nhận file .docx và nội dung từ link Google Docs. Giao thread đẩy skill, nhánh mới `claude/skill-docx-gdocs`. Google Docs ưu tiên đi qua kênh đẩy skill có chữ ký; phần máy chủ nhờ thread bảo mật rà |
 | 23/11 | Viết lại tổng quan theo bản v0.9.7. Không còn thread nào đang chạy việc; còn chờ cậu: thử thật, mã máy Disabled, chuẩn công ty |
