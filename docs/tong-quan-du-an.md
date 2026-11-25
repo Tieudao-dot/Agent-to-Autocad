@@ -7,8 +7,8 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 ## 1. Tình hình
 
 - **Bản đang phát hành: v0.9.8** (25/11/2026). Trước đó: v0.9.7 (22/11/2026).
-  - Link tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.7/ClaudeCAD-Setup.exe
-  - SHA-256: `9A7332A264A2261EEEBB895027DF52E78F6CC744D30ACA7858531C1C118B3B5B`. Trang: [Releases v0.9.7](https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.7).
+  - Link tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-Setup.exe
+  - SHA-256: `1E294C8775953F895DA6B009940C37481C22792975D95056D5F4D574ADE6CCA0`. Trang: [Releases v0.9.8](https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.8).
   - `main` @6e90240 (PR [Tieudao-dot/Agent-to-Autocad#8](https://github.com/Tieudao-dot/Agent-to-Autocad/pull/8)).
 - **Hai bản ra trong ngày 22/11:**
   - **v0.9.6** (PR [Tieudao-dot/Agent-to-Autocad#7](https://github.com/Tieudao-dot/Agent-to-Autocad/pull/7)):
@@ -36,7 +36,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | 1 | **Thử trên máy thật:** 0.9.6 (`docs/ke-hoach-day-skill.md` mục 6, checklist I10–I13, `test-log.md` S-6 … S-8) và cài đè 0.9.7 khi AutoCAD đang mở | Cậu |
 | 2 | **Máy đã đổi Disabled vẫn dùng được** (từ 18/11). Máy chủ trả trạng thái đúng; nghi lỗi phía máy khách. Plugin kiểm tra khi mở AutoCAD và 6 giờ một lần | Cậu: đóng hẳn rồi mở lại AutoCAD; vẫn dùng được thì gửi mã máy `CC-…` cho thread bảo mật |
 | 3 | **Chuẩn vẽ công ty** để thay số liệu mẫu trong 3 skill mẫu | Cậu gửi cho thread nghiên cứu Skill |
-| 4 | **Mô tả trang Release v0.9.6 / v0.9.7:** mới có phần CI tự sinh. Phần "Điểm mới" phải dán tay vì phiên cloud bị GitHub chặn sửa Release | Cậu (nếu muốn) |
+| 4 | **Mô tả trang Release v0.9.6 / v0.9.7 / v0.9.8:** chưa có "Điểm mới" (đăng trước khi CI tự nối). Từ bản sau CI tự nối mục C của `docs/ghi-chu-phat-hanh-nhap.md` (tiêu đề file phải ghi đúng phiên bản mới). Bản cũ muốn có thì dán tay | Cậu (nếu muốn) |
 | 5 | **Thử key K-5 … K-16:** mạng (K-5, K-6), chỉnh đồng hồ (K-7), chép giấy phép sang máy khác (K-11 … K-16) | Chưa có người làm |
 | 6 | **AutoCAD 2027:** ghi là hỗ trợ, chưa thử trên máy thật | Khi có máy / bản dùng thử |
 | 7 | **Ghi "Đã gỡ lúc"** khi khách gỡ plugin | Để sau, nằm ở `claude/device-management` (`53bb1bf`) |
@@ -153,6 +153,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Xong 2 cải thiện phát hành (PR #10, `main` @77713d4, CI xanh run 45564468349, không phát hành bản mới): CI tự nối "Điểm mới" vào mô tả Release (`bundle/release-highlights.mjs`, trợ lý 198 test); nhánh phát hành đổi thành `claude/release`, nhánh cũ giữ |
 | 25/11 | Rà cải thiện. Cậu chọn: CI tự đưa "Điểm mới" lên trang Release + đổi tên nhánh phát hành (giao thread gộp nhánh). Để sau: kênh thử beta theo máy, tách `ChatControl.cs`, `/compact` các thread dài |
 | 25/11 | **Phát hành v0.9.8** (PR #9, `main` @0f728f9, run 45556187621): skill từ .docx, skill từ Google Docs qua Sheet, sửa skill chọn cách mở, nút ⌄ xem skill. Tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-Setup.exe (SHA-256 1E294C87…ADE6CCA0). Chưa thử trên AutoCAD thật. Báo cáo: [`tong-quan-plugin-0.9.8.md`](tong-quan-plugin-0.9.8.md) |
 | 25/11 | Thread đẩy skill thêm nút ⌄ xem nội dung skill ngay trong danh sách (chỉ xem; yêu cầu từ QnA). `claude/skill-docx-gdocs` @2164323, CI xanh run 45546116459. Chưa có trong bộ cài thử 0.9.8 lần 2; cậu chọn gộp luôn lúc phát hành 0.9.8 (không build lại bộ cài thử) |
