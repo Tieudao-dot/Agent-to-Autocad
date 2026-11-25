@@ -1,8 +1,16 @@
 # Kế hoạch: skill nhận file .docx và nội dung Google Docs
 
-> Trạng thái: **bản nháp, chờ chủ dự án duyệt**. Chưa code. Nhánh `claude/skill-docx-gdocs`, tách từ `main` @6e90240
-> (v0.9.7). Yêu cầu từ thread QnA, chuyển qua luồng chính. Các chỗ **[CHỐT]** đang chờ chủ dự án chọn; phương án đề
-> xuất ghi trước.
+> Trạng thái: **đã chốt 4 điểm (25/11), chờ chủ dự án duyệt plan**. Chưa code. Nhánh `claude/skill-docx-gdocs`, tách
+> từ `main` @6e90240 (v0.9.7). Yêu cầu từ thread QnA, chuyển qua luồng chính.
+
+## 0. Quyết định đã chốt (25/11/2026)
+
+| # | Điểm | Chốt |
+| --- | --- | --- |
+| 1 | .docx không có phần đầu name / description | **Hộp thoại** hỏi Tên (gợi ý từ tên file) + Mô tả; Hủy thì không thêm |
+| 2 | Ảnh / hình vẽ trong Word | **Bỏ**, báo số ảnh bị bỏ và nhắc viết lại thành chữ nếu ảnh chứa quy cách |
+| 3 | Google Docs đi đường nào | **Chỉ qua Sheet** (link ở cột Nội dung của trang Skill). Không làm ô dán link trong plugin |
+| 4 | Phiên bản skill Google Docs | **Tự theo giờ sửa cuối của doc** |
 
 ## 1. Mục tiêu
 
@@ -21,7 +29,7 @@
   .docx → DocxToMarkdown (Core, không cần Word, không cần thư viện ngoài)
         → có frontmatter ở đầu file? (các dòng --- / name: / description: / ---)
             có  → dùng luôn
-            không → hộp thoại: Tên skill (gợi ý từ tên file) + Mô tả khi nào dùng   [CHỐT 1]
+            không → hộp thoại: Tên skill (gợi ý từ tên file) + Mô tả khi nào dùng   (chốt #1)
         → SkillStore.ImportText(...) → cùng bước kiểm như .md (frontmatter, bảng layer, trùng tên)
         → ghi chú trong chat: "✓ Đã thêm … từ Word" + danh sách phần bị bỏ
 ```
@@ -39,7 +47,7 @@
   - Chữ của link. Ngắt dòng.
   - Chỉnh sửa theo dõi (tracked changes): lấy bản đã chấp nhận, tức bỏ chữ bị xóa và giữ chữ được thêm.
 - **Bỏ và báo rõ:**
-  - Ảnh / hình vẽ: số lượng bị bỏ **[CHỐT 2]**.
+  - Ảnh / hình vẽ (chốt #2): báo số lượng bị bỏ.
   - Ô gộp ngang / dọc: ô được tách ra và để trống, kèm cảnh báo.
   - Hộp chữ, chú thích cuối trang, ghi chú lề, công thức toán, đầu trang / chân trang.
 - **Giới hạn:** file tối đa 10 MB; kết quả tối đa 45.000 ký tự, giống giới hạn của skill đẩy. `.doc` (Word cũ) không
@@ -62,11 +70,11 @@
 ### Luồng
 
 ```
-Chủ plugin: trang "Skill" trong Sheet, cột Nội dung dán LINK Google Docs thay vì nội dung   [CHỐT 3]
+Chủ plugin: trang "Skill" trong Sheet, cột Nội dung dán LINK Google Docs thay vì nội dung   (chốt #3)
   (doc KHÔNG cần chia sẻ công khai: Apps Script chạy bằng tài khoản chủ plugin nên đọc được doc riêng)
 Apps Script, mỗi lần tính gói cho một máy:
   link docs.google.com/document/d/<id> → Drive API export text/markdown → nội dung skill
-  phiên bản = giờ sửa cuối của doc (tự đổi khi chủ plugin sửa doc)   [CHỐT 4]
+  phiên bản = giờ sửa cuối của doc (tự đổi khi chủ plugin sửa doc)   (chốt #4)
   → cùng bước kiểm (tên, frontmatter, 45.000 ký tự) → ký vào gói CCP1 như hiện nay
 Máy khách: không đổi gì. Vẫn nhận gói ký số như bây giờ.
 ```
@@ -81,7 +89,7 @@ Máy khách: không đổi gì. Vẫn nhận gói ký số như bây giờ.
   `kiemTra` một lần thì Google sẽ hỏi lại quyền.
 - **Code:** `Code.gs.template`, các hàm `skillLibrary` / `docsContent` mới, cùng test VM trong
   `agent/test/activation.test.ts` (giả lập Drive / UrlFetch).
-- **Link trong plugin** (dán link, nút "Cập nhật từ link") **[CHỐT 3]**: đề xuất **không làm** ở bản này. Plugin
+- **Link trong plugin** (dán link, nút "Cập nhật từ link"): **không làm** (chốt #3). Plugin
   không phân biệt được máy của chủ plugin với máy khách. Cho mọi máy tự tải link nghĩa là ai sửa được doc là đổi được
   hành vi Claude. Chủ plugin đã có đường an toàn qua Sheet.
 
