@@ -365,7 +365,7 @@ function buildSkillPack(machine, sk) {
     writeNotes(as, rows.length, notes);
     return emptyPack(machine, sk);
   }
-  var lib = skillLibrary(ss);
+  var lib = skillLibrary(ss, wanted);
   var list = [], bytes = 0;
   for (var j = 0; j < order.length; j++) {
     var w = wanted[order[j]];
@@ -396,8 +396,12 @@ function emptyPack(machine, sk) {
   return sk === '-' || sk === digest([]) ? null : { line: signedPack(machine, []), digest: digest([]) };
 }
 
-/** "Skill" sheet → { name: { rev, md, error } }; checks what the plugin checks (SkillStore.ParseFrontmatter). */
-function skillLibrary(ss) {
+/**
+ * "Skill" sheet → { name: { rev, md, error } }; checks what the plugin checks (SkillStore.ParseFrontmatter).
+ * Nội dung may be a Google Docs link (v0.9.8): the doc is read with the owner's account (it need not be shared),
+ * and its version is its last edit time. Docs are only read for the skills in <wanted> (the asking machine's).
+ */
+function skillLibrary(ss, wanted) {
   var sh = ss.getSheetByName(SKILL_SHEET);
   var lib = {};
   if (!sh || sh.getLastRow() < 2) return lib;
@@ -407,15 +411,87 @@ function skillLibrary(ss) {
     var name = String(rows[i][0]).trim();
     if (!name) continue;
     var md = String(rows[i][2]).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-    var error = null;
-    if (badSkillName(name)) error = 'tên không hợp lệ (chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin, không dùng tên con/nul/aux/prn/com1…/lpt1…)';
+    var rev = String(rows[i][1]).trim();
+    var error = null, ok = '';
+    var link = docsId(md);
+    if (link) {
+      if (!wanted || !(name in wanted)) continue; // not this machine's: do not read the doc, keep its note
+      var doc = docsContent(link);
+      if (doc.error) error = doc.error;
+      else { md = doc.md; rev = doc.rev; ok = 'Google Docs, bản sửa lúc ' + doc.when + ' (' + md.length + ' ký tự).'; }
+    }
+    if (error) { /* from the doc */ }
+    else if (badSkillName(name)) error = 'tên không hợp lệ (chữ thường không dấu, số, gạch nối, tối đa 58 ký tự, không kết thúc bằng -admin, không dùng tên con/nul/aux/prn/com1…/lpt1…)';
     else if (md.length > MAX_SKILL_CHARS) error = 'dài ' + md.length + ' ký tự, tối đa ' + MAX_SKILL_CHARS;
     else error = frontmatterError(md, name);
-    lib[name] = { rev: String(rows[i][1]).trim(), md: md, error: error }; // a lower row wins
-    notes[i] = error ? 'Lỗi: ' + error + '.' : '';
+    lib[name] = { rev: rev, md: md, error: error }; // a lower row wins
+    notes[i] = error ? 'Lỗi: ' + error + '.' : ok;
   }
   writeNotes(sh, rows.length, notes);
   return lib;
+}
+
+// ======================================================================= skills written in Google Docs (v0.9.8)
+
+var DOCS_LINK_RE = /^https:\/\/docs\.google\.com\/document\/(?:u\/\d+\/)?d\/([A-Za-z0-9_-]{20,128})(?:[\/?#]\S*)?$/;
+var DOCS_CACHE_SECONDS = 21600; // keyed by the doc's edit time, so a cached copy is never stale
+
+/** The doc id when the Nội dung cell is only a Google Docs link, else null (pasted content). */
+function docsId(cell) {
+  var m = DOCS_LINK_RE.exec(String(cell || '').trim());
+  return m ? m[1] : null;
+}
+
+/** { md, rev, when } of a Google Doc read as the owner (Drive export to Markdown), or { error }. */
+function docsContent(id) {
+  var file;
+  try {
+    file = DriveApp.getFileById(id);
+  } catch (err) {
+    return { error: 'không mở được Google Docs (sai link, hoặc tài khoản chủ plugin chưa có quyền xem doc này)' };
+  }
+  if (file.getMimeType() !== MimeType.GOOGLE_DOCS) return { error: 'link không phải một Google Docs (file Word trên Drive: mở bằng Google Docs rồi Lưu dưới dạng Google Docs)' };
+  var edited = file.getLastUpdated();
+  var rev = Utilities.formatDate(edited, 'UTC', 'yyyyMMddHHmmss');
+  var when = Utilities.formatDate(edited, TIME_ZONE, 'dd/MM/yyyy HH:mm');
+  var cache = CacheService.getScriptCache();
+  var key = 'doc:' + id + ':' + rev;
+  var md = cache.get(key);
+  if (md === null) {
+    var resp = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '/export?mimeType=text%2Fmarkdown', {
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true,
+    });
+    if (resp.getResponseCode() !== 200) return { error: 'không tải được nội dung Google Docs (mã ' + resp.getResponseCode() + ')' };
+    md = resp.getContentText('UTF-8');
+    if (md.length > MAX_SKILL_CHARS * 2) return { error: 'Google Docs dài quá ' + MAX_SKILL_CHARS + ' ký tự' };
+    try { cache.put(key, md, DOCS_CACHE_SECONDS); } catch (e) { /* over 100 KB: read again next time */ }
+  }
+  return { md: normalizeDocsMarkdown(md), rev: rev, when: when };
+}
+
+/**
+ * Google's Markdown export escapes punctuation (name: cty\-a) and may turn a typed "---" into a rule (* * *, ___):
+ * the frontmatter at the top is put back to plain "---" / "name: …" / "description: …" lines; the rest is kept.
+ */
+function normalizeDocsMarkdown(md) {
+  var lines = String(md).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
+  while (lines.length && !lines[0].trim()) lines.shift();
+  var rule = /^\s*(?:\\?[-*_]\s*){3,}$/;
+  if (lines.length && rule.test(lines[0])) {
+    var end = -1;
+    for (var i = 1; i < lines.length && i < 40; i++) if (rule.test(lines[i])) { end = i; break; }
+    if (end > 0) {
+      var head = ['---'];
+      for (var j = 1; j < end; j++) {
+        var l = lines[j].replace(/\\([!-\/:-@\[-`{-~])/g, '$1').replace(/^\*\*(.*?)\*\*/, '$1').trim();
+        if (l) head.push(l);
+      }
+      head.push('---');
+      lines = head.concat(lines.slice(end + 1));
+    }
+  }
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '') + '\n';
 }
 
 function frontmatterError(md, name) {

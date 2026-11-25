@@ -76,6 +76,8 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
   const mails: Mail[] = [];
   const quota = { left: 100 };
   const cache = new Map<string, string>();
+  const docs = new Map<string, { md: string; updated: Date; mime?: string; code?: number }>();
+  const fetches: string[] = [];
   const props = new Map<string, string>();
   const hooks: { onLock?: () => void } = {};
   const sheets = new Map<string, FakeSheet>();
@@ -129,6 +131,25 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
       createTextOutput: (s: string) => ({ content: s, setMimeType() { return this; } }),
     },
     Logger: { log: () => {} },
+    // v0.9.8: skills written in Google Docs (Drive export to Markdown, read as the owner)
+    MimeType: { GOOGLE_DOCS: 'application/vnd.google-apps.document' },
+    DriveApp: {
+      getFileById: (id: string) => {
+        const d = docs.get(id);
+        if (!d) throw new Error('No item with the given ID could be found');
+        return { getMimeType: () => d.mime ?? 'application/vnd.google-apps.document', getLastUpdated: () => d.updated };
+      },
+    },
+    ScriptApp: { getOAuthToken: () => 'test-token' },
+    UrlFetchApp: {
+      fetch: (url: string, o: { headers?: Record<string, string> }) => {
+        fetches.push(url);
+        const m = /files\/([^/]+)\/export\?mimeType=text%2Fmarkdown$/.exec(url);
+        const d = m ? docs.get(decodeURIComponent(m[1])) : undefined;
+        const ok = d && o.headers?.Authorization === 'Bearer test-token';
+        return { getResponseCode: () => (ok ? d!.code ?? 200 : 404), getContentText: () => (ok ? d!.md : 'not found') };
+      },
+    },
   };
   vm.createContext(sandbox);
   if (!opts.noSecrets) vm.runInContext(secrets, sandbox);
@@ -137,7 +158,7 @@ function loadService(opts: { noSecrets?: boolean } = {}) {
     JSON.parse(((sandbox.doGet as (e: unknown) => { content: string })({ parameter: params })).content);
   const sheet = () => sheets.get('Thiết bị');
   const row = (machine: string) => sheet()?.rows.find(r => r[0] === machine);
-  return { get, mails, cache, props, hooks, publicKey, sandbox, quota, sheet, row, sheets };
+  return { get, mails, cache, props, hooks, publicKey, sandbox, quota, sheet, row, sheets, docs, fetches };
 }
 
 const verify = (license: string, key: crypto.KeyObject) => {
@@ -586,5 +607,92 @@ describe('skills per machine (Apps Script, Gán skill)', () => {
     const r = s.get({ action: 'status', machine, sk: digestOf(p.skills) });
     assert.deepEqual(readPack(r.skills, s.publicKey).skills, []);
     assert.equal(s.get({ action: 'status', machine, sk: digestOf([]) }).skills, undefined);
+  });
+});
+
+describe('skills written in Google Docs (Apps Script, v0.9.8)', () => {
+  const machine = 'CC-1A2B-3C4D-5E6F';
+  const other = 'CC-9999-8888-7777';
+  const docId = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  const link = `https://docs.google.com/document/d/${docId}/edit?usp=sharing`;
+  // what Google's Markdown export gives for a doc typed with the frontmatter at the top
+  const exported = (body = 'Nội dung.') =>
+    `\\---\n\n**name:** cty\\-a\\-mep\n\ndescription: Chuẩn vẽ MEP của công ty A \\- layer E\\-\\*. Dùng khi vẽ điện nước.\n\n\\---\n\n# Vẽ MEP\n\n${body}\n`;
+
+  function setup() {
+    const s = loadService();
+    (s.sandbox.caiDat as () => void)();
+    for (const m of [machine, other]) s.get({ action: 'request', machine: m, device: 'PC', user: 'u' });
+    s.sheet()!.rows.forEach(r => { if (r[0] === machine || r[0] === other) r[5] = 'Active'; });
+    const lib = s.sheets.get('Skill')!;
+    const assign = s.sheets.get('Gán skill')!;
+    return { ...s, lib, assign };
+  }
+
+  it('reads a private doc as the owner, puts the frontmatter back, versions it by its edit time', () => {
+    const s = setup();
+    s.docs.set(docId, { md: exported(), updated: new Date('2026-11-25T03:04:05Z') });
+    s.lib.appendRow(['cty-a-mep', '7', link, '']);
+    s.assign.appendRow([machine, 'cty-a-mep', 'Thêm', '']);
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    assert.equal(p.skills.length, 1);
+    const k = p.skills[0];
+    assert.equal(k.rev, '20261125030405', 'version = edit time, not the Phiên bản cell');
+    assert.ok(k.md!.startsWith('---\nname: cty-a-mep\ndescription: Chuẩn vẽ MEP của công ty A - layer E-*. Dùng khi vẽ điện nước.\n---\n'), k.md);
+    assert.ok(k.md!.includes('# Vẽ MEP'));
+    assert.equal(k.sha256, b64sha(k.md!));
+    assert.match(String(s.lib.rows[1][3]), /Google Docs, bản sửa lúc/);
+
+    // edited doc: new version on the next check (after the 10-minute "up to date" memory)
+    s.cache.delete('skd:' + machine); s.cache.delete('skt:' + machine);
+    s.docs.set(docId, { md: exported('Bản 2.'), updated: new Date('2026-11-25T05:00:00Z') });
+    const p2 = readPack(s.get({ action: 'status', machine, sk: digestOf(p.skills) }).skills, s.publicKey);
+    assert.equal(p2.skills[0].rev, '20261125050000');
+    assert.ok(p2.skills[0].md!.includes('Bản 2.'));
+  });
+
+  it('reads each doc once per edit (cache), and never for a machine it is not assigned to', () => {
+    const s = setup();
+    s.docs.set(docId, { md: exported(), updated: new Date('2026-11-25T03:04:05Z') });
+    s.lib.appendRow(['cty-a-mep', '', link, '']);
+    s.assign.appendRow([machine, 'cty-a-mep', 'Thêm', '']);
+    s.get({ action: 'status', machine: other, sk: '-' });
+    assert.equal(s.fetches.length, 0);
+    s.get({ action: 'status', machine, sk: '-' });
+    s.cache.delete('skd:' + machine); s.cache.delete('skt:' + machine);
+    s.get({ action: 'status', machine, sk: 'x' });
+    assert.equal(s.fetches.length, 1);
+    assert.ok(s.fetches[0].startsWith('https://www.googleapis.com/drive/v3/files/'));
+  });
+
+  it('explains a bad doc in Ghi chú and sends nothing for it', () => {
+    const s = setup();
+    const ids = ['1MissingMissingMissingMissing00', '1SheetNotADocSheetNotADoc000000', '1NoFrontmatterNoFrontmatter0000', '1FailsToExportFailsToExport0000'];
+    s.docs.set(ids[1], { md: '', updated: new Date(), mime: 'application/vnd.google-apps.spreadsheet' });
+    s.docs.set(ids[2], { md: '# Chỉ có tiêu đề\n', updated: new Date() });
+    s.docs.set(ids[3], { md: '', updated: new Date(), code: 403 });
+    ids.forEach((id, i) => {
+      s.lib.appendRow([`doc-${i}`, '1', `https://docs.google.com/document/d/${id}/edit`, '']);
+      s.assign.appendRow([machine, `doc-${i}`, 'Thêm', '']);
+    });
+    s.lib.appendRow(['cty-b', '1', skillMd('cty-b'), '']); // pasted content still works next to docs
+    s.assign.appendRow([machine, 'cty-b', 'Thêm', '']);
+    const p = readPack(s.get({ action: 'status', machine, sk: '-' }).skills, s.publicKey);
+    assert.deepEqual(p.skills.map(k => k.name), ['cty-b']);
+    assert.match(String(s.lib.rows[1][3]), /không mở được Google Docs/);
+    assert.match(String(s.lib.rows[2][3]), /không phải một Google Docs/);
+    assert.match(String(s.lib.rows[3][3]), /phần đầu/);
+    assert.match(String(s.lib.rows[4][3]), /mã 403/);
+  });
+
+  it('only a bare docs.google.com/document link counts as a doc', () => {
+    const s = setup();
+    const id = s.sandbox.docsId as (c: string) => string | null;
+    assert.equal(id(link), docId);
+    assert.equal(id(`https://docs.google.com/document/u/0/d/${docId}/edit#heading=h.1`), docId);
+    assert.equal(id(`xem https://docs.google.com/document/d/${docId}/edit`), null);
+    assert.equal(id(`https://evil.example/document/d/${docId}`), null);
+    assert.equal(id(`https://docs.google.com/spreadsheets/d/${docId}/edit`), null);
+    assert.equal(id(skillMd('cty-a')), null);
   });
 });
