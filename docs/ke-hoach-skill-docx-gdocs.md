@@ -1,7 +1,7 @@
 # Kế hoạch: skill nhận file .docx và nội dung Google Docs
 
-> Trạng thái: plan được duyệt 25/11/2026. **Đã code xong** (.docx + Google Docs), đã qua rà bảo mật. Chờ chủ dự án
-> triển khai `Code.gs` + `appsscript.json`. Nhánh `claude/skill-docx-gdocs`, tách
+> Trạng thái: plan được duyệt 25/11/2026. **Đã code xong** (.docx + Google Docs), đã qua rà bảo mật. **Máy chủ đã triển
+> khai 25/11** (Code.gs mới, oauthScopes hẹp, kiemTra, Phiên bản mới). Còn chờ gộp vào bản phát hành. Nhánh `claude/skill-docx-gdocs`, tách
 > từ `main` @6e90240 (v0.9.7). Yêu cầu từ thread QnA, chuyển qua luồng chính.
 
 ## 0. Quyết định đã chốt (25/11/2026)
