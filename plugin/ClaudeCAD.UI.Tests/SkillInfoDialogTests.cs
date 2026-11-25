@@ -45,5 +45,25 @@ namespace ClaudeCAD.UI.Tests
             Assert.Contains("Chuẩn MEP.docx", text);
             Assert.Contains("2 ảnh / hình vẽ", text);
         }
+
+        [Fact]
+        public void TheEditedSkillPopupPrefillsNameAndDescription()
+        {
+            string name = null, desc = null, text = null;
+            Sta(() =>
+            {
+                var d = SkillInfoDialog.ForEditedSkill("ve-mep", "Default", "ve-mep-sua", "Chuẩn vẽ MEP mẫu - điện nước.", "Lưu ý: Bảng layer chuẩn, dòng 9 …", (n, x) => null);
+                name = d.SkillName;
+                desc = d.Description;
+                text = string.Join("\n", ((StackPanel)d.Content).Children.OfType<TextBlock>().Select(t => t.Text));
+                var buttons = ((StackPanel)((StackPanel)d.Content).Children[((StackPanel)d.Content).Children.Count - 1]).Children.OfType<Button>().Select(b => (string)b.Content).ToList();
+                Assert.Equal(new[] { "Tạo skill", "Để sau" }, buttons);
+                d.Close();
+            });
+            Assert.Equal("ve-mep-sua", name);
+            Assert.Equal("Chuẩn vẽ MEP mẫu - điện nước.", desc);
+            Assert.Contains("Bản gốc được giữ nguyên", text);
+            Assert.Contains("Bảng layer chuẩn", text);
+        }
     }
 }
