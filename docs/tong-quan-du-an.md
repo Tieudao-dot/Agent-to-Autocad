@@ -55,7 +55,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | Thread | Phạm vi | Nhánh | Đã làm | Trạng thái | Chi phí* |
 | --- | --- | --- | --- | --- | --- |
 | [Luồng chính](https://claude.ai/code/session_01D56HmELvEuaLYUjB1TYfNq) | Điều phối, tổng hợp | `claude/wizardly-heisenberg-ugup5c` | Tính năng tới 0.9.3, rà soát, tổng quan, giao việc 0.9.6 / 0.9.7, hướng dẫn cập nhật máy chủ Google | Rảnh | ~$456 |
-| [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, phát hành | `claude/release-0.9.5` (dùng tiếp cho 0.9.6 / 0.9.7) | Phát hành v0.9.5, **v0.9.6, v0.9.7** | Xong | ~$62 |
+| [Gộp nhánh & phát hành](https://claude.ai/code/session_01D56HmErdvF4wWAbxpf9F5t) | Gộp, bộ cài thử, phát hành | `claude/release` (từ 25/11; tới v0.9.8 là `claude/release-0.9.5`, giữ lại không xóa) | Phát hành v0.9.5, **v0.9.6, v0.9.7** | Xong | ~$62 |
 | [Bảo mật, khóa key & thiết bị](https://claude.ai/code/session_01D56HmEsRHYufkFu48qFmGR) | Key, kích hoạt, Apps Script / Sheet | `claude/device-management` | Khóa key, quản lý thiết bị, tách `BiMat.gs`, rà bảo mật đẩy skill | **Chờ cậu:** mã máy Disabled | ~$92 |
 | [Đẩy skill theo máy](https://claude.ai/code/session_01D56HmERgjnrwP5MTbkGKro) | Gán skill theo mã máy | `claude/day-skill-theo-may` | Đẩy skill, nhãn, giữ bản gốc khi sửa (đã vào 0.9.6) | Xong. Dòng "chờ đồng ý" trên thread là tin cũ | ~$13 |
 | [Tự kiểm trước khi báo xong](https://claude.ai/code/session_01D56HmJy4Urvum4vU5EmdwS) | Tự kiểm bản vẽ, bắt điểm, áp chuẩn | `claude/tu-kiem-tra` | 14 mã, bắt điểm, áp chuẩn lúc vẽ (đã vào 0.9.6) | Xong | ~$21 |
