@@ -152,6 +152,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Thread đẩy skill thêm nút ⌄ xem nội dung skill ngay trong danh sách (chỉ xem; yêu cầu từ QnA). `claude/skill-docx-gdocs` @2164323, CI xanh run 45546116459. Chưa có trong bộ cài thử 0.9.8 lần 2 |
 | 25/11 | Bộ cài thử 0.9.8 lần 2 (run 45540291856, `claude/release-0.9.5` @bca3934; lõi 278, trợ lý 192): có .docx, Google Docs, sửa skill chọn cách mở. Thay lần 1. Chờ cậu thử |
 | 25/11 | Sửa skill chọn cách mở code xong (@dd83838, CI xanh run 45538946273). Cậu yêu cầu build bộ cài thử để thử; đã giao thread gộp nhánh |
 | 25/11 | Cậu duyệt kế hoạch "sửa skill: chọn cách mở" (Word / ứng dụng khác; skill Default / Admin lưu thành skill mới qua popup). Thread đẩy skill làm, ~3 ngày công |
