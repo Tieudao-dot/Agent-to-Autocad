@@ -44,6 +44,19 @@ Hai trang trong cùng Google Sheet. `caiDat` / `kiemTra` tự tạo, kèm tiêu 
   - Mỗi skill tối đa 45.000 ký tự. Không dùng các tên Windows cấm đặt cho thư mục: `con`, `nul`, `aux`, `prn`,
     `com1`…`com9`, `lpt1`…`lpt9`.
   - **Sửa nội dung thì tăng Phiên bản.**
+  - **Soạn trên Google Docs** (từ máy chủ 0.9.8): thay vì dán nội dung, dán **link Google Docs** vào ô Nội dung, ví dụ
+    `https://docs.google.com/document/d/…/edit`. Chỉ dán đúng link, không kèm chữ khác.
+    - Doc **không cần chia sẻ**: máy chủ đọc bằng tài khoản Google của cậu. Máy khách không bao giờ tự tải link.
+    - Đầu doc phải có phần đầu như file `SKILL.md`: dòng `---`, dòng `name: <đúng cột Tên>`, dòng
+      `description: …`, dòng `---`. Google Docs có thể đổi `---` thành đường kẻ ngang; máy chủ vẫn nhận.
+    - **Phiên bản tự theo giờ sửa cuối của doc**, nên cột Phiên bản bỏ qua với dòng link. Sửa doc xong thì máy được
+      gán nhận bản mới ở lần kiểm tra kế tiếp, chậm nhất khoảng 10 phút + chu kỳ kiểm tra. Bản đang sửa dở cũng có
+      thể đi luôn, nên soạn xong rồi hãy sửa doc thật.
+    - Cột Ghi chú báo "Google Docs, bản sửa lúc …" hoặc lỗi: sai link / chưa có quyền xem, không phải Google Docs,
+      thiếu phần đầu, quá dài.
+    - Máy chủ chỉ đọc doc của skill được gán cho máy đang hỏi, và chỉ tải lại khi doc có bản sửa mới.
+    - Lần đầu dùng: chạy `kiemTra` để Google hỏi thêm quyền **xem file Drive** và **kết nối dịch vụ bên ngoài**.
+      Máy chủ dùng Drive API, gọi bằng chính tài khoản của cậu, để xuất doc ra Markdown.
 - **Gán skill**: Mã máy · Tên skill · Hành động · Ghi chú. Mỗi dòng là một skill cho một máy; một máy có thể có
   nhiều dòng.
 

@@ -94,7 +94,7 @@ Phần giao diện của palette `CLAUDECHAT` sau đợt nâng cấp. Code: `plu
 
 | # | Tính năng | Cách dùng | Ghi chú |
 | --- | --- | --- | --- |
-| 40 | Thư viện skill + skill theo đoạn chat | **+ Add skill** chọn nhiều file `.md` → vào thư viện và dùng luôn trong đoạn chat này. **Skill (N)**: *Đang dùng* (✓, nút **−**) / *Thư viện* (nút **+**), **Sửa**. | Danh sách lưu cùng lịch sử chat của bản vẽ; chat mới dùng skill của chat gần nhất; skill mẫu không tự dùng. Trợ lý nạp đúng danh sách của đoạn chat (đổi danh sách → khởi động lại Claude, vẫn giữ cuộc chat) và dặn Claude khi một skill bị bỏ / thêm. |
+| 40 | Thư viện skill + skill theo đoạn chat | **+ Add skill** chọn nhiều file `.md` hoặc Word `.docx` (v0.9.8: tự chuyển sang `SKILL.md`, hộp thoại Tên + Mô tả khi file chưa có phần đầu, báo phần bị bỏ như ảnh / ô gộp) → vào thư viện và dùng luôn trong đoạn chat này. **Skill (N)**: *Đang dùng* (✓, nút **−**) / *Thư viện* (nút **+**), **Sửa**. | Danh sách lưu cùng lịch sử chat của bản vẽ; chat mới dùng skill của chat gần nhất; skill mẫu không tự dùng. Trợ lý nạp đúng danh sách của đoạn chat (đổi danh sách → khởi động lại Claude, vẫn giữ cuộc chat) và dặn Claude khi một skill bị bỏ / thêm. |
 
 ## Giao diện theo phong cách AutoCAD (v0.9.5)
 

@@ -26,6 +26,33 @@ Mỗi đoạn chat (mỗi bản vẽ) dùng **bộ skill riêng**, lấy từ **
 3. Skill vào **thư viện** và **được dùng luôn trong đoạn chat hiện tại**. Khung chat báo "✓ Đã thêm skill …". Claude dùng từ tin nhắn tiếp theo, vẫn nhớ cuộc chat.
 4. Trùng tên với skill đã có → plugin hỏi có thay không.
 
+**Thêm skill từ file Word (.docx)** (từ 0.9.8)
+
+- Bấm **+ Add skill** và chọn file `.docx`. Chọn chung với file `.md` cũng được.
+- **Plugin tự chuyển sang `SKILL.md`.** Giữ được:
+  - tiêu đề (Heading 1–6, kể cả style tiếng Việt);
+  - chữ đậm / nghiêng;
+  - danh sách chấm và danh sách số, có thụt cấp;
+  - bảng: hàng đầu là tiêu đề. Ở bảng có cột **Layer**, tên layer được tự bọc trong dấu `` ` `` để plugin đọc được
+    **Bảng layer chuẩn**;
+  - chữ của link;
+  - chỉnh sửa theo dõi (tracked changes): lấy bản đã chấp nhận.
+- **Phần bị bỏ** được kể ra trong khung chat:
+  - ảnh / hình vẽ (skill chỉ dùng chữ: ảnh nào chứa quy cách thì viết lại thành chữ hoặc bảng);
+  - hộp chữ;
+  - chú thích cuối trang, ghi chú lề;
+  - công thức;
+  - ô gộp: được tách ra, ô thừa để trống;
+  - dấu `|` trong ô đổi thành `/`.
+- **File chưa có phần đầu** (`name` / `description`): plugin mở hộp thoại để cậu đặt **Tên** (gợi ý từ tên file) và
+  viết **Mô tả** (khi nào dùng skill, 20–1024 ký tự). Bấm Hủy thì không thêm.
+  - Muốn file Word tự mang phần đầu: gõ ở đầu file 4 đoạn `---`, `name: …`, `description: …`, `---`.
+  - Lưu ý: Word có thể tự đổi `---` thành đường kẻ ngang. Khi đó plugin không thấy phần đầu và sẽ hiện hộp thoại.
+- **Giới hạn:** file tối đa 10 MB; kết quả tối đa 45.000 ký tự. File `.doc` cũ thì mở bằng Word rồi lưu lại thành
+  `.docx`.
+- **Cập nhật:** sửa file Word rồi chọn lại bằng + Add skill, plugin sẽ hỏi có thay không. Thư viện chỉ giữ `SKILL.md`
+  đã chuyển; đường dẫn file Word gốc được ghi trong `skills.json`.
+
 **Danh sách skill: nút Skill (N)** (N = số skill đoạn chat này đang dùng)
 
 - **ĐANG DÙNG TRONG ĐOẠN CHAT NÀY:** skill có dấu ✓ và nút **−**. Bấm **−** thì đoạn chat này không dùng skill đó nữa; skill vẫn nằm trong thư viện. Claude được dặn bỏ qua chuẩn của skill đó từ tin nhắn tiếp theo; muốn sạch hoàn toàn khỏi trí nhớ cuộc chat thì bấm **Chat mới**.

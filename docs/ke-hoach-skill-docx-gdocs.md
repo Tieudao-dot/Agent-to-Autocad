@@ -1,6 +1,7 @@
 # Kế hoạch: skill nhận file .docx và nội dung Google Docs
 
-> Trạng thái: **đã chốt 4 điểm (25/11), chờ chủ dự án duyệt plan**. Chưa code. Nhánh `claude/skill-docx-gdocs`, tách
+> Trạng thái: plan được duyệt 25/11/2026. **Đã code xong** (.docx + Google Docs); chờ CI Windows, rà bảo mật, rồi chủ
+> dự án triển khai `Code.gs`. Nhánh `claude/skill-docx-gdocs`, tách
 > từ `main` @6e90240 (v0.9.7). Yêu cầu từ thread QnA, chuyển qua luồng chính.
 
 ## 0. Quyết định đã chốt (25/11/2026)
@@ -35,6 +36,11 @@
 ```
 
 ### Chuyển đổi
+
+*Thêm khi code:*
+
+- Ở bảng có cột "Layer", tên layer được tự bọc trong dấu `` ` ``, để **Bảng layer chuẩn** soạn trong Word đọc được.
+- Dấu `|` trong ô đổi thành `/`, vì `DrawingStandard` không đọc `\|`.
 
 - **Cách đọc:** `.docx` là file zip. Plugin đọc `word/document.xml`, `styles.xml` và `numbering.xml` bằng
   `ZipArchive` + `XDocument`, có sẵn trong .NET 4.8 / 8 / 10. Không thêm gói NuGet.
