@@ -249,8 +249,9 @@ Cần test trên AutoCAD thật: S-6, S-7.
 - Trợ lý vốn tự thoát khi AutoCAD đóng (kiểm `--parent-pid` + JobObject), nên không đổi code plugin. Đường tự cập nhật (`CLAUDECHATUPDATE`) chờ AutoCAD thoát rồi mới chép, có thử lại 5 lần, không đổi.
 - Chỉ CI biên dịch được script Inno; hành vi thật cần thử trên Windows (`test-log.md` I-6).
 
-### Sau v0.9.8 — CI tự đưa "Điểm mới" lên mô tả Release ✅ code xong (nhánh `claude/release-0.9.5`, chưa gộp `main`)
+### Sau v0.9.8 — CI tự đưa "Điểm mới" lên mô tả Release ✅ code xong (nhánh `claude/release`, chưa gộp `main`)
 
 - **Vì sao:** phiên cloud không sửa được Release nên phần "Điểm mới" trước giờ phải dán tay.
 - **Cách làm:** bước "Release notes" của `.github/workflows/build.yml` gọi `bundle/release-highlights.mjs`: lấy khối markdown đầu tiên của mục C trong `docs/ghi-chu-phat-hanh-nhap.md` nối vào cuối `release-notes.md`. Chỉ lấy khi tiêu đề file ghi đúng phiên bản đang phát hành (ghi chú cũ không lọt vào bản mới). Thiếu file / mục C / khối rỗng thì giữ mô tả như cũ; script luôn thoát 0 nên không làm hỏng phát hành. Mô tả sinh ra được in trong log CI.
 - Test: `agent/test/release-highlights.test.ts` (6 bài), agent 198.
+- **Nhánh phát hành đổi tên (25/11):** từ `claude/release-0.9.5` sang `claude/release`, tách từ `main` @ `0f728f9`. Nhánh cũ giữ nguyên. Tên cũ trong các mục lịch sử (sổ bộ cài, nhật ký) để nguyên vì đúng với thời điểm đó.
