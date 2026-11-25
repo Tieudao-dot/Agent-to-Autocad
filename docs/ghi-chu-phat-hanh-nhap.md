@@ -48,7 +48,12 @@ cuối file). Kế hoạch và chi tiết:
 
 ---
 
-## C. Mô tả bản phát hành trên GitHub Releases (dán thêm dưới phần CI tự sinh, nếu muốn)
+## C. Mô tả bản phát hành trên GitHub Releases (CI tự nối vào cuối mô tả)
+
+*Từ bản sau 0.9.8: khi phát hành, CI (`bundle/release-highlights.mjs`) lấy khối markdown đầu tiên của mục C này nối
+vào dưới phần link tải + SHA-256. Chỉ lấy khi dòng tiêu đề đầu file ghi đúng số phiên bản đang phát hành; thiếu mục C
+hoặc khối rỗng thì mô tả giữ như CI tự sinh. Bản 0.9.8 đã phát hành trước thay đổi này nên khối dưới đây chưa có trên
+trang Release.*
 
 ```markdown
 ### Điểm mới
