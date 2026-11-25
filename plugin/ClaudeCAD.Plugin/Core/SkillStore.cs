@@ -165,6 +165,24 @@ namespace ClaudeCAD.Plugin.Core
 
         public static bool IsValidName(string n) => !string.IsNullOrEmpty(n) && NameRx.IsMatch(n);
 
+        /// <summary>Text on one line (a description typed in a dialog goes into the one-line frontmatter).</summary>
+        public static string OneLine(string s) => Regex.Replace(s ?? "", @"\s+", " ").Trim();
+
+        /// <summary>Why a name / description typed for a new skill (Word file without frontmatter) cannot be used, or null.</summary>
+        public static string CheckNewSkillInfo(string name, string description)
+        {
+            var slug = Slugify(name);
+            if (!IsValidName(slug)) return "Tên skill trống hoặc không hợp lệ: chỉ dùng chữ thường không dấu, số và gạch nối, ví dụ ve-ket-cau.";
+            var d = OneLine(description);
+            if (d.Length < 20) return "Mô tả quá ngắn: viết rõ khi nào dùng skill và các từ khóa (ít nhất 20 ký tự).";
+            if (d.Length > MaxDescription) return $"Mô tả dài {d.Length} ký tự, tối đa {MaxDescription}.";
+            return null;
+        }
+
+        /// <summary>"---\nname: …\ndescription: …\n---\n\n" + body (a Word file converted without its own frontmatter).</summary>
+        public static string WithFrontmatter(string name, string description, string body) =>
+            "---\nname: " + Slugify(name) + "\ndescription: " + OneLine(description) + "\n---\n\n" + (body ?? "").TrimStart();
+
         private static string TitleOf(string md, string fallback)
         {
             foreach (var line in md.Replace("\r\n", "\n").Split('\n'))

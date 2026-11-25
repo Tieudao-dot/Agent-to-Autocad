@@ -161,6 +161,22 @@ namespace ClaudeCAD.Core.Tests
         }
 
         [Fact]
+        public void DialogInputBecomesAValidFrontmatter()
+        {
+            Assert.NotNull(SkillStore.CheckNewSkillInfo("", "Chuẩn vẽ của công ty A - layer, chữ, kích thước."));
+            Assert.NotNull(SkillStore.CheckNewSkillInfo("cty-a", "ngắn"));
+            Assert.NotNull(SkillStore.CheckNewSkillInfo("cty-a", new string('x', 1025)));
+            Assert.Null(SkillStore.CheckNewSkillInfo("Chuẩn Công ty A", "Chuẩn vẽ của công ty A\n - layer, chữ, kích thước."));
+            var conv = Conv(P("Chuẩn A", "Heading1") + P("Nội dung."));
+            var md = SkillStore.WithFrontmatter("Chuẩn Công ty A", "Chuẩn vẽ của công ty A\n - layer, chữ, kích thước.", conv.Markdown);
+            var (name, desc, error) = SkillStore.ParseFrontmatter(md);
+            Assert.Null(error);
+            Assert.Equal("chuan-cong-ty-a", name);
+            Assert.Equal("Chuẩn vẽ của công ty A - layer, chữ, kích thước.", desc);
+            Assert.Contains("# Chuẩn A", md);
+        }
+
+        [Fact]
         public void ImportTextRunsTheUsualChecks()
         {
             var root = Path.Combine(Path.GetTempPath(), "ccdocx-lib-" + Guid.NewGuid().ToString("N"));

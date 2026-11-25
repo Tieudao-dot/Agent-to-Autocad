@@ -520,8 +520,8 @@ namespace ClaudeCAD.Plugin
             }
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                Title = "Chọn file skill (.md)",
-                Filter = "Skill Markdown (*.md)|*.md",
+                Title = "Chọn file skill (.md hoặc Word .docx)",
+                Filter = "Skill (*.md; *.docx)|*.md;*.docx|Skill Markdown (*.md)|*.md|Word (*.docx)|*.docx",
                 Multiselect = true,
                 InitialDirectory = _skillStore.Root,
             };
@@ -544,15 +544,23 @@ namespace ClaudeCAD.Plugin
             {
                 foreach (var file in files)
                 {
-                    var r = _skillStore.Import(file, false);
+                    // v0.9.8: a Word file becomes SKILL.md (DocxToMarkdown), then the same checks as a .md file
+                    var ext = Path.GetExtension(file).ToLowerInvariant();
+                    bool word = ext == ".docx" || ext == ".doc";
+                    string wordMd = null, dropped = null;
+                    if (word && !FromWord(file, out wordMd, out dropped)) continue;
+                    var suggested = Path.GetFileNameWithoutExtension(file);
+                    var r = word ? _skillStore.ImportText(wordMd, suggested, file, false) : _skillStore.Import(file, false);
                     if (r.Status == SkillImportStatus.Conflict)
                     {
                         var answer = System.Windows.MessageBox.Show(
                             $"Plugin đã có skill \"{r.Name}\".\n\nThay bằng nội dung của file:\n{file} ?",
                             "ClaudeCAD — skill đã tồn tại", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
                         if (answer != System.Windows.MessageBoxResult.Yes) { Ui.AddNote($"Giữ nguyên skill \"{r.Name}\" (không thay)."); continue; }
-                        r = _skillStore.Import(file, true);
+                        r = word ? _skillStore.ImportText(wordMd, suggested, file, true) : _skillStore.Import(file, true);
                     }
+                    if (word && dropped != null && r.Status != SkillImportStatus.Invalid)
+                        Ui.AddNote($"Skill \"{r.Name}\" lấy từ Word; phần bị bỏ khi chuyển: {dropped}.");
                     switch (r.Status)
                     {
                         case SkillImportStatus.Invalid:
@@ -580,6 +588,33 @@ namespace ClaudeCAD.Plugin
             SaveTranscript();
             RefreshSkills();
             ReloadSkillsInAgent();
+        }
+
+        /// <summary>
+        /// A Word file → skill Markdown. Without its own frontmatter the user names and describes the skill in a
+        /// dialog (Cancel = not added). False when it cannot be used (the reason is shown).
+        /// </summary>
+        private bool FromWord(string file, out string md, out string dropped)
+        {
+            md = null;
+            dropped = null;
+            var c = DocxToMarkdown.Convert(file);
+            if (c.Error != null)
+            {
+                Ui.AddErrorCard($"Không thêm được \"{Path.GetFileName(file)}\": {c.Error}.", false);
+                return false;
+            }
+            dropped = c.Dropped.Count > 0 ? string.Join("; ", c.Dropped) : null;
+            if (c.HasFrontmatter) { md = c.Markdown; return true; }
+            var suggestion = SkillStore.Slugify(Path.GetFileNameWithoutExtension(file));
+            var dlg = new UI.SkillInfoDialog(file, suggestion, dropped);
+            if (dlg.ShowDialog() != true)
+            {
+                Ui.AddNote($"Chưa thêm \"{Path.GetFileName(file)}\" (đã hủy).");
+                return false;
+            }
+            md = SkillStore.WithFrontmatter(dlg.SkillName, dlg.Description, c.Markdown);
+            return true;
         }
 
         /// <summary>"+" / "−" in the skill list: use the skill in this chat or not (the library keeps it).</summary>

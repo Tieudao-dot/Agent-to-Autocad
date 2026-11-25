@@ -260,7 +260,7 @@ namespace ClaudeCAD.Plugin.UI
             _scale = MakeCombo(PaletteSettings.Scales.Select(s => s == "" ? "Tự động" : s).ToArray(), 76);
             _scale.ToolTip = "Tỷ lệ in: quyết định chiều cao chữ và kích thước.";
             ctxBar.Children.Add(_scale);
-            _addSkill = IconButton("＋", "Add skill — thêm file .md từ máy (chọn nhiều file được): vào thư viện và dùng luôn ở đoạn chat này");
+            _addSkill = IconButton("＋", "Add skill — thêm file .md hoặc Word .docx từ máy (chọn nhiều file được): vào thư viện và dùng luôn ở đoạn chat này");
             _addSkill.Margin = new Thickness(6, 0, 1, 0);
             _addSkill.Click += (s, e) => AddSkillRequested?.Invoke();
             ctxBar.Children.Add(_addSkill);
@@ -456,7 +456,7 @@ namespace ClaudeCAD.Plugin.UI
             _skillsHeader = new TextBlock { FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
             Theme.Ref(_skillsHeader, TextBlock.ForegroundProperty, Theme.Fg);
             var skillsHead = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
-            var addInPanel = SmallButton("+ Add skill", "Thêm skill từ file .md (chọn được nhiều file): vào thư viện và dùng luôn trong đoạn chat này");
+            var addInPanel = SmallButton("+ Add skill", "Thêm skill từ file .md hoặc Word .docx (chọn được nhiều file): vào thư viện và dùng luôn trong đoạn chat này");
             addInPanel.Margin = new Thickness(0);
             addInPanel.Click += (s, e) => AddSkillRequested?.Invoke();
             DockPanel.SetDock(addInPanel, Dock.Right);
@@ -1433,7 +1433,7 @@ namespace ClaudeCAD.Plugin.UI
             _skillRows.Children.Clear();
             if (_skills.Count == 0)
             {
-                _skillRows.Children.Add(Wrapped("Thư viện chưa có skill nào. Bấm + Add skill để thêm file .md (chọn được nhiều file)."));
+                _skillRows.Children.Add(Wrapped("Thư viện chưa có skill nào. Bấm + Add skill để thêm file .md hoặc Word .docx (chọn được nhiều file)."));
                 return;
             }
             _skillRows.Children.Add(SectionTitle("ĐANG DÙNG TRONG ĐOẠN CHAT NÀY"));
