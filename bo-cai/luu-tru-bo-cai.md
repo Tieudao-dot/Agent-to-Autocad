@@ -28,9 +28,10 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Bộ cài | Phiên bản | Trạng thái | Nguồn | Hạn tải |
 | --- | --- | --- | --- | --- |
-| **Bản thử 0.9.8 (lần 2) — 25/11/2026** | 0.9.8 | 🧪 **bản thử, chưa phát hành** | `claude/release-0.9.5` @ `bca3934`, run 45540291856 | 23/02/2027 |
-| Bản thử 0.9.8 (lần 1) — 25/11/2026 | 0.9.8 | 🔁 thay thế bởi bản thử 0.9.8 lần 2 | `dfa8fab`, run 45534974010 | 23/02/2027 |
-| **v0.9.7 — 22/11/2026** | 0.9.7 | ✅ **dùng được — bản đang dùng** | `main` @ `6e90240`, tag `v0.9.7`, run 45036552875 | không hết hạn |
+| **v0.9.8 — 25/11/2026** | 0.9.8 | ✅ **dùng được — bản đang dùng** | `main` @ `0f728f9`, tag `v0.9.8`, run 45556187621 | không hết hạn |
+| Bản thử 0.9.8 (lần 2) — 25/11/2026 | 0.9.8 | 🔁 thay thế bởi v0.9.8 | `claude/release-0.9.5` @ `bca3934`, run 45540291856 | 23/02/2027 |
+| Bản thử 0.9.8 (lần 1) — 25/11/2026 | 0.9.8 | 🔁 thay thế (bởi bản thử lần 2, rồi v0.9.8) | `dfa8fab`, run 45534974010 | 23/02/2027 |
+| v0.9.7 — 22/11/2026 | 0.9.7 | 🔁 thay thế bởi v0.9.8 (vẫn tải được) | `main` @ `6e90240`, tag `v0.9.7`, run 45036552875 | không hết hạn |
 | v0.9.6 — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.7 (vẫn tải được) | `main` @ `8e38ee5`, tag `v0.9.6`, run 45034681870 | không hết hạn |
 | Bản thử 0.9.6 (lần 2) — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.6 (cùng code) | `claude/release-0.9.5` @ `5fe6adc`, run 45019784560 | 20/02/2027 |
 | Bản thử 0.9.6 (lần 1) — 22/11/2026 | 0.9.6 | 🔁 thay thế (bởi bản thử lần 2, rồi v0.9.6) | `23e8ed6`, run 45011984540 | 20/02/2027 |
@@ -43,11 +44,45 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 ---
 
-## Bản thử 0.9.8 (lần 2) — 25/11/2026 (bản thử, chưa phát hành)
+## v0.9.8 — 25/11/2026 (phát hành chính thức)
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | 🧪 **Bản thử, chưa phát hành** — không giao client. Bản cho người dùng vẫn là v0.9.7 |
+| Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Ngày phát hành | 25/11/2026 (05:58 UTC) |
+| Ngày thử | **Chưa thử trên AutoCAD thật** (test-log S-8 … S-11, I-6) |
+| Ngày giao | — |
+| Phiên bản | **0.9.8** (⚙ ghi 0.9.8) |
+| Nguồn | `main` @ `0f728f9` (PR #9 từ `claude/release-0.9.5` @ `1a57a11`), tag `v0.9.8`. CI phát hành run **45556187621** (xanh); CI nhánh trước khi gộp run 45555107660 (xanh) |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-Setup.exe (tải trực tiếp, không cần đăng nhập). Link "bản mới nhất" `releases/latest/download/ClaudeCAD-Setup.exe` giờ tải bản này |
+| Kiểm tra tệp | 141 456 276 byte · SHA-256 `1E294C8775953F895DA6B009940C37481C22792975D95056D5F4D574ADE6CCA0` (khớp mã GitHub ghi cho tệp) |
+| Tệp khác (cho IT) | `ClaudeCAD-0.9.8.zip`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-0.9.8.zip · `install.ps1`: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/install.ps1 |
+| Hạn tải | Không hết hạn |
+| AutoCAD | 2022–2027 (2027 chưa thử trên máy thật) |
+| Thay bản nào | v0.9.7 và hai bộ cài thử 0.9.8 |
+
+**Gồm (so với v0.9.7):**
+
+- **+ Add skill** nhận tệp Word `.docx` (tự chuyển sang `SKILL.md`).
+- Chủ plugin soạn skill trên Google Docs, đẩy tới máy được gán.
+- Nút **Sửa** chọn cách mở (ứng dụng mặc định / ứng dụng khác / Word); sửa skill Default / Admin thì tạo skill mới.
+- Nút **⌄** xem nội dung skill ngay tại chỗ — **mới, không có trong hai bộ cài thử**.
+
+**Cài đặt:** như [bản 11/11](#cài-đặt-bản-1111). Khác / lưu ý:
+
+- Đóng AutoCAD, chạy `ClaudeCAD-Setup.exe` đè lên bản cũ. AutoCAD còn mở thì bộ cài nhắc bằng tiếng Việt: đóng
+  AutoCAD rồi bấm **Retry**.
+- Nâng từ 0.9.7 (hoặc bản thử 0.9.8): không phải kích hoạt lại. Máy mới / nâng từ 0.9.3: làm trang Kích hoạt.
+- Mở AutoCAD → ⚙ ghi **0.9.8**.
+- Kiểm tệp: `Get-FileHash .\ClaudeCAD-Setup.exe` so với SHA-256 ở bảng trên.
+
+---
+
+## Bản thử 0.9.8 (lần 2) — 25/11/2026 (thay thế)
+
+| Mục | Giá trị |
+| --- | --- |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.8 (25/11; bản phát hành có thêm nút ⌄ xem skill). Chưa phát hành, không giao client |
 | Ngày build | 25/11/2026 |
 | Ngày thử / giao | — / — |
 | Phiên bản | **0.9.8** (⚙ ghi 0.9.8) |
@@ -102,7 +137,7 @@ bộ cài nhắc bằng tiếng Việt → đóng AutoCAD, bấm **Retry**); kh�
 
 | Mục | Giá trị |
 | --- | --- |
-| Trạng thái | ✅ **Dùng được — bản đang dùng** |
+| Trạng thái | 🔁 **Thay thế** bởi v0.9.8 (25/11/2026); vẫn tải được |
 | Ngày phát hành | 22/11/2026 (15:14 UTC) |
 | Ngày thử | Plugin giống 0.9.6; phần bộ cài mới **chưa thử trên Windows thật** (test-log I-6) |
 | Ngày giao | — |
