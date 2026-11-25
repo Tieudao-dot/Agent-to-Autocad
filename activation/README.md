@@ -44,6 +44,30 @@ Hai trang trong cùng Google Sheet. `caiDat` / `kiemTra` tự tạo, kèm tiêu 
   - Mỗi skill tối đa 45.000 ký tự. Không dùng các tên Windows cấm đặt cho thư mục: `con`, `nul`, `aux`, `prn`,
     `com1`…`com9`, `lpt1`…`lpt9`.
   - **Sửa nội dung thì tăng Phiên bản.**
+  - **Soạn trên Google Docs** (từ máy chủ 0.9.8): thay vì dán nội dung, dán **link Google Docs** vào ô Nội dung, ví dụ
+    `https://docs.google.com/document/d/…/edit`. Chỉ dán đúng link, không kèm chữ khác.
+    - Doc **không cần chia sẻ**: máy chủ đọc bằng tài khoản Google của cậu. Máy khách không bao giờ tự tải link.
+    - Đầu doc phải có phần đầu như file `SKILL.md`: dòng `---`, dòng `name: <đúng cột Tên>`, dòng
+      `description: …`, dòng `---`. Google Docs có thể đổi `---` thành đường kẻ ngang; máy chủ vẫn nhận.
+    - **Phiên bản tự theo giờ sửa cuối của doc**, nên cột Phiên bản bỏ qua với dòng link. Sửa doc xong thì máy được
+      gán nhận bản mới ở lần kiểm tra kế tiếp, chậm nhất khoảng 10 phút + chu kỳ kiểm tra. Bản đang sửa dở cũng có
+      thể đi luôn, nên soạn xong rồi hãy sửa doc thật.
+    - Cột Ghi chú báo "Google Docs, bản sửa lúc …" hoặc lỗi: sai link / chưa có quyền xem, không phải Google Docs,
+      thiếu phần đầu, quá dài.
+    - Máy chủ chỉ đọc doc của skill được gán cho máy đang hỏi, và chỉ tải lại khi doc có bản sửa mới.
+    - Lần đầu dùng: khai quyền hẹp trong `appsscript.json` theo mục "Cập nhật lên máy chủ 0.9.8" bên dưới. Máy chủ
+      dùng Drive API, gọi bằng chính tài khoản của cậu, để xuất doc ra Markdown.
+    - **Ai sửa được doc là đẩy được chỉ dẫn cho Claude.** Khác ô dán thẳng, doc được sửa là tự tới mọi máy được gán
+      (trong khoảng 6 giờ), không cần đụng vào Sheet. Vì vậy:
+      - Chỉ dùng doc do **chính tài khoản của cậu tạo và sở hữu**. Không dùng doc người khác tạo hay chia sẻ cho cậu,
+        vì chủ doc đó sửa được, kể cả về sau.
+      - Chia sẻ doc để ở chế độ **Hạn chế**, không có người chỉnh sửa nào khác. Tắt "Bất kỳ ai có đường liên kết đều
+        có thể chỉnh sửa".
+      - Muốn xem ai đã sửa doc: **Tệp → Nhật ký phiên bản**.
+      - Chưa chắc bản xuất có kèm các **đề xuất** (chế độ Đề xuất) chưa được chấp nhận hay không. Trong lúc chưa thử,
+        đừng cấp quyền Người nhận xét / Đề xuất cho ai.
+    - Doc vừa sửa: máy chủ chỉ giữ bản tải về 5 phút (Google có thể còn xuất bản cũ ngay sau khi sửa). Giờ sửa của doc
+      được hỏi lại tối đa 2 phút/lần, bất kể bao nhiêu máy hỏi.
 - **Gán skill**: Mã máy · Tên skill · Hành động · Ghi chú. Mỗi dòng là một skill cho một máy; một máy có thể có
   nhiều dòng.
 
@@ -97,6 +121,25 @@ Dự án Apps Script gồm **2 file**:
    → **Triển khai** → sao chép **URL ứng dụng web**, dạng `https://script.google.com/macros/s/AKfy…/exec`.
 6. Thử: mở URL đó trên trình duyệt, thêm `?action=ping` vào cuối. Thấy `{"ok":true,"service":"ClaudeCAD activation"}` là xong.
 7. Gửi URL này cho người phát triển. URL được ghi vào `activation/activation.json`, và các bản phát hành sau sẽ dùng nó.
+
+**Cập nhật lên máy chủ 0.9.8** (skill từ Google Docs, làm một lần, thêm khoảng 3 phút):
+
+1. Dán đè `Code.gs` bằng `activation/apps-script/Code.gs.template` mới. Không đụng `BiMat.gs`.
+2. **Khai quyền hẹp:**
+   - Vào **Cài đặt dự án** (bánh răng) → tích **Hiển thị tệp kê khai "appsscript.json"** → mở `appsscript.json`.
+   - **Chỉ thêm khóa `"oauthScopes"`**, chép từ [`apps-script/appsscript.json`](apps-script/appsscript.json). Giữ
+     nguyên `timeZone`, `runtimeVersion`, `exceptionLogging`, `webapp` đang có; không dán đè cả file. Bốn quyền là:
+     - đọc / ghi đúng bảng tính này;
+     - gửi email;
+     - **chỉ xem** file Drive;
+     - gọi dịch vụ bên ngoài.
+
+   Không khai thì Google sẽ tự xin quyền Drive đầy đủ (xem, sửa, xóa mọi file) vì code có dùng DriveApp.
+3. Lưu → chạy `kiemTra`. Google hỏi quyền lại; màn hình phải liệt kê đúng các quyền hẹp ở trên. `kiemTra` phải chạy
+   xong, email kiểm tra phải về.
+   - **Đã khai `oauthScopes` thì Google không tự dò quyền nữa.** Thiếu một quyền là máy chủ hỏng, nên phải chạy
+     `kiemTra` **trước** khi tạo phiên bản mới. Nếu có hỏng, plugin trên máy khách vẫn chạy tối đa 7 ngày.
+4. Quản lý triển khai → ✏️ → **Phiên bản mới** → mở `URL?action=ping`, phải thấy `"ready":true`.
 
 Nâng cấp máy chủ về sau: **chỉ thay file `Code.gs`** (không đụng `BiMat.gs`) → 💾 Lưu → chạy **`kiemTra`** một lần (để Google hỏi thêm quyền nếu bản mới cần) → **Triển khai → Quản lý triển khai** (Manage deployments) → ✏️ → Phiên bản: **Phiên bản mới** (New version) → Triển khai. Làm như vậy thì URL giữ nguyên. Nếu bấm "Tùy chọn triển khai mới", URL sẽ đổi và bộ cài đã phát hành sẽ không gọi được máy chủ mới.
 
