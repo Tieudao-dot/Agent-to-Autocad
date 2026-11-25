@@ -57,10 +57,23 @@ Mỗi đoạn chat (mỗi bản vẽ) dùng **bộ skill riêng**, lấy từ **
 
 - **ĐANG DÙNG TRONG ĐOẠN CHAT NÀY:** skill có dấu ✓ và nút **−**. Bấm **−** thì đoạn chat này không dùng skill đó nữa; skill vẫn nằm trong thư viện. Claude được dặn bỏ qua chuẩn của skill đó từ tin nhắn tiếp theo; muốn sạch hoàn toàn khỏi trí nhớ cuộc chat thì bấm **Chat mới**.
 - **THƯ VIỆN (chưa dùng trong đoạn chat này):** các skill còn lại, có nút **+** để dùng trong đoạn chat này.
-- **Sửa:**
-  - Skill **You**: mở `SKILL.md` bằng trình soạn mặc định. Lưu file là plugin tự nạp lại.
-  - Skill **Default** / **Admin**: plugin chép thành bản của cậu `<tên>-sua` (nhãn You) rồi mới mở bản chép. Bản gốc
-    không bao giờ bị ghi. Xem mục "Nhãn skill" bên dưới.
+- **Sửa** (từ 0.9.8): bấm **Sửa** là mở theo cách đã chọn lần trước. Bấm **▾** cạnh nút để chọn cách mở; plugin nhớ
+  lựa chọn đó:
+  - **Mở bằng ứng dụng mặc định**: ứng dụng Windows đang mở file `.md` (Notepad, VS Code…).
+  - **Chọn ứng dụng khác…**: hộp "Mở bằng…" của Windows.
+  - **Mở bằng Word**: plugin chuyển skill sang file Word để sửa, nên chỉ có nội dung, phần đầu name / description
+    plugin tự giữ. Khi cậu lưu trong Word, plugin chuyển ngược lại và kiểm lại **Bảng layer chuẩn**. Bảng bị lệch
+    (thiếu cột, màu sai…) thì plugin báo lỗi theo dòng và hỏi có lưu không. Phần Word thêm vào mà skill không giữ
+    được (ảnh, ô gộp…) cũng được báo. Máy chưa cài Word thì mục này mờ.
+  - **Lưu:**
+    - Skill **You**: lưu là ghi thẳng vào skill đó. Plugin tự nạp lại, Claude dùng bản mới từ tin nhắn tiếp theo.
+    - Skill **Default** / **Admin**: plugin mở một **bản sao**, bản gốc không bao giờ bị ghi. Lưu bản sao xong, plugin
+      hiện hộp **"Tạo skill mới từ skill gốc"**: Tên gợi ý `<tên>-sua`, Mô tả lấy từ bản gốc, cậu sửa được cả hai.
+      - Bấm **Tạo skill**: có skill mới nhãn **You**, và **đoạn chat hiện tại** chuyển sang skill mới. Các lần lưu
+        sau trong cửa sổ đang mở sẽ cập nhật vào skill mới.
+      - Bấm **Để sau**: chưa tạo gì; lưu lần nữa là plugin hỏi lại.
+      - Mở rồi đóng mà không sửa gì: không có gì xảy ra.
+      - Bản sao nằm ở `%LocalAppData%\ClaudeCAD\skill-edit` và tự dọn sau 7 ngày.
 
 **Đoạn chat mới** (bấm Chat mới, hoặc mở bản vẽ chưa có chat) dùng **đúng các skill của đoạn chat gần nhất**. 3 skill mẫu đi kèm plugin có sẵn trong thư viện nhưng **không tự dùng**: bấm **+** khi cần.
 
@@ -76,14 +89,12 @@ Cạnh tên mỗi skill trong danh sách có một nhãn:
 | **Default** | 3 skill mẫu đi kèm plugin. |
 | **You** | Skill cậu tự thêm bằng **+ Add skill**. |
 
-- **Sửa một skill Default hoặc Admin** (từ 0.9.6):
-  - Bấm **Sửa** thì plugin chép skill thành `<tên>-sua` (nhãn **You**) rồi mở bản chép. Bản gốc giữ nguyên.
-    - Skill Default vẫn được làm mới khi cập nhật plugin.
-    - Skill Admin vẫn nhận cập nhật / Ẩn / Xóa từ chủ plugin.
-  - Lưu bản chép xong, **đoạn chat hiện tại** tự chuyển từ bản gốc sang bản của cậu (không dùng cả hai cùng lúc, vì hai
-    chuẩn khác nhau). Các đoạn chat khác giữ nguyên.
-  - Đã có `<tên>-sua` thì bấm Sửa lần nữa sẽ mở lại bản đó, không chép thêm.
-  - Mở ra rồi đóng mà không sửa gì thì bản chép tự xóa ở lần mở AutoCAD sau.
+- **Sửa một skill Default hoặc Admin:** bản gốc giữ nguyên. Từ 0.9.8, lưu bản sao xong thì plugin hỏi Tên + Mô tả để
+  tạo skill mới (xem mục **Sửa** ở trên). Bản 0.9.6–0.9.7 thì tự chép sang `<tên>-sua`.
+  - Skill Default vẫn được làm mới khi cập nhật plugin.
+  - Skill Admin vẫn nhận cập nhật / Ẩn / Xóa từ chủ plugin.
+  - Đoạn chat hiện tại chuyển sang skill mới, không dùng cả hai cùng lúc vì hai chuẩn khác nhau. Các đoạn chat khác
+    giữ nguyên.
   - Bản cậu sửa không gửi gì về chủ plugin.
 - **Sửa thẳng file gốc** (bằng Explorer, Notepad…): plugin cũng tách như trên. Phần sửa chuyển sang `<tên>-sua` (hoặc
   `<tên>-sua-2`… nếu đã có), còn bản gốc được khôi phục: skill Default lấy lại từ bản mẫu kèm plugin, skill Admin lấy

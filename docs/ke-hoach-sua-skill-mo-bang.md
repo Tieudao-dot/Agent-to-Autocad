@@ -1,6 +1,9 @@
 # Kế hoạch: sửa skill — chọn cách mở (ứng dụng .md / Word) + quy tắc lưu mới
 
-> Trạng thái: **đã chốt (25/11), chờ chủ dự án duyệt plan**. Chưa code. Nhánh `claude/skill-docx-gdocs`. Yêu cầu từ
+> Trạng thái: plan được duyệt 25/11/2026. **Đã code xong**; chờ CI Windows.
+>
+> Khác plan: menu Sửa luôn mở theo cách đã chọn lần trước, bấm **▾** để đổi. Plugin nhớ lựa chọn ở `skill_edit_mode`
+> trong `settings.json`. Nhánh `claude/skill-docx-gdocs`. Yêu cầu từ
 > thread QnA, chuyển 25/11.
 
 ## 0. Quyết định đã chốt (25/11/2026)
