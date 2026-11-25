@@ -28,7 +28,8 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 | Bộ cài | Phiên bản | Trạng thái | Nguồn | Hạn tải |
 | --- | --- | --- | --- | --- |
-| **Bản thử 0.9.8 — 25/11/2026** | 0.9.8 | 🧪 **bản thử, chưa phát hành** | `claude/release-0.9.5` @ `dfa8fab`, run 45534974010 | 23/02/2027 |
+| **Bản thử 0.9.8 (lần 2) — 25/11/2026** | 0.9.8 | 🧪 **bản thử, chưa phát hành** | `claude/release-0.9.5` @ `bca3934`, run 45540291856 | 23/02/2027 |
+| Bản thử 0.9.8 (lần 1) — 25/11/2026 | 0.9.8 | 🔁 thay thế bởi bản thử 0.9.8 lần 2 | `dfa8fab`, run 45534974010 | 23/02/2027 |
 | **v0.9.7 — 22/11/2026** | 0.9.7 | ✅ **dùng được — bản đang dùng** | `main` @ `6e90240`, tag `v0.9.7`, run 45036552875 | không hết hạn |
 | v0.9.6 — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.7 (vẫn tải được) | `main` @ `8e38ee5`, tag `v0.9.6`, run 45034681870 | không hết hạn |
 | Bản thử 0.9.6 (lần 2) — 22/11/2026 | 0.9.6 | 🔁 thay thế bởi v0.9.6 (cùng code) | `claude/release-0.9.5` @ `5fe6adc`, run 45019784560 | 20/02/2027 |
@@ -42,11 +43,37 @@ Ghi mọi bộ cài đã build: nguồn, link, hạn tải, trạng thái và c�
 
 ---
 
-## Bản thử 0.9.8 — 25/11/2026 (bản thử, chưa phát hành)
+## Bản thử 0.9.8 (lần 2) — 25/11/2026 (bản thử, chưa phát hành)
 
 | Mục | Giá trị |
 | --- | --- |
 | Trạng thái | 🧪 **Bản thử, chưa phát hành** — không giao client. Bản cho người dùng vẫn là v0.9.7 |
+| Ngày build | 25/11/2026 |
+| Ngày thử / giao | — / — |
+| Phiên bản | **0.9.8** (⚙ ghi 0.9.8) |
+| Nguồn | Nhánh `claude/release-0.9.5` @ `bca3934` (đã gộp `claude/skill-docx-gdocs` @ `dd83838`). CI `release: false` run **45540291856**, artifact `ClaudeCAD-0.9.8` id **14988664201** (339 850 784 byte cả gói) |
+| Link tải | **Không có link tải trực tiếp** (bản thử trên CI, cần đăng nhập GitHub). Tra nội bộ bằng run / artifact id ở trên |
+| Kiểm tra tệp | **Chưa có** kích thước / SHA-256 của `ClaudeCAD-Setup.exe` (máy cloud bị chặn mạng tới máy chủ lưu artifact). Ai tải được gói thì tính bằng `Get-FileHash` rồi bổ sung |
+| Hạn tải | **23/02/2027** |
+| Thay bản nào | Thay bản thử 0.9.8 lần 1 (`dfa8fab`, run 45534974010). Không thay bản phát hành nào |
+
+**Khác lần 1:**
+
+- Nút **Sửa** có menu ▾: ứng dụng mặc định / Chọn ứng dụng khác… / Word. Mở bằng Word thì tự chuyển `.md` ↔ `.docx`.
+- Skill **You**: lưu là ghi đè. Skill **Default / Admin**: lưu thì hỏi **"Tạo skill mới"** (Tên + Mô tả), thay cho
+  việc chép sang `<tên>-sua`.
+- Còn lại như lần 1: + Add skill nhận `.docx`, trang Skill của Sheet nhận link Google Docs.
+
+**Cài đặt:** như lần 1 (dưới đây): tải gói, giải nén, chạy `ClaudeCAD-Setup.exe` đè lên bản đang cài (AutoCAD mở thì
+bộ cài nhắc bằng tiếng Việt → đóng AutoCAD, bấm **Retry**); không kích hoạt lại; ⚙ ghi 0.9.8.
+
+---
+
+## Bản thử 0.9.8 (lần 1) — 25/11/2026 (thay thế)
+
+| Mục | Giá trị |
+| --- | --- |
+| Trạng thái | 🔁 **Thay thế** bởi bản thử 0.9.8 lần 2 (`bca3934`). Chưa phát hành, không giao client |
 | Ngày build | 25/11/2026 |
 | Ngày thử / giao | — / — |
 | Phiên bản | **0.9.8** (⚙ ghi 0.9.8) |
