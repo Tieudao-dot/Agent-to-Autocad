@@ -181,6 +181,7 @@ Thử nhanh trên AutoCAD thật (một lượt ~20 phút, xếp theo rủi ro, 
 | S-8 | (0.9.8) Nút **Sửa** có menu ▾: *ứng dụng mặc định* / *Chọn ứng dụng khác…* / *Word*. Sửa một skill **Default** rồi lưu → hộp **"Tạo skill mới từ skill gốc"** (Tên gợi ý `<tên>-sua`, Mô tả lấy từ bản gốc) → OK: thư viện có skill mới nhãn You, bản gốc còn nguyên; Hủy: không có gì đổi | ⬜ chưa chạy | |
 | S-9 | (0.9.8) Sửa một skill **You** rồi lưu → ghi đè đúng skill đó, không hỏi gì, chỉ 1 toast "Skill đã thay đổi" | ⬜ chưa chạy | |
 | S-10 | (0.9.8) Sửa bằng **Word** một skill có *Bảng layer chuẩn*: Word mở bản `.docx`, sửa 1 dòng trong bảng, lưu và đóng → skill cập nhật, bảng layer vẫn đọc được (không có cảnh báo "bảng chuẩn chưa đọc được"), phần tên / mô tả ở đầu không bị mất | ⬜ chưa chạy | |
+| S-11 | (0.9.8) Danh sách Skill: bấm **⌄** ở một skill → khung xem nội dung mở ngay tại chỗ (tiêu đề, danh sách, bảng layer đã định dạng), có thanh cuộn khi dài, chỉ xem (không sửa được); bấm **⌃** → thu gọn; mở khung xem không làm đổi skill đang dùng | ⬜ chưa thử trên máy thật | Gộp ở bước phát hành, không có trong bộ cài thử 0.9.8; UI test trên CI có chạy |
 | D-1 | Đổi tài khoản / lưu API key → trợ lý khởi động lại; Task Manager không còn sót tiến trình claude.exe cũ; khung chat không đứng, không hiện "Mất kết nối" | ⬜ chưa chạy | |
 | D-2 | `CLAUDECHATSELFTEST` đạt hết → thư mục `%TEMP%\ClaudeCAD-selftest-*` bị xóa, ảnh `selftest-*.png` nằm cạnh báo cáo; có mục ✗ → thư mục được giữ | ⬜ chưa chạy | |
 | D-3 | Mở ⚙ hai lần trong 30 giây → lần hai hiện tài khoản ngay | ⬜ chưa chạy | |
