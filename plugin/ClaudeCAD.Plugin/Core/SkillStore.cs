@@ -353,24 +353,38 @@ namespace ClaudeCAD.Plugin.Core
             string md;
             try { md = System.IO.File.ReadAllText(mdPath, Encoding.UTF8); }
             catch (Exception ex) { return Invalid(Path.GetFileName(mdPath), "Không đọc được file: " + ex.Message); }
-
-            var (fmName, desc, error) = ParseFrontmatter(md);
-            if (error != null) return Invalid(Path.GetFileName(mdPath), error);
-
             bool isSkillFile = Path.GetFileName(mdPath).Equals("SKILL.md", StringComparison.OrdinalIgnoreCase);
             string fallback = isSkillFile ? Path.GetFileName(Path.GetDirectoryName(mdPath)) : Path.GetFileNameWithoutExtension(mdPath);
+            return ImportMarkdown(md, Path.GetFileName(mdPath), fallback, mdPath, isSkillFile, overwrite);
+        }
+
+        /// <summary>
+        /// A skill from text that is not a file in the library (v0.9.8: a Word file converted by DocxToMarkdown):
+        /// the same checks as Import (frontmatter, name, conflict, standard tables). <paramref name="source"/> is
+        /// the original file, recorded in skills.json; nothing else is copied.
+        /// </summary>
+        public SkillImportResult ImportText(string md, string fallbackName, string source, bool overwrite)
+        {
+            lock (_gate) return ImportMarkdown(md, Path.GetFileName(source ?? fallbackName ?? "skill"), fallbackName, source, false, overwrite);
+        }
+
+        private SkillImportResult ImportMarkdown(string md, string display, string fallback, string mdPath, bool isSkillFile, bool overwrite)
+        {
+            var (fmName, desc, error) = ParseFrontmatter(md);
+            if (error != null) return Invalid(display, error);
+
             string name = !string.IsNullOrWhiteSpace(fmName) ? fmName.Trim() : Slugify(fallback);
             if (!IsValidName(name))
             {
                 var slug = Slugify(name);
-                if (!IsValidName(slug)) return Invalid(Path.GetFileName(mdPath), $"Tên skill \"{name}\" không hợp lệ: chỉ dùng chữ thường không dấu, số và gạch nối, ví dụ ve-ket-cau.");
+                if (!IsValidName(slug)) return Invalid(display, $"Tên skill \"{name}\" không hợp lệ: chỉ dùng chữ thường không dấu, số và gạch nối, ví dụ ve-ket-cau.");
                 name = slug;
             }
 
             var destDir = Path.Combine(Root, name);
             var destFile = Path.Combine(destDir, "SKILL.md");
             bool exists = System.IO.File.Exists(destFile);
-            if (exists && SamePath(destFile, mdPath))
+            if (exists && isSkillFile && SamePath(destFile, mdPath))
             {
                 SetEnabled(name, true);
                 return new SkillImportResult { Status = SkillImportStatus.AlreadyAdded, Name = name, Message = $"Skill \"{name}\" đã có trong plugin (đã bật)." };
@@ -395,7 +409,7 @@ namespace ClaudeCAD.Plugin.Core
             System.IO.File.WriteAllText(destFile, content, new UTF8Encoding(false));
 
             var reg = LoadRegistry();
-            reg[name] = new Entry { Name = name, Enabled = true, Added = DateTime.Now, Source = Path.GetFullPath(mdPath) };
+            reg[name] = new Entry { Name = name, Enabled = true, Added = DateTime.Now, Source = string.IsNullOrEmpty(mdPath) ? null : Path.GetFullPath(mdPath) };
             SaveRegistry(reg.Values);
             return new SkillImportResult
             {
