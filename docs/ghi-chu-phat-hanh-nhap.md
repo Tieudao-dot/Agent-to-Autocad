@@ -70,4 +70,7 @@ Nâng cấp từ 0.9.7 không phải kích hoạt lại.
 
 1. Chủ dự án thử xong và đồng ý rõ → hỏi lại trước khi tạo PR / merge `main`.
 2. Đổi nhãn dòng lịch sử (phần B); gộp tài liệu mới của luồng chính và `claude/luu-tru-bo-cai` nếu có.
+   Gộp thêm `claude/skill-docx-gdocs` @ `2164323` (nút ⌄ xem nội dung skill; chủ dự án chọn đưa vào bản phát hành mà
+   không build lại bộ cài thử): ghi vào phần A và phần C của file này, thêm một mục cho nút ⌄ vào `test-log.md` với
+   trạng thái "chưa thử trên máy thật", rồi CI `release: "false"` xanh trên commit cuối trước khi merge.
 3. Merge `main` (CI tự phát hành); gửi thread lưu trữ bộ cài link tải trực tiếp + kích thước + SHA-256.
