@@ -404,11 +404,11 @@ hẹp, `kiemTra`, Phiên bản mới) **làm xong ngày 25/11**. Hướng dẫn 
 
 | | |
 | --- | --- |
-| Nguồn | Nhánh `claude/skill-docx-gdocs` @ 2164323, gộp vào `main` @ {{MAIN_098}} |
-| CI | Run {{RUN_098}} |
-| Link tải | {{LINK_098}} |
-| Kích thước `Setup.exe` | {{SIZE_098}} |
-| SHA-256 | `{{SHA_098}}` |
+| Nguồn | Nhánh `claude/skill-docx-gdocs` @ 2164323, gộp vào `main` @ `main` @0f728f9 (PR [Tieudao-dot/Agent-to-Autocad#9](https://github.com/Tieudao-dot/Agent-to-Autocad/pull/9)) |
+| CI | Run Run [45556187621](https://github.com/Tieudao-dot/Agent-to-Autocad/actions/runs/45556187621) (phát hành, xanh); CI nhánh run 45555107660 xanh |
+| Link tải | https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-Setup.exe |
+| Kích thước `Setup.exe` | 141.456.276 byte |
+| SHA-256 | ``1E294C8775953F895DA6B009940C37481C22792975D95056D5F4D574ADE6CCA0`` |
 | Test tự động | Lõi 278, trợ lý 192 (đều đạt ở 2164323) |
 
 Kiểm file tải về: mở PowerShell trong thư mục chứa file, chạy `Get-FileHash .\ClaudeCAD-Setup.exe`, so với mã trên.

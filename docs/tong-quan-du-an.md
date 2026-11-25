@@ -6,7 +6,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 
 ## 1. Tình hình
 
-- **Bản đang phát hành: v0.9.7** (22/11/2026).
+- **Bản đang phát hành: v0.9.8** (25/11/2026). Trước đó: v0.9.7 (22/11/2026).
   - Link tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.7/ClaudeCAD-Setup.exe
   - SHA-256: `9A7332A264A2261EEEBB895027DF52E78F6CC744D30ACA7858531C1C118B3B5B`. Trang: [Releases v0.9.7](https://github.com/Tieudao-dot/Agent-to-Autocad/releases/tag/v0.9.7).
   - `main` @6e90240 (PR [Tieudao-dot/Agent-to-Autocad#8](https://github.com/Tieudao-dot/Agent-to-Autocad/pull/8)).
@@ -133,6 +133,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 | 0.9.5 | • Khóa key theo máy + quản lý thiết bị.<br>• ~30 bản sửa sau rà soát, rồi 3 đợt sửa tiếp.<br>• Skill theo đoạn chat.<br>• Giao diện kiểu AutoCAD.<br>• AutoCAD 2026 / 2027.<br>• Checklist thử thật + tự kiểm tra mở rộng | Đã phát hành 18/11 |
 | 0.9.6 | • Đẩy skill theo máy, nhãn Admin / Default / You.<br>• Tự kiểm bản vẽ 14 mã, bắt điểm theo đối tượng, áp chuẩn lúc vẽ.<br>• 3 skill mẫu viết lại + tự cập nhật. Chi tiết: [`tong-quan-plugin-0.9.6.md`](tong-quan-plugin-0.9.6.md) | **Đã phát hành 22/11** (PR #7, `main` @8e38ee5, run 45034681870). Chưa thử trên AutoCAD thật |
 | 0.9.7 | Bộ cài: khi cài đè mà AutoCAD đang mở thì hỏi Thử lại / Hủy, dừng tiến trình của plugin. Plugin và trợ lý giống 0.9.6 | Đã phát hành 22/11 (PR #8). Chưa thử trên Windows thật |
+| 0.9.8 | Skill từ .docx; skill từ Google Docs qua Sheet (máy chủ chỉ xem Drive); sửa skill chọn cách mở (Word / ứng dụng khác, popup Tạo skill mới); nút ⌄ xem skill. Chi tiết: [`tong-quan-plugin-0.9.8.md`](tong-quan-plugin-0.9.8.md) | Đã phát hành 25/11 (PR #9). Chưa thử trên AutoCAD thật |
 
 ## 7. Tài liệu khác
 
@@ -152,6 +153,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | **Phát hành v0.9.8** (PR #9, `main` @0f728f9, run 45556187621): skill từ .docx, skill từ Google Docs qua Sheet, sửa skill chọn cách mở, nút ⌄ xem skill. Tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-Setup.exe (SHA-256 1E294C87…ADE6CCA0). Chưa thử trên AutoCAD thật. Báo cáo: [`tong-quan-plugin-0.9.8.md`](tong-quan-plugin-0.9.8.md) |
 | 25/11 | Thread đẩy skill thêm nút ⌄ xem nội dung skill ngay trong danh sách (chỉ xem; yêu cầu từ QnA). `claude/skill-docx-gdocs` @2164323, CI xanh run 45546116459. Chưa có trong bộ cài thử 0.9.8 lần 2; cậu chọn gộp luôn lúc phát hành 0.9.8 (không build lại bộ cài thử) |
 | 25/11 | Bộ cài thử 0.9.8 lần 2 (run 45540291856, `claude/release-0.9.5` @bca3934; lõi 278, trợ lý 192): có .docx, Google Docs, sửa skill chọn cách mở. Thay lần 1. Chờ cậu thử |
 | 25/11 | Sửa skill chọn cách mở code xong (@dd83838, CI xanh run 45538946273). Cậu yêu cầu build bộ cài thử để thử; đã giao thread gộp nhánh |
