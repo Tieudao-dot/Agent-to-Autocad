@@ -54,7 +54,12 @@ namespace ClaudeCAD.Plugin.UI
         public event Action AddSkillRequested;
         /// <summary>"+" (true) / "−" (false): use the skill in the current chat or not; the library keeps it.</summary>
         public event Action<string, bool> SkillToggled;
-        public event Action<string> SkillEditRequested;
+        /// <summary>"Sửa" (mode null = the way chosen last time) or "▾ ▸ …" (v0.9.8: app / openwith / word).</summary>
+        public event Action<string, string> SkillEditRequested;
+        /// <summary>Microsoft Word is installed (the "Mở bằng Word" item is greyed out otherwise).</summary>
+        public bool WordAvailable { get; set; } = true;
+        /// <summary>The way "Sửa" opens a skill, shown with a ✓ in the ▾ menu.</summary>
+        public string SkillEditMode { get; set; } = "app";
         // v0.6: look at the drawing, read-only, project notes, macros, templates, skill drafts, plans
         public event Action CaptureScreenRequested;
         public event Action<bool> ReadOnlyToggled;
@@ -1484,11 +1489,33 @@ namespace ClaudeCAD.Plugin.UI
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
             var name = k.Name;
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
-            var edit = SmallButton("Sửa", k.Builtin || k.Admin
-                ? "Chép thành bản của cậu (" + k.DisplayName + "-sua, nhãn You) rồi mở để sửa; bản gốc giữ nguyên"
-                : "Mở SKILL.md để sửa; lưu file là Claude dùng bản mới từ tin nhắn tiếp theo");
-            edit.Click += (s, e) => SkillEditRequested?.Invoke(name);
+            var how = SkillEditMode == "word" ? "bằng Word" : SkillEditMode == "openwith" ? "bằng ứng dụng cậu chọn" : "bằng ứng dụng mặc định";
+            var edit = SmallButton("Sửa", (k.Builtin || k.Admin
+                ? $"Mở bản sao {how} để sửa; lưu xong plugin hỏi tên + mô tả để tạo skill mới (nhãn You), bản gốc giữ nguyên"
+                : $"Mở {how} để sửa; lưu file là Claude dùng bản mới từ tin nhắn tiếp theo") + ". Bấm ▾ để chọn cách mở khác.");
+            edit.Click += (s, e) => SkillEditRequested?.Invoke(name, null);
+            edit.Margin = new Thickness(0);
             buttons.Children.Add(edit);
+            var more = SmallButton("▾", "Chọn cách mở: ứng dụng mặc định, ứng dụng khác…, hoặc Word");
+            more.MinWidth = 16;
+            more.Padding = new Thickness(2, 0, 2, 0);
+            more.Click += (s, e) =>
+            {
+                var menu = new ContextMenu { PlacementTarget = more, Placement = PlacementMode.Bottom };
+                void Item(string text, string mode, bool enabled, string tip)
+                {
+                    var mi = new MenuItem { Header = (SkillEditMode == mode ? "✓ " : "   ") + text, IsEnabled = enabled, ToolTip = tip };
+                    mi.Click += (o, a) => SkillEditRequested?.Invoke(name, mode);
+                    menu.Items.Add(mi);
+                }
+                Item("Mở bằng ứng dụng mặc định", "app", true, "Ứng dụng Windows đang mở file .md (Notepad, VS Code…)");
+                Item("Chọn ứng dụng khác…", "openwith", true, "Hộp \"Mở bằng…\" của Windows");
+                Item("Mở bằng Word", "word", WordAvailable, WordAvailable
+                    ? "Plugin chuyển skill sang Word; lưu trong Word là plugin chuyển lại và kiểm bảng layer"
+                    : "Máy này chưa cài Microsoft Word");
+                menu.IsOpen = true;
+            };
+            buttons.Children.Add(more);
             var toggle = SmallButton(inUse ? "−" : "+", inUse
                 ? "Không dùng skill này trong đoạn chat hiện tại (vẫn giữ trong thư viện)"
                 : "Dùng skill này trong đoạn chat hiện tại");

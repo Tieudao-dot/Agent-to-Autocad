@@ -652,6 +652,77 @@ namespace ClaudeCAD.Plugin.Core
             return (copy, true);
         }
 
+        // ------------------------------------------------------------------ "Sửa ▸ …" with a working copy (v0.9.8)
+
+        /// <summary>("---\n…\n---\n", body) of a SKILL.md; ("", md) when it has no frontmatter.</summary>
+        public static (string front, string body) SplitFrontmatter(string md)
+        {
+            var text = (md ?? "").TrimStart('\uFEFF').Replace("\r\n", "\n");
+            if (!text.StartsWith("---\n")) return ("", text);
+            int end = text.IndexOf("\n---", 4, StringComparison.Ordinal);
+            if (end < 0) return ("", text);
+            int after = text.IndexOf('\n', end + 4);
+            if (after < 0) return (text + "\n", "");
+            return (text.Substring(0, after + 1), text.Substring(after + 1).TrimStart('\n'));
+        }
+
+        /// <summary>Label of a library skill: "Admin", "Default" or "You" (null when there is no such skill).</summary>
+        public string LabelOf(string name) => Scan().FirstOrDefault(k => k.Name == name)?.Label;
+
+        /// <summary>
+        /// A You skill edited through a working copy (Word): its SKILL.md becomes its own frontmatter + the new body.
+        /// Returns the standard-table warning of the result (null when fine). Default / Admin skills are refused.
+        /// </summary>
+        public string SaveBody(string name, string body)
+        {
+            lock (_gate)
+            {
+                if (!IsValidName(name) || !System.IO.File.Exists(SkillFile(name))) throw new InvalidOperationException("skill not found: " + name);
+                var reg = LoadRegistry();
+                if (BuiltinNames.Contains(name) || (reg.TryGetValue(name, out var e) && e.Origin == AdminOrigin))
+                    throw new InvalidOperationException("Default / Admin skills are never written");
+                var (front, _) = SplitFrontmatter(System.IO.File.ReadAllText(SkillFile(name), Encoding.UTF8));
+                var content = front + (front.Length > 0 ? "\n" : "") + (body ?? "").TrimStart('\n');
+                System.IO.File.WriteAllText(SkillFile(name), content, new UTF8Encoding(false));
+                return StandardWarning(content);
+            }
+        }
+
+        /// <summary>
+        /// "Tạo skill mới từ skill gốc": a Default / Admin skill edited in a working copy becomes a new You skill
+        /// named by the user (reference files of the original come along). The original is not touched; the current
+        /// chat moves to the new skill (TakeSwitches). Returns (name, null) or (null, why it cannot be created).
+        /// </summary>
+        public (string name, string error) CreateEditedCopy(string original, string newName, string description, string body)
+        {
+            lock (_gate)
+            {
+                var why = CheckNewSkillInfo(newName, description);
+                if (why != null) return (null, why);
+                var name = Slugify(newName);
+                var reg = LoadRegistry();
+                if (Directory.Exists(Path.Combine(Root, name)) || reg.ContainsKey(name))
+                    return (null, $"Thư viện đã có skill \"{name}\": đặt tên khác.");
+                if (name.EndsWith(SkillPackLogic.AdminSuffix, StringComparison.Ordinal))
+                    return (null, "Tên không được kết thúc bằng -admin (dành cho skill chủ plugin gửi).");
+                var md = WithFrontmatter(name, description, body);
+                if (md.Length > SkillPackLogic.MaxSkillChars) return (null, $"Nội dung dài {md.Length} ký tự, tối đa {SkillPackLogic.MaxSkillChars}.");
+                var (_, _, error) = ParseFrontmatter(md);
+                if (error != null) return (null, error);
+                if (IsValidName(original) && Directory.Exists(Path.Combine(Root, original))) CopySkill(original, name, md);
+                else
+                {
+                    Directory.CreateDirectory(Path.Combine(Root, name));
+                    System.IO.File.WriteAllText(SkillFile(name), md, new UTF8Encoding(false));
+                }
+                var baseName = reg.TryGetValue(original ?? "", out var oe) && oe.Origin == AdminOrigin && IsValidName(oe.AdminName) ? oe.AdminName : original;
+                reg[name] = new Entry { Name = name, Enabled = true, Added = DateTime.Now, Source = "Bản sửa của " + baseName, EditOf = original };
+                SaveRegistry(reg.Values);
+                if (!string.IsNullOrEmpty(original)) _pendingSwitches.Add((name, original));
+                return (name, null);
+            }
+        }
+
         /// <summary>Copies the folder of <paramref name="from"/> to <paramref name="to"/> with the given SKILL.md text; returns its TextHash.</summary>
         private string CopySkill(string from, string to, string md)
         {
