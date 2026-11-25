@@ -219,7 +219,8 @@ Skill là file `.md` mô tả chuẩn vẽ: bảng layer, chiều cao chữ, quy
 - Có sẵn 3 skill mẫu: `ve-kien-truc` (mặt bằng kiến trúc), `ve-mep` (điện, cấp thoát nước), `ve-ha-tang` (đường, lý trình,
   cao độ, cống, bảng tọa độ). Skill mẫu nằm trong thư viện nhưng **không tự dùng**: bấm + khi cần.
 - ✦ **Skill (N)**: phần *Đang dùng* (nút **−** để bỏ) và *Thư viện* (nút **+** để dùng). Cạnh tên mỗi skill có nhãn
-  **Admin** (chủ plugin gửi) / **Default** (mẫu kèm plugin) / **You** (của cậu). **Sửa** mở skill theo cách đã chọn. Bấm **▾** để chọn cách mở:
+  **Admin** (chủ plugin gửi) / **Default** (mẫu kèm plugin) / **You** (của cậu). **⌄** mở khung xem nội dung skill ngay trong danh sách: chỉ xem, có
+  thanh cuộn, định dạng như câu trả lời của Claude. **Sửa** mở skill theo cách đã chọn. Bấm **▾** để chọn cách mở:
   ứng dụng mặc định, **Chọn ứng dụng khác…** hoặc **Word**.
   - Skill You: lưu là ghi vào skill đó.
   - Skill Default / Admin: plugin mở bản sao, bản gốc giữ nguyên. Lưu xong, plugin hỏi **Tên + Mô tả** để tạo skill
