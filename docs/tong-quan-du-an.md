@@ -43,7 +43,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | 8 | **Tách `ChatControl.cs`** cho dễ bảo trì | Để sau |
 | 9 | **Hướng dẫn sử dụng:** rà lại theo giao diện thật | Sau khi thử thật |
 | 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`. Code xong @b2452fa (CI xanh ở 5df4569, run 45531742310; lõi 270, trợ lý 192), rà bảo mật xong. Máy chủ Google đã cập nhật (25/11). Bộ cài thử 0.9.8: run 45534974010. **Chờ cậu:** thử rồi quyết phát hành |
-| 11 | **Sửa skill: chọn cách mở** (yêu cầu từ QnA 25/11). Nút Sửa có menu: ứng dụng mặc định / Chọn ứng dụng khác… / Word. Skill You: lưu là ghi đè. Skill Default / Admin: lưu thì hiện popup "Tạo skill mới" (Tên + Mô tả), thay cách tự chép sang `<tên>-sua`. Không làm sửa skill trên Google Docs phía khách | Thread đẩy skill, `claude/skill-docx-gdocs`. Cậu đã duyệt kế hoạch (`docs/ke-hoach-sua-skill-mo-bang.md` @792c980), ~3 ngày công. Đang code; chưa có trong bộ cài thử 0.9.8 |
+| 11 | **Sửa skill: chọn cách mở** (yêu cầu từ QnA 25/11). Nút Sửa có menu: ứng dụng mặc định / Chọn ứng dụng khác… / Word. Skill You: lưu là ghi đè. Skill Default / Admin: lưu thì hiện popup "Tạo skill mới" (Tên + Mô tả), thay cách tự chép sang `<tên>-sua`. Không làm sửa skill trên Google Docs phía khách | Thread đẩy skill, `claude/skill-docx-gdocs`. Code xong @dd83838, CI xanh (run 45538946273; lõi 278). Thread gộp nhánh đang build bộ cài thử 0.9.8 lần 2 có phần này |
 
 ## 3. Chi phí khi dùng
 
@@ -152,6 +152,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Sửa skill chọn cách mở code xong (@dd83838, CI xanh run 45538946273). Cậu yêu cầu build bộ cài thử để thử; đã giao thread gộp nhánh |
 | 25/11 | Cậu duyệt kế hoạch "sửa skill: chọn cách mở" (Word / ứng dụng khác; skill Default / Admin lưu thành skill mới qua popup). Thread đẩy skill làm, ~3 ngày công |
 | 25/11 | Bộ cài thử 0.9.8 (run 45534974010, `claude/release-0.9.5` @dfa8fab; lõi 270, trợ lý 192). Chưa phát hành. Chờ cậu thử 5 mục (.docx, hộp thoại tên / mô tả, Google Docs, sửa doc, cài đè khi AutoCAD mở) |
 | 25/11 | Cậu cập nhật máy chủ Google cho 0.9.8: dán Code.gs, khai `oauthScopes` (Drive chỉ xem), chạy `kiemTra`, tạo Phiên bản mới |
