@@ -42,7 +42,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | 7 | **Ghi "Đã gỡ lúc"** khi khách gỡ plugin | Để sau, nằm ở `claude/device-management` (`53bb1bf`) |
 | 8 | **Tách `ChatControl.cs`** cho dễ bảo trì | Để sau |
 | 9 | **Hướng dẫn sử dụng:** rà lại theo giao diện thật | Sau khi thử thật |
-| 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`; sẽ báo kế hoạch cho cậu duyệt |
+| 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`. Cậu đã duyệt kế hoạch (`docs/ke-hoach-skill-docx-gdocs.md` @4f91b67), ước tính 2–2,5 ngày công. Đang code |
 
 ## 3. Chi phí khi dùng
 
@@ -151,6 +151,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Cậu duyệt kế hoạch skill .docx / Google Docs: .docx thiếu tên / mô tả thì hỏi; ảnh bị bỏ và báo số ảnh; Google Docs chỉ qua Sheet (máy chủ ký rồi đẩy), phiên bản theo giờ sửa cuối của doc |
 | 25/11 | Cậu yêu cầu (qua QnA) skill nhận file .docx và nội dung từ link Google Docs. Giao thread đẩy skill, nhánh mới `claude/skill-docx-gdocs`. Google Docs ưu tiên đi qua kênh đẩy skill có chữ ký; phần máy chủ nhờ thread bảo mật rà |
 | 23/11 | Viết lại tổng quan theo bản v0.9.7. Không còn thread nào đang chạy việc; còn chờ cậu: thử thật, mã máy Disabled, chuẩn công ty |
 | 22/11 | **Phát hành v0.9.7** (PR #8, `main` @6e90240): bộ cài hỏi Thử lại / Hủy khi cài đè lúc AutoCAD đang mở (lỗi QnA chuyển sang). Chưa thử trên Windows thật |
