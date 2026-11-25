@@ -77,11 +77,22 @@ namespace ClaudeCAD.Plugin.Core
 
         private static DocxResult Fail(string why) => new DocxResult { Error = why };
 
+        /// <summary>Unpacked size allowed for one part (a 10 MB .docx with a "zip bomb" inside stops here).</summary>
+        public const long MaxPartBytes = 50L * 1024 * 1024;
+
         private static XDocument Load(ZipArchive zip, string name)
         {
             var e = zip.GetEntry(name);
             if (e == null) return null;
-            using (var s = e.Open()) return XDocument.Load(s);
+            if (e.Length > MaxPartBytes) throw new InvalidDataException("part too large");
+            var settings = new System.Xml.XmlReaderSettings
+            {
+                DtdProcessing = System.Xml.DtdProcessing.Prohibit, // no entities, no external files
+                XmlResolver = null,
+                MaxCharactersInDocument = MaxPartBytes,
+            };
+            using (var s = e.Open())
+            using (var r = System.Xml.XmlReader.Create(s, settings)) return XDocument.Load(r);
         }
 
         private sealed class Converter

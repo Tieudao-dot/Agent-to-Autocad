@@ -149,6 +149,15 @@ namespace ClaudeCAD.Core.Tests
                 Assert.Contains("word/document.xml", DocxToMarkdown.Convert(ms).Error);
             }
             Assert.NotNull(Conv(P("   ")).Error); // nothing usable
+            // a DTD (entity expansion, external files) is refused
+            using (var ms = new MemoryStream())
+            {
+                using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+                using (var w = new StreamWriter(zip.CreateEntry("word/document.xml").Open()))
+                    w.Write("<?xml version=\"1.0\"?><!DOCTYPE d [<!ENTITY a \"aaaa\">]><w:document " + Ns + "><w:body>" + P("&a;") + "</w:body></w:document>");
+                ms.Position = 0;
+                Assert.NotNull(DocxToMarkdown.Convert(ms).Error);
+            }
             Assert.Contains("chưa có dòng ---", Conv("<w:p><w:r><w:t>---</w:t></w:r></w:p>" + P("name: x")).Error);
             Assert.Contains("tối đa", Conv(P(new string('x', 45001))).Error);
 
