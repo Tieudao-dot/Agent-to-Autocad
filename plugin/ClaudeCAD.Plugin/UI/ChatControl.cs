@@ -60,6 +60,9 @@ namespace ClaudeCAD.Plugin.UI
         public bool WordAvailable { get; set; } = true;
         /// <summary>The way "Sửa" opens a skill, shown with a ✓ in the ▾ menu.</summary>
         public string SkillEditMode { get; set; } = "app";
+        /// <summary>Skills whose content is unfolded in the list (⌄, v0.9.8): kept across refreshes.</summary>
+        private readonly HashSet<string> _expandedSkills = new HashSet<string>(StringComparer.Ordinal);
+        public const int SkillPreviewHeight = 260;
         // v0.6: look at the drawing, read-only, project notes, macros, templates, skill drafts, plans
         public event Action CaptureScreenRequested;
         public event Action<bool> ReadOnlyToggled;
@@ -1489,6 +1492,17 @@ namespace ClaudeCAD.Plugin.UI
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
             var name = k.Name;
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
+            var fold = SmallButton(_expandedSkills.Contains(name) ? "⌃" : "⌄", _expandedSkills.Contains(name)
+                ? "Thu gọn nội dung skill"
+                : "Xem nội dung skill ngay tại đây (chỉ xem, không sửa file)");
+            fold.MinWidth = 20;
+            fold.Margin = new Thickness(0, 0, 4, 0);
+            fold.Click += (s, e) =>
+            {
+                if (!_expandedSkills.Remove(name)) _expandedSkills.Add(name);
+                RefreshSkillsPanel();
+            };
+            buttons.Children.Add(fold);
             var how = SkillEditMode == "word" ? "bằng Word" : SkillEditMode == "openwith" ? "bằng ứng dụng cậu chọn" : "bằng ứng dụng mặc định";
             var edit = SmallButton("Sửa", (k.Builtin || k.Admin
                 ? $"Mở bản sao {how} để sửa; lưu xong plugin hỏi tên + mô tả để tạo skill mới (nhãn You), bản gốc giữ nguyên"
@@ -1557,8 +1571,40 @@ namespace ClaudeCAD.Plugin.UI
                 d.ToolTip = k.Description + (string.IsNullOrEmpty(k.Source) ? "" : "\n\nNguồn: " + k.Source);
                 info.Children.Add(d);
             }
+            if (_expandedSkills.Contains(name)) info.Children.Add(SkillPreview(k));
             row.Children.Add(info);
             return row;
+        }
+
+        /// <summary>
+        /// Read-only view of a skill (⌄): its Markdown laid out like a chat answer (headings, lists, the layer table),
+        /// the frontmatter left out (the description is already shown above), in a box of limited height with a
+        /// scroll bar. Reads the file only; re-read whenever the library refreshes (file watcher).
+        /// </summary>
+        private UIElement SkillPreview(SkillInfo k)
+        {
+            string body;
+            try
+            {
+                var md = System.IO.File.ReadAllText(k.File, Encoding.UTF8);
+                body = SkillStore.SplitFrontmatter(md).body;
+                if (body.Length > 45000) body = body.Substring(0, 45000) + "\n\n…";
+                if (body.Trim().Length == 0) body = "*(skill chưa có nội dung ngoài phần đầu)*";
+            }
+            catch (Exception ex) { body = "Không đọc được SKILL.md: " + ex.Message; }
+            var view = new MarkdownView { FontSize = Math.Max(10, FontSize - 1), Markdown = body, Name = "SkillPreview" };
+            var scroll = new ScrollViewer
+            {
+                Content = view,
+                MaxHeight = SkillPreviewHeight,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Padding = new Thickness(6, 4, 6, 4),
+            };
+            var box = new Border { Child = scroll, BorderThickness = new Thickness(1), Margin = new Thickness(0, 4, 0, 0), CornerRadius = Theme.Corner };
+            Theme.Ref(box, Border.BorderBrushProperty, Theme.Border);
+            Theme.Ref(box, Border.BackgroundProperty, Theme.CodeBg);
+            return box;
         }
 
         // ================================================================= history rendering

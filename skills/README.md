@@ -57,6 +57,11 @@ Mỗi đoạn chat (mỗi bản vẽ) dùng **bộ skill riêng**, lấy từ **
 
 - **ĐANG DÙNG TRONG ĐOẠN CHAT NÀY:** skill có dấu ✓ và nút **−**. Bấm **−** thì đoạn chat này không dùng skill đó nữa; skill vẫn nằm trong thư viện. Claude được dặn bỏ qua chuẩn của skill đó từ tin nhắn tiếp theo; muốn sạch hoàn toàn khỏi trí nhớ cuộc chat thì bấm **Chat mới**.
 - **THƯ VIỆN (chưa dùng trong đoạn chat này):** các skill còn lại, có nút **+** để dùng trong đoạn chat này.
+- **⌄ Xem** (từ 0.9.8): nút **⌄** ở mỗi skill mở khung xem nội dung ngay trong danh sách. Bấm **⌃** để thu gọn.
+  - Khung xem hiện Markdown đã định dạng (tiêu đề, danh sách, bảng layer…), theo màu và font của khung chat. Khung có
+    chiều cao giới hạn, kéo thanh cuộn để xem tiếp. Phần đầu name / description không hiện lại, vì mô tả đã có ở dòng
+    trên.
+  - Chỉ xem: không tạo bản sao, không ghi file. File skill đổi thì nội dung xem tự cập nhật.
 - **Sửa** (từ 0.9.8): bấm **Sửa** là mở theo cách đã chọn lần trước. Bấm **▾** cạnh nút để chọn cách mở; plugin nhớ
   lựa chọn đó:
   - **Mở bằng ứng dụng mặc định**: ứng dụng Windows đang mở file `.md` (Notepad, VS Code…).
