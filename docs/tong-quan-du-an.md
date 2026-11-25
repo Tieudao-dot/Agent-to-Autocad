@@ -42,7 +42,7 @@ File này là tổng quan duy nhất của dự án. Nó gộp các file cũ `pl
 | 7 | **Ghi "Đã gỡ lúc"** khi khách gỡ plugin | Để sau, nằm ở `claude/device-management` (`53bb1bf`) |
 | 8 | **Tách `ChatControl.cs`** cho dễ bảo trì | Để sau |
 | 9 | **Hướng dẫn sử dụng:** rà lại theo giao diện thật | Sau khi thử thật |
-| 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`. Code xong @b2452fa (CI xanh ở 5df4569, run 45531742310; lõi 270, trợ lý 192), rà bảo mật xong. Máy chủ Google đã cập nhật cho 0.9.8 (25/11). **Chờ cậu:** quyết phát hành 0.9.8 |
+| 10 | **Skill nhận .docx và Google Docs** (yêu cầu từ QnA 25/11) | Thread đẩy skill, nhánh `claude/skill-docx-gdocs`. Code xong @b2452fa (CI xanh ở 5df4569, run 45531742310; lõi 270, trợ lý 192), rà bảo mật xong. Máy chủ Google đã cập nhật (25/11). Bộ cài thử 0.9.8: run 45534974010. **Chờ cậu:** thử rồi quyết phát hành |
 
 ## 3. Chi phí khi dùng
 
@@ -151,6 +151,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Bộ cài thử 0.9.8 (run 45534974010, `claude/release-0.9.5` @dfa8fab; lõi 270, trợ lý 192). Chưa phát hành. Chờ cậu thử 5 mục (.docx, hộp thoại tên / mô tả, Google Docs, sửa doc, cài đè khi AutoCAD mở) |
 | 25/11 | Cậu cập nhật máy chủ Google cho 0.9.8: dán Code.gs, khai `oauthScopes` (Drive chỉ xem), chạy `kiemTra`, tạo Phiên bản mới |
 | 25/11 | Skill .docx / Google Docs code xong (`claude/skill-docx-gdocs` @b2452fa). Rà bảo mật xong: máy chủ chỉ xin quyền xem Drive (`drive.readonly`). Chờ cậu cập nhật máy chủ Google và quyết phát hành 0.9.8 |
 | 25/11 | Cậu duyệt kế hoạch skill .docx / Google Docs: .docx thiếu tên / mô tả thì hỏi; ảnh bị bỏ và báo số ảnh; Google Docs chỉ qua Sheet (máy chủ ký rồi đẩy), phiên bản theo giờ sửa cuối của doc |
