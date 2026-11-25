@@ -153,6 +153,7 @@ theo tài khoản Windows. Chỉ nội dung yêu cầu và dữ liệu bản v�
 
 | Ngày | Tình hình |
 | --- | --- |
+| 25/11 | Rà cải thiện. Cậu chọn: CI tự đưa "Điểm mới" lên trang Release + đổi tên nhánh phát hành (giao thread gộp nhánh). Để sau: kênh thử beta theo máy, tách `ChatControl.cs`, `/compact` các thread dài |
 | 25/11 | **Phát hành v0.9.8** (PR #9, `main` @0f728f9, run 45556187621): skill từ .docx, skill từ Google Docs qua Sheet, sửa skill chọn cách mở, nút ⌄ xem skill. Tải: https://github.com/Tieudao-dot/Agent-to-Autocad/releases/download/v0.9.8/ClaudeCAD-Setup.exe (SHA-256 1E294C87…ADE6CCA0). Chưa thử trên AutoCAD thật. Báo cáo: [`tong-quan-plugin-0.9.8.md`](tong-quan-plugin-0.9.8.md) |
 | 25/11 | Thread đẩy skill thêm nút ⌄ xem nội dung skill ngay trong danh sách (chỉ xem; yêu cầu từ QnA). `claude/skill-docx-gdocs` @2164323, CI xanh run 45546116459. Chưa có trong bộ cài thử 0.9.8 lần 2; cậu chọn gộp luôn lúc phát hành 0.9.8 (không build lại bộ cài thử) |
 | 25/11 | Bộ cài thử 0.9.8 lần 2 (run 45540291856, `claude/release-0.9.5` @bca3934; lõi 278, trợ lý 192): có .docx, Google Docs, sửa skill chọn cách mở. Thay lần 1. Chờ cậu thử |
